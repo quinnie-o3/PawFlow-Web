@@ -1,0 +1,84 @@
+.surface {
+  --dashboard-accent: #6f00c6;
+  font-family: var(--font-be-vietnam-pro), Arial, Helvetica, sans-serif;
+}
+
+.backdrop {
+  max-width: none;
+}
+
+/* Unlayered global anchor rules otherwise override Tailwind utility colors. */
+.primaryAction {
+  color: var(--accent-hover);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.periodButton {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.alertAction {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 15px;
+}
+
+.detailAction {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.secondaryAction {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.dialogClose {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.filterForm button,
+.filterForm input {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.filterForm button[type="submit"] {
+  font-weight: 600;
+}
+
+.providerTab,
+.priorityStrip {
+  background: var(--dashboard-accent);
+}
+
+.providerTab {
+  border-color: var(--accent-hover);
+}
+
+.tableFrame,
+.tableFrame th,
+.tableFrame tr,
+.reportingPeriod {
+  border-color: #eee;
+}
+
+.operationalGrid {
+  display: grid;
+  align-items: start;
+  gap: 16px;
+}
+
+@media (min-width: 1440px) {
+  .operationalGrid {
+    grid-template-columns: minmax(0, 1fr) 400px;
+  }
+}

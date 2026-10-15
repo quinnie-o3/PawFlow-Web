@@ -1,0 +1,12 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Calendar">
+<g id="Vector">
+</g>
+<path id="Vector_2" d="M13 2.5H3C2.72386 2.5 2.5 2.72386 2.5 3V13C2.5 13.2761 2.72386 13.5 3 13.5H13C13.2761 13.5 13.5 13.2761 13.5 13V3C13.5 2.72386 13.2761 2.5 13 2.5Z" stroke="#595959" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_3" d="M11 1.5V3.5" stroke="#595959" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_4" d="M5 1.5V3.5" stroke="#595959" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_5" d="M2.5 5.5H13.5" stroke="#595959" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_6" d="M5.5 8L6.5 7.5V11.5" stroke="#595959" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_7" d="M8.63375 8C8.70217 7.88219 8.79395 7.7796 8.90345 7.69853C9.01294 7.61746 9.13785 7.55962 9.2705 7.52856C9.40316 7.4975 9.54076 7.49388 9.67486 7.51791C9.80897 7.54194 9.93675 7.59312 10.0504 7.6683C10.164 7.74349 10.261 7.84111 10.3356 7.95515C10.4101 8.06919 10.4605 8.19727 10.4838 8.33151C10.5071 8.46575 10.5026 8.60333 10.4708 8.7358C10.439 8.86827 10.3804 8.99285 10.2987 9.10188L8.5 11.5H10.5" stroke="#595959" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</svg>
