@@ -1,0 +1,51 @@
+import type { Booking, BookingActor } from "../types";
+
+// Frontend-only fixtures, independent of the overview snapshot and any API contract.
+export const mockNow = "2026-10-15T10:00:00+07:00";
+export const mockOwner: BookingActor = { id: "owner-demo", name: "Dane Nguyen", role: "providerOwner" };
+
+export const mockBookings: Booking[] = [
+  {
+    id: "PF-2084", customerName: "Hà Linh", petName: "Miu", petSpecies: "Mèo",
+    serviceName: "Grooming toàn diện", scheduledAt: "2026-10-21T09:00:00+07:00",
+    durationMinutes: 90, price: 350000, status: "pendingConfirmation",
+    notes: "Miu nhạy cảm với tiếng máy sấy.",
+  },
+  {
+    id: "PF-2083", customerName: "Quang Minh", petName: "Bắp", petSpecies: "Chó",
+    serviceName: "Tắm & vệ sinh", scheduledAt: "2026-10-22T14:30:00+07:00",
+    durationMinutes: 60, price: 250000, status: "pendingConfirmation",
+    notes: "Sử dụng dầu gội dành cho da nhạy cảm.",
+  },
+  {
+    id: "PF-2082", customerName: "Ngọc Anh", petName: "Kiki", petSpecies: "Chó",
+    serviceName: "Trông giữ ban ngày", scheduledAt: "2026-10-22T09:00:00+07:00",
+    durationMinutes: 480, price: 350000, status: "pendingConfirmation",
+    notes: "Khách mang theo thức ăn riêng; đón Kiki lúc 17:00.",
+  },
+  {
+    id: "PF-2079", customerName: "Lan Phương", petName: "Bon", petSpecies: "Mèo",
+    serviceName: "Chăm sóc tạo kiểu", scheduledAt: "2026-10-01T10:00:00+07:00",
+    durationMinutes: 90, price: 300000, status: "confirmed", notes: "Giữ lại phần lông đuôi.",
+  },
+  {
+    id: "PF-2075", customerName: "Mai Anh", petName: "Lạc", petSpecies: "Chó",
+    serviceName: "Cắt tỉa lông", scheduledAt: "2026-09-28T11:30:00+07:00",
+    durationMinutes: 60, price: 200000, status: "completed", notes: "",
+  },
+  {
+    id: "PF-2068", customerName: "Đức Huy", petName: "Mít", petSpecies: "Chó",
+    serviceName: "Tắm & vệ sinh", scheduledAt: "2026-09-26T16:00:00+07:00",
+    durationMinutes: 60, price: 250000, status: "cancelled", notes: "Khách thay đổi kế hoạch.",
+  },
+  {
+    id: "PF-2069", customerName: "Đức Huy", petName: "Mít", petSpecies: "Chó",
+    serviceName: "Tắm & vệ sinh", scheduledAt: "2026-09-25T16:00:00+07:00",
+    durationMinutes: 60, price: 250000, status: "rejected", notes: "Không thể tiếp nhận vào khung giờ yêu cầu.",
+  },
+  {
+    id: "PF-2070", customerName: "Đức Huy", petName: "Mít", petSpecies: "Chó",
+    serviceName: "Tắm & vệ sinh", scheduledAt: "2026-09-28T14:00:00+07:00",
+    durationMinutes: 60, price: 250000, status: "noShow", notes: "Khách không đến theo giờ đã đặt.",
+  },
+];
