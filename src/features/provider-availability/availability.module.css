@@ -1,0 +1,104 @@
+.page {
+  --availability-border: #e8e5ed;
+  --availability-muted: #66666e;
+  --availability-row: #f9f6fc;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 895px;
+  margin-inline: auto;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.providerTab { display: grid; place-items: center; min-height: 54px; margin-bottom: -6px; padding: 10px 20px; border-radius: 5px; border-bottom: 2px solid var(--accent-hover); background: var(--dashboard-accent); color: #f2e2ff; font-size: 18px; font-weight: 600; }
+.intro { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 70px; }
+.intro h1 { font-size: 26px; font-weight: 700; line-height: 1.3; }
+.intro p { color: var(--availability-muted); margin-top: 3px; }
+.blockButton { width: 190px; min-height: 38px; flex-shrink: 0; padding: 10px; border-radius: 8px; background: #3025a7; color: var(--text-on-primary); font-size: 14px; font-weight: 700; cursor: pointer; }
+.summaries { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.summaries article { min-height: 118px; min-width: 0; padding: 18px; border: 1px solid var(--availability-border); border-radius: 14px; background: var(--surface); }
+.summaries h2 { color: var(--availability-muted); font-size: 13px; font-weight: 400; }
+.summaryCount { margin-block: 5px; font-size: 25px; line-height: 1.25; font-weight: 700; }
+.summaries article > p:last-child { font-size: 12px; color: var(--availability-muted); }
+.scheduleGrid { display: grid; grid-template-columns: minmax(0, 550fr) minmax(0, 329fr); gap: 16px; align-items: stretch; }
+.rulesGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.card { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 13px; padding: 20px; border: 1px solid var(--availability-border); border-radius: 14px; background: var(--surface); }
+.card h2 { font-size: 17px; font-weight: 700; line-height: 1.35; }
+.card > p { font-size: 14px; color: var(--availability-muted); }
+.weeklyCard, .exceptionsCard { min-height: 590px; }
+.sectionHeading { min-height: 48px; }
+.sectionHeading p { margin-top: 2px; font-size: 12px; color: var(--availability-muted); }
+.weeklyList, .exceptionList { display: flex; flex-direction: column; gap: 13px; width: 100%; }
+.weeklyList li { display: grid; grid-template-columns: minmax(75px, 100fr) minmax(0, 290fr) 72px; align-items: center; gap: 4px; min-height: 54px; padding: 12px; border-radius: 8px; background: var(--availability-row); }
+.dayName { font-size: 14px; font-weight: 700; }
+.hours { font-size: 13px; color: var(--availability-muted); }
+.badge { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 27px; padding: 5px; border-radius: 5px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.badge img { width: 7px; height: 7px; flex-shrink: 0; }
+.open { color: #1e8754; background: rgb(30 135 84 / 18%); }
+.closed { color: #ae3942; background: rgb(174 57 66 / 18%); }
+.exceptionList button { display: flex; flex-direction: column; gap: 5px; min-height: 82px; width: 100%; padding: 13px; border-radius: 9px; background: var(--availability-row); text-align: left; cursor: pointer; }
+.exceptionList strong { font-size: 14px; }
+.exceptionList span { font-size: 13px; color: var(--availability-muted); }
+.exceptionList small { font-size: 11px; color: var(--availability-muted); }
+.card .hint, .hint { font-size: 12px; color: var(--text-muted); white-space: pre-line; }
+.rulesGrid .card { min-height: 270px; }
+.textButton { display: inline-block; padding-block: 2px; color: var(--dashboard-accent); text-align: left; font-size: 13px; font-weight: 700; cursor: pointer; }
+.textButton:hover, .slotPreview:hover, .headingButton:hover { text-decoration: underline; }
+.headingButton { text-align: left; cursor: pointer; }
+.upcomingList { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.slotPreview { display: flex; flex-wrap: wrap; gap: 8px; padding-block: 2px; text-align: left; color: var(--availability-muted); font-size: 14px; cursor: pointer; }
+.slotActions, .formActions { display: flex; flex-wrap: wrap; gap: 10px; }
+.outlineButton, .primaryButton, .softButton { min-height: 40px; padding: 10px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; line-height: 1.5; cursor: pointer; }
+.outlineButton { border: 1px solid var(--availability-border, #e8e5ed); background: var(--surface); color: #3025a7; }
+.primaryButton { background: var(--accent-hover); color: var(--text-on-primary); }
+.softButton { background: var(--surface-primary); color: var(--accent-hover); }
+.outlineButton:disabled, .primaryButton:disabled, .softButton:disabled { opacity: .55; cursor: not-allowed; }
+.primaryButton:hover:enabled { background: var(--dashboard-accent); }
+.outlineButton:hover:enabled, .softButton:hover:enabled { background: var(--accent-soft); }
+.history, .mockNote, .mockTools { font-size: 12px; color: var(--availability-muted); }
+.history summary, .mockTools summary, .reservations summary { cursor: pointer; }
+.history > details, .history ul { margin: 10px 0 10px 12px; }
+.history li { margin-block: 4px; }
+.mockNote p + p, .mockTools p { margin-top: 8px; }
+.mockTools .slotActions { margin-top: 12px; }
+.empty { padding-block: 16px; font-size: 13px; color: var(--text-muted); }
+.editorForm, .formFields { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.editorForm { color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
+.notice { padding: 12px; border-radius: 8px; background: var(--surface-primary); color: var(--accent-hover); font-size: 12px; }
+.fieldLabel { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.editorForm input:not([type="checkbox"]), .editorForm select { display: block; width: 100%; min-width: 0; min-height: 44px; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-primary); font-size: 14px; }
+.editorForm input:disabled, .editorForm select:disabled { color: var(--text-secondary); background: var(--surface-muted); opacity: .7; }
+.dayFieldset { padding: 12px; min-width: 0; border: 1px solid var(--border); border-radius: 8px; }
+.dayFieldset legend { padding-inline: 6px; font-size: 14px; font-weight: 600; }
+.checkboxLabel { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; }
+.checkboxLabel input { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; accent-color: var(--accent-hover); }
+.rangeFields { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.rangeRow { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.rangeRow label { flex: 1 1 120px; min-width: 0; font-size: 12px; }
+.rangeRow button { min-height: 44px; }
+.error, .success { padding: 12px; border: 1px solid currentColor; border-radius: 8px; font-size: 13px; overflow-wrap: anywhere; white-space: pre-line; }
+.error { color: #ae3942; background: #fff4f4; }
+.success { color: #1e8754; background: #f1fbf5; }
+.dangerArea { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--border); padding-top: 16px; }
+.dangerArea .formActions > div { flex: 1 1 150px; }
+.confirmation { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; }
+.slotList { display: flex; flex-direction: column; gap: 10px; }
+.slotList button { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 12px; text-align: left; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+.slotList button:hover { background: var(--surface-primary); }
+.slotList span, .slotList small, .reservations { color: var(--text-muted); font-size: 12px; }
+.reservations p, .reservations li { margin-top: 8px; }
+.page button:focus-visible, .editorForm button:focus-visible, .slotList button:focus-visible { outline: 2px solid var(--dashboard-accent); outline-offset: 3px; }
+@media (max-width: 767px) {
+  .intro { flex-direction: column; align-items: flex-start; }
+  .blockButton { width: auto; min-width: 150px; }
+  .summaries, .scheduleGrid, .rulesGrid { grid-template-columns: 1fr; gap: 12px; }
+  .summaries article { min-height: 100px; padding: 14px 18px; }
+  .card { padding: 14px; }
+  .weeklyCard, .exceptionsCard, .rulesGrid .card { min-height: auto; }
+  .weeklyList li { grid-template-columns: minmax(0, 1fr) 64px; gap: 6px; }
+  .hours { grid-column: 1; grid-row: 2; }
+  .badge { grid-column: 2; grid-row: 1 / 3; }
+  .slotActions > button { flex: 1 1 auto; }
+}
