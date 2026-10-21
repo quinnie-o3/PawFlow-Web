@@ -16,7 +16,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <div className={`${dashboardFont.variable} ${styles.surface} flex h-dvh min-h-0 min-w-0 flex-col overflow-hidden bg-[var(--background)] text-[var(--text-primary)]`}>
       <Header provider />
-      <div className="relative isolate flex min-h-0 min-w-0 flex-1 overflow-hidden px-4 py-6 sm:px-6 xl:px-8 xl:py-5">
+      <div className="relative isolate flex min-h-0 min-w-0 flex-1 overflow-clip px-4 py-4 sm:px-6 lg:py-6 xl:px-8">
         <Image aria-hidden="true" alt="" src="/dashboard/arc-upper-left.svg" width={500} height={510} className={`${styles.backdrop} pointer-events-none absolute left-[-85px] top-[-210px] z-[-1]`} />
         <Image aria-hidden="true" alt="" src="/dashboard/arc-upper-right.svg" width={610} height={590} className={`${styles.backdrop} pointer-events-none absolute right-[-170px] top-[-370px] z-[-1]`} />
         <Image aria-hidden="true" alt="" src="/dashboard/arc-lower-right.svg" width={560} height={570} className={`${styles.backdrop} pointer-events-none absolute bottom-[-293px] right-[-190px] z-[-1]`} />
