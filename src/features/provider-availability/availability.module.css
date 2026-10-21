@@ -6,7 +6,6 @@
   flex-direction: column;
   gap: 16px;
   width: 100%;
-  max-width: 895px;
   margin-inline: auto;
   color: var(--text-primary);
   font-size: 13px;
