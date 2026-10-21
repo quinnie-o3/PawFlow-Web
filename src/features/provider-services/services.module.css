@@ -24,8 +24,9 @@
 .filters { display: flex; flex-wrap: wrap; gap: 18px; }
 .filters button { min-height: 38px; padding: 6px 14px; border-bottom: 2px solid transparent; color: var(--services-muted); font-size: 13px; font-weight: 600; cursor: pointer; }
 .filters button[aria-pressed="true"] { border-color: var(--dashboard-accent); color: var(--dashboard-accent); }
-.search { flex: 1 1 180px; max-width: 264px; }
-.search input { width: 100%; min-height: 36px; padding: 8px 12px; border: 1px solid transparent; border-radius: 8px; background: var(--surface-primary); font-size: 12px; }
+.search { position: relative; flex: 1 1 180px; max-width: 264px; }
+.searchIcon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--services-muted); pointer-events: none; }
+.search input { width: 100%; min-height: 36px; padding: 8px 12px 8px 32px; border: 1px solid transparent; border-radius: 8px; background: var(--surface-primary); font-size: 12px; }
 .search input:focus { border-color: var(--dashboard-accent); }
 .grid, .guidance { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 17px; }
 .serviceCard { display: flex; flex-direction: column; align-items: stretch; gap: 9px; min-width: 0; min-height: 220px; padding: 18px; border: 1px solid var(--services-border); border-radius: 14px; background: var(--surface); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
@@ -33,7 +34,7 @@
 .cardHeading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 8px; min-height: 30px; }
 .serviceName { flex: 1 1 145px; font-size: 17px; font-weight: 700; }
 .badge { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 5px; width: 105px; min-height: 27px; padding: 5px 7px; border-radius: 5px; font-size: 12px; font-weight: 700; }
-.badge img { flex-shrink: 0; width: 7px; height: 7px; }
+.badge svg { flex-shrink: 0; width: 7px; height: 7px; }
 .visible { color: #1e8754; background: rgb(30 135 84 / 18%); }
 .hidden { color: #9e630a; background: rgb(158 99 10 / 18%); }
 .metadata, .editLink { color: var(--dashboard-accent); font-weight: 600; }
@@ -41,6 +42,8 @@
 .price { font-size: 14px; font-weight: 700; }
 .cardNote { font-size: 12px; }
 .editLink { font-weight: 700; }
+/* Preserve the original arrow glyph's inline width. */
+.inlineIcon { display: inline-block; width: 1.1em; height: 1em; vertical-align: -0.125em; }
 .guidance article { min-width: 0; min-height: 160px; padding: 20px; border: 1px solid var(--services-border); border-radius: 14px; background: var(--surface); }
 .guidance h2 { margin-bottom: 10px; font-size: 17px; font-weight: 700; }
 .guidance article:last-child h2 { color: #3025a7; }

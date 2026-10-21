@@ -3,53 +3,25 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Bell, BriefcaseBusiness, Building2, CalendarClock, CalendarDays, LayoutDashboard, Users } from "lucide-react";
 import UserAvatar from "@/components/ui/UserAvatar";
 
 const sidebarItems = [
-  { label: "Tổng quan", href: "/dashboard" },
-  { label: "Lịch hẹn", href: "/dashboard/bookings" },
-  { label: "Lịch khả dụng", href: "/dashboard/availability" },
-  { label: "Dịch vụ", href: "/dashboard/services" },
-  { label: "Khách hàng", href: "/dashboard/customers" },
-  { label: "Thông báo", href: "/dashboard/notifications" },
-  { label: "Hồ sơ cơ sở", href: "/dashboard/profile" },
+  { label: "Tổng quan", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Lịch hẹn", href: "/dashboard/bookings", icon: CalendarDays },
+  { label: "Lịch khả dụng", href: "/dashboard/availability", icon: CalendarClock },
+  { label: "Dịch vụ", href: "/dashboard/services", icon: BriefcaseBusiness },
+  { label: "Khách hàng", href: "/dashboard/customers", icon: Users },
+  { label: "Thông báo", href: "/dashboard/notifications", icon: Bell },
+  { label: "Hồ sơ cơ sở", href: "/dashboard/profile", icon: Building2 },
 ];
 
 export default function Sidebar({ provider = false }: { provider?: boolean }) {
   const pathname = usePathname();
 
-  if (provider) {
-    return (
-      <aside className="relative flex min-h-[1237px] w-[285px] shrink-0 self-stretch flex-col overflow-hidden rounded-[36px] bg-[#6f00c6] p-5">
-        <div className="mt-[62px] flex h-[90px] shrink-0 items-start gap-[14px] px-[14px]">
-          <Image src="/sidebar-logo.png" alt="" width={39} height={39} className="mt-5 h-[39px] w-[39px]" />
-          <Image src="/webname.png" alt="PawFlow" width={159} height={42} className="mt-[14px] h-auto w-[159px]" />
-        </div>
-        <div role="group" aria-label="Hồ sơ người dùng" className="mt-[53px] flex h-[54px] shrink-0 items-center gap-[15px]">
-          <UserAvatar size={54} />
-          <div className="min-w-0">
-            <p className="text-[20px] font-bold leading-[26px] text-white">Dane Nguyen</p>
-            <p className="mt-1 whitespace-nowrap text-[12px] leading-[22px] text-white">Dashboard <span className="font-semibold text-[#d6ccff]">Nhà cung cấp</span></p>
-          </div>
-        </div>
-        <nav aria-label="Điều hướng provider" className="mt-7 flex flex-col">
-          {sidebarItems.map((item) => {
-            const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
-            return <Link key={item.href} href={item.href} prefetch={false} aria-current={active ? "page" : undefined}
-              className={`flex h-[54px] shrink-0 items-center gap-[10px] px-[15px] ${active ? "w-[302px] rounded-[27px] bg-[#f6f8fa]" : "border-b"}`}
-              style={active ? undefined : { borderColor: "rgb(255 255 255 / 22%)" }}>
-              <Image src={active ? "/dashboard/nav-active.svg" : "/dashboard/nav.svg"} alt="" width={24} height={24} className="shrink-0" />
-              <span className={`whitespace-nowrap text-[18px] leading-[22px] ${active ? "font-bold text-[#3025a7]" : "font-semibold text-white"}`}>{item.label}</span>
-            </Link>;
-          })}
-        </nav>
-      </aside>
-    );
-  }
-
   return (
     <aside
-      className="relative flex w-[285px] shrink-0 self-stretch flex-col overflow-hidden rounded-[24px] bg-[#6F00C6] p-[18px]"
+      className={`relative flex ${provider ? "min-h-0 min-w-0 w-full" : "w-[285px] overflow-hidden"} shrink-0 self-stretch flex-col rounded-[24px] bg-[#6F00C6] p-[18px]`}
       style={{ fontFamily: "var(--font-be-vietnam-pro)" }}
     >
       <div className="relative mb-[20px] flex h-[68px] w-full items-center gap-[12px] px-[10px]">
@@ -88,8 +60,12 @@ export default function Sidebar({ provider = false }: { provider?: boolean }) {
         </div>
       </div>
 
-      <nav className="flex w-full flex-col gap-1">
+      <nav
+        aria-label={provider ? "Điều hướng provider" : undefined}
+        className={provider ? "flex min-h-0 min-w-0 w-full flex-1 flex-col gap-1 overflow-y-auto overscroll-y-contain" : "flex w-full flex-col gap-1"}
+      >
         {sidebarItems.map((item) => {
+          const Icon = item.icon;
           const isActive =
             pathname === item.href ||
             (item.href !== "/dashboard" &&
@@ -99,12 +75,16 @@ export default function Sidebar({ provider = false }: { provider?: boolean }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex h-[44px] items-center px-[14px] transition-colors ${
+              prefetch={provider ? false : undefined}
+              aria-current={provider && isActive ? "page" : undefined}
+              style={provider && !isActive ? { borderColor: "rgb(255 255 255 / 22%)" } : undefined}
+              className={`flex h-[44px] items-center px-[14px] transition-colors ${provider ? "min-w-0 w-full shrink-0 gap-[10px]" : ""} ${
                 isActive
                   ? "rounded-[22px] bg-[#F6F8FA]"
                   : "border-b border-white/[0.22]"
               }`}
             >
+              {provider && <Icon aria-hidden="true" focusable="false" size={24} strokeWidth={2} className={`shrink-0 ${isActive ? "text-[#3025A7]" : "text-white"}`} />}
               <span
                 className={`whitespace-nowrap text-[16px] leading-[20px] ${
                   isActive

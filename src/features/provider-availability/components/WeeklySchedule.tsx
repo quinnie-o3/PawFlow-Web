@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Circle } from "lucide-react";
 import { formatRanges } from "../availabilityLogic";
 import type { WeeklyDay } from "../types";
 import styles from "../availability.module.css";
@@ -9,7 +9,7 @@ export default function WeeklySchedule({ days }: { days: WeeklyDay[] }) {
     <ul className={styles.weeklyList}>{days.map((day) => <li key={day.weekday}>
       <span className={styles.dayName}>{day.label}</span><span className={styles.hours}>{formatRanges(day.ranges)}</span>
       <span className={`${styles.badge} ${day.ranges.length ? styles.open : styles.closed}`}>
-        <Image alt="" src={day.ranges.length ? "/availability/status-open.svg" : "/availability/status-closed.svg"} width={7} height={7} />
+        <Circle aria-hidden="true" focusable="false" size={7} strokeWidth={2} fill="currentColor" />
         {day.ranges.length ? "Mở" : "Đóng"}
       </span>
     </li>)}</ul>
