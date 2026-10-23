@@ -3,7 +3,7 @@ import {
   MetricCalendarIcon,
   CardsIcon,
   ChartIcon,
-  NotificationIcon,
+  CancellationIcon,
   PaymentIcon,
   StackIcon,
 } from "./icons";
@@ -11,7 +11,7 @@ import {
 const metricIcons = {
   payment: PaymentIcon,
   calendar: MetricCalendarIcon,
-  notification: NotificationIcon,
+  notification: CancellationIcon,
   cards: CardsIcon,
   stack: StackIcon,
   chart: ChartIcon,

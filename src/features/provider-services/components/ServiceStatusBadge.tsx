@@ -1,9 +1,9 @@
-import Image from "next/image";
+import { Circle } from "lucide-react";
 import styles from "../services.module.css";
 
 export default function ServiceStatusBadge({ active }: { active: boolean }) {
   return <span className={`${styles.badge} ${active ? styles.visible : styles.hidden}`}>
-    <Image src={active ? "/services/status-visible.svg" : "/services/status-hidden.svg"} alt="" width={7} height={7} />
+    <Circle aria-hidden="true" focusable="false" size={7} strokeWidth={2} fill="currentColor" />
     {active ? "Hiển thị" : "Tạm ẩn"}
   </span>;
 }

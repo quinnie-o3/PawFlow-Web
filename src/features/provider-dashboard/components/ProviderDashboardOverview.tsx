@@ -15,7 +15,7 @@ export default function ProviderDashboardOverview() {
   const [range, setRange] = useState(initialReportingRange);
   const report = summarizeDashboard(dailySamples, range);
   return (
-    <div className="mx-auto flex w-full max-w-[895px] flex-col gap-2.5">
+    <div className="mx-auto flex w-full flex-col gap-2.5">
       <div className={`${styles.providerTab} flex min-h-[54px] items-center justify-center rounded-[5px] border-b-2 px-6 py-3 text-center text-[18px] font-semibold leading-[22px] text-[#f2e2ff]`}>
         DÀNH CHO PROVIDER
       </div>

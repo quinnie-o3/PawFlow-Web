@@ -6,7 +6,6 @@
   flex-direction: column;
   gap: 16px;
   width: 100%;
-  max-width: 895px;
   margin-inline: auto;
   color: var(--text-primary);
   font-size: 13px;
@@ -35,7 +34,7 @@
 .dayName { font-size: 14px; font-weight: 700; }
 .hours { font-size: 13px; color: var(--availability-muted); }
 .badge { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 27px; padding: 5px; border-radius: 5px; font-size: 12px; font-weight: 700; white-space: nowrap; }
-.badge img { width: 7px; height: 7px; flex-shrink: 0; }
+.badge svg { width: 7px; height: 7px; flex-shrink: 0; }
 .open { color: #1e8754; background: rgb(30 135 84 / 18%); }
 .closed { color: #ae3942; background: rgb(174 57 66 / 18%); }
 .exceptionList button { display: flex; flex-direction: column; gap: 5px; min-height: 82px; width: 100%; padding: 13px; border-radius: 9px; background: var(--availability-row); text-align: left; cursor: pointer; }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Search } from "lucide-react";
 import { filterBookings, formatBookingDate, statusLabels, statusOrder, summarizeBookings } from "../bookingLogic";
 import { mockBookings, mockNow } from "../data/providerBookingsMock";
 import { useBookingsMock } from "../useBookingsMock";
@@ -44,7 +45,8 @@ export default function ProviderBookingsPage() {
     </div>
     <label className={styles.search}>
       <span className={styles.srOnly}>Tìm mã lịch, khách hàng hoặc thú cưng</span>
-      <input type="search" placeholder="⌕  Mã lịch hoặc khách" value={filters.query} onChange={(event) => setFilters({ ...filters, query: event.target.value })} />
+      <Search aria-hidden="true" focusable="false" size={14} strokeWidth={2} className={styles.searchIcon} />
+      <input type="search" placeholder="Mã lịch hoặc khách" value={filters.query} onChange={(event) => setFilters({ ...filters, query: event.target.value })} />
     </label>
     <section className={styles.listCard} aria-labelledby="bookings-title">
       <div className={styles.listHeading}><h2 id="bookings-title" tabIndex={-1}>Danh sách lịch hẹn</h2><p>Chọn một lịch để xem chi tiết và xử lý đúng trạng thái.</p></div>

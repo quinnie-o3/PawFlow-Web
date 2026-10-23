@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Circle } from "lucide-react";
 import { statusLabels } from "../bookingLogic";
 import type { BookingStatus } from "../types";
 import styles from "../bookings.module.css";
@@ -11,7 +11,7 @@ const statusTones: Record<BookingStatus, string> = {
 export default function BookingStatusBadge({ status }: { status: BookingStatus }) {
   const tone = statusTones[status];
   return <span className={`${styles.badge} ${styles[tone]}`}>
-    <Image src={`/bookings/status-${tone}.svg`} alt="" width={7} height={7} />
+    <Circle aria-hidden="true" focusable="false" size={7} strokeWidth={2} fill="currentColor" />
     {statusLabels[status]}
   </span>;
 }

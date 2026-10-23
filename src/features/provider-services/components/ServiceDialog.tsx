@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import DashboardDialog from "@/features/provider-dashboard/components/DashboardDialog";
 import { formatDuration, serviceToDraft } from "../serviceLogic";
 import type { ProviderService, ServiceCommand, ServiceDraft, ServiceFeedback } from "../types";
@@ -67,7 +68,7 @@ export default function ServiceDialog({ service, categories, onSubmit, onClose }
         }}>{feedback?.outcome === "error" && lastAction === "status" ? "Thử lại đổi trạng thái" : confirmActive ? "Xác nhận hiển thị lại" : "Xác nhận tạm ẩn"}</button>
         <button type="button" className={styles.softButton} onClick={() => { setConfirmActive(null); window.requestAnimationFrame(() => document.getElementById(`${id}-status`)?.focus()); }}>Quay lại</button>
       </section>}
-      <Link href="/dashboard/availability" prefetch={false} className={styles.editLink}>Xem lịch khả dụng →</Link>
+      <Link href="/dashboard/availability" prefetch={false} className={styles.editLink}>Xem lịch khả dụng <ArrowRight aria-hidden="true" focusable="false" size={14} strokeWidth={2} className={styles.inlineIcon} /></Link>
     </div>}
     <details className={styles.mockTools}>
       <summary>Thử tình huống lưu thất bại</summary>
