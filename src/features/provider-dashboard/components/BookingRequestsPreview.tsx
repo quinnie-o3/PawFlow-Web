@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { BookingRequest } from "../types";
 import { formatBookingDate, formatDate } from "../data/dashboardAnalytics";
 import { LinkIcon } from "./icons";
@@ -14,10 +15,9 @@ export default function BookingRequestsPreview({ requests }: { requests: Booking
       <div className="flex flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
         <h2 id="booking-requests-title" tabIndex={-1} className="text-[16px] font-bold leading-5 text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--accent-hover)]">Yêu cầu đặt lịch mới</h2>
         <div className="text-[12px] leading-4 text-[var(--text-muted)] sm:text-right">
-          <button type="button" disabled aria-describedby="bookings-unavailable" className={`${styles.secondaryAction} inline-flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-60`}>
+          <Link href="/dashboard/bookings?status=pendingConfirmation" prefetch={false} className={`${styles.secondaryAction} inline-flex items-center gap-1`}>
             Xem tất cả yêu cầu <LinkIcon small className="h-3.5 w-3.5" />
-          </button>
-          <p id="bookings-unavailable" className="mt-1">Trang lịch hẹn đang được phát triển</p>
+          </Link>
         </div>
       </div>
       <div className="px-6 pb-6">

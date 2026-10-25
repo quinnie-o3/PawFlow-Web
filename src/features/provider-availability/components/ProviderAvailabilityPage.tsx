@@ -1,6 +1,7 @@
 "use client";
 
 import { useReducer, useState } from "react";
+import Link from "next/link";
 import { availabilityCommandError, availabilityReducer, formatAvailabilityDate, formatRanges, localDate, upcomingSlots, weeklyHours } from "../availabilityLogic";
 import { availabilityMockNow, createAvailabilityMock } from "../data/providerAvailabilityMock";
 import type { AvailabilityCommand, AvailabilitySlot, DateException, WeeklySchedule } from "../types";
@@ -63,6 +64,10 @@ export default function ProviderAvailabilityPage() {
         <h2 id="booking-rules-title">Quy tắc nhận lịch</h2>
         <p>Thời lượng mỗi lượt: theo từng dịch vụ</p><p>Số chỗ trong cùng khung: theo năng lực cơ sở</p><p>Ngày đóng: không tạo slot mới để khách chọn</p>
         <button type="button" className={styles.textButton} onClick={() => openDialog({ type: "weekly", schedule: activeSchedule })}>Chỉnh sửa giờ mở cửa</button>
+        <nav className={styles.slotActions} aria-label="Thông tin liên quan đến lịch khả dụng">
+          <Link href="/dashboard/services" prefetch={false} className={styles.textButton}>Xem dịch vụ</Link>
+          <Link href="/dashboard/profile" prefetch={false} className={styles.textButton}>Hồ sơ cơ sở</Link>
+        </nav>
       </section>
       <UpcomingSlots slots={upcomingSlots(state, now)} reservations={state.reservations} onSelect={selectSlot} onShowAll={() => openDialog({ type: "slots" })} />
     </div>
