@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Search } from "lucide-react";
 import { filterBookings, formatBookingDate, statusLabels, statusOrder, summarizeBookings } from "../bookingLogic";
@@ -13,7 +14,11 @@ import styles from "../bookings.module.css";
 
 export default function ProviderBookingsPage() {
   const { state, dispatch } = useBookingsMock();
-  const [filters, setFilters] = useState<BookingFilters>({ query: "", status: "all" });
+  const searchParams = useSearchParams();
+  const filters: BookingFilters = {
+    query: searchParams.get("q") ?? "",
+    status: statusOrder.find((status) => status === searchParams.get("status")) ?? "all",
+  };
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [simulateFailure, setSimulateFailure] = useState(false);
   const [feedbackOffset, setFeedbackOffset] = useState(0);
@@ -21,6 +26,16 @@ export default function ProviderBookingsPage() {
   const selected = state.bookings.find((booking) => booking.id === selectedId);
   const summary = summarizeBookings(state.bookings);
   const feedback = state.logs.length > feedbackOffset ? state.feedback : null;
+
+  function setFilters(next: BookingFilters, replace = false) {
+    const url = new URL(window.location.href);
+    if (next.status === "all") url.searchParams.delete("status");
+    else url.searchParams.set("status", next.status);
+    if (next.query) url.searchParams.set("q", next.query);
+    else url.searchParams.delete("q");
+    // Keep mock edits and scroll intact; Next.js syncs native history with useSearchParams.
+    window.history[replace ? "replaceState" : "pushState"](null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
 
   function openBooking(id: string) {
     setFeedbackOffset(state.logs.length);
@@ -46,7 +61,7 @@ export default function ProviderBookingsPage() {
     <label className={styles.search}>
       <span className={styles.srOnly}>Tìm mã lịch, khách hàng hoặc thú cưng</span>
       <Search aria-hidden="true" focusable="false" size={14} strokeWidth={2} className={styles.searchIcon} />
-      <input type="search" placeholder="Mã lịch hoặc khách" value={filters.query} onChange={(event) => setFilters({ ...filters, query: event.target.value })} />
+      <input type="search" placeholder="Mã lịch hoặc khách" value={filters.query} onChange={(event) => setFilters({ ...filters, query: event.target.value }, true)} />
     </label>
     <section className={styles.listCard} aria-labelledby="bookings-title">
       <div className={styles.listHeading}><h2 id="bookings-title" tabIndex={-1}>Danh sách lịch hẹn</h2><p>Chọn một lịch để xem chi tiết và xử lý đúng trạng thái.</p></div>
