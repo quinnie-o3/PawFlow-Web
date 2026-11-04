@@ -5,8 +5,8 @@
   "timezone": "Asia/Ho_Chi_Minh",
   "branch": "FE-020-021",
   "baseCommit": "b70d18b14c82cae036cd0d3f6c0bb69f47b421c5",
-  "headAtQa": "b70d18b14c82cae036cd0d3f6c0bb69f47b421c5",
-  "productionBuildId": "YTlToMQsnXZuNrXDyP6BH",
+  "headAtQa": "12febc0a23a2a1ea4a8ae012d9a64475bf82190a",
+  "productionBuildId": "wRIOPfof56VyS8uLXB-F-",
   "counts": {
     "source": 32,
     "test": 3,
@@ -16,16 +16,16 @@
   },
   "groupHashAlgorithm": "SHA-256 over UTF-8 sorted rows: relative path + NUL + lowercase per-file SHA-256 + LF; group hashes exclude docs/manifest",
   "groupHashes": {
-    "source": "dfcd99e02af89548126728a5adc9b0c0aa7a90b97f189514432cd746a7f4449d",
+    "source": "6d9c3e41bbfb6b66e5d9dc2924236cd4866fc96126e531bddb79be7bd866d1ff",
     "asset": "96f7816f42bb8eeeb219929f5a66ef6f59caa5f85b725519415853c54be8d724",
     "test": "22464c704eeb46780ee12c6bfe373846b7dfb1fc5fe67e39a8f8757c4b27e293",
-    "combined": "dca7d6122bebebbb804f57150807fbafde5fef74a888f4645e546b1b15795568"
+    "combined": "195bf65d872b24f1d193919c1d22a2c9f99a1c1f49a72fb1101f921d95e70192"
   },
   "selfHashExcluded": "docs/FE-020-021-handoff-manifest.json",
   "qaSummary": {
-    "lint": "pass",
-    "typecheck": "pass",
-    "productionBuild": "pass",
+    "lint": "pass, rerun on final runtime source",
+    "typecheck": "pass, rerun on final runtime source",
+    "productionBuild": "pass, normal build on final runtime source",
     "pureTests": {
       "cases": 26,
       "timezones": [
@@ -33,13 +33,18 @@
         "UTC",
         "America/New_York"
       ],
-      "passedExecutions": 78
+      "passedExecutions": 78,
+      "status": "reused for unchanged logic/repository/fixture/test files"
     },
     "chromium": "148.0.7778.96",
-    "browserGroups": 27,
-    "browserGroupsPassed": 27,
-    "screenRenders": 24,
-    "dialogRenders": 4,
+    "browserGroups": 51,
+    "browserGroupsPassed": 51,
+    "scope": "Home labels preserved; prototype-backed Customer navigation fix for PR 18",
+    "publishedHeadReproductionCases": 9,
+    "navigationViewportChecks": 16,
+    "visibleAnchorActivations": 166,
+    "menuKeyboardGroups": 8,
+    "exploreQueryPreservationGroups": 4,
     "viewports": [
       [
         1440,
@@ -58,13 +63,14 @@
         844
       ]
     ],
-    "runtimeAssetRequests": 43,
     "pageErrors": 0,
-    "unexpectedBrokenImages": 0,
     "horizontalOverflow": 0,
-    "externalRuntimeRequests": 0,
     "apiRequestsInBehaviorCases": 0,
-    "mutationRequestsInBehaviorCases": 0
+    "mutationRequestsInBehaviorCases": 0,
+    "rootPlaceholderUntouched": true,
+    "prototypeReactionsRead": true,
+    "newFullVisualFigmaReadClaimed": false,
+    "retainedAssetsUnchanged": 43
   },
   "removedStep2Candidates": [
     {
@@ -137,8 +143,8 @@
     {
       "path": "docs/FE-020-021-discovery-detail.md",
       "kind": "documentation",
-      "bytes": 16412,
-      "sha256": "ecaf57515f11632705cda8452c72dc12c05f469d39e3254d3616b5c246e69328"
+      "bytes": 17673,
+      "sha256": "4608a74a4c912f4d0bef601a378d7a518c0099ed7a6a5850aec4d518a3f46f29"
     },
     {
       "path": "docs/FE-020-021-handoff-manifest.json",
@@ -149,8 +155,8 @@
     {
       "path": "docs/FE-020-021-qa.md",
       "kind": "documentation",
-      "bytes": 19766,
-      "sha256": "41da4cf86c26833194e246823293595394ac8dacb5cf155e0e5634e7bb062b2e"
+      "bytes": 29570,
+      "sha256": "9bb2ca8be125485cc407ac954d67d008ee08192c6be3f10c7fb9416f1259127b"
     },
     {
       "path": "public/customer-discovery/1e174.png",
@@ -222,7 +228,7 @@
       "bytes": 1298,
       "sha256": "32519855fd8e48fa135ce4030f7d268f79fe55c78ce080fd5447cd69c8c282e3",
       "references": [
-        "src/features/discovery-shell/components/DiscoveryFooter.tsx:11"
+        "src/features/discovery-shell/components/DiscoveryFooter.tsx:13"
       ]
     },
     {
@@ -231,7 +237,7 @@
       "bytes": 477139,
       "sha256": "1376039395e7b0a80bf4b47f7a57205e5fd2355e3b9577942694200f0f984143",
       "references": [
-        "src/features/discovery-shell/components/DiscoveryFooter.tsx:14"
+        "src/features/discovery-shell/components/DiscoveryFooter.tsx:16"
       ]
     },
     {
@@ -240,7 +246,7 @@
       "bytes": 343,
       "sha256": "50dc852e393fb571c53c40255e4c5b21332f7ba4aadd8e2e34589742956d135f",
       "references": [
-        "src/features/discovery-shell/components/DiscoveryFooter.tsx:10"
+        "src/features/discovery-shell/components/DiscoveryFooter.tsx:12"
       ]
     },
     {
@@ -277,7 +283,7 @@
       "bytes": 1458,
       "sha256": "f8201cd7fbd7094ae04a86bd6fb3f8be0869a97034fe3fadd52736a1b2c07b73",
       "references": [
-        "src/features/discovery-shell/components/DiscoveryFooter.tsx:14"
+        "src/features/discovery-shell/components/DiscoveryFooter.tsx:16"
       ]
     },
     {
@@ -295,7 +301,7 @@
       "bytes": 3888,
       "sha256": "ecc97ea1568aaa13ef6bc99971a74b616838a011457e99ba7f83ae925eca7be2",
       "references": [
-        "src/features/discovery-shell/components/DiscoveryFooter.tsx:14"
+        "src/features/discovery-shell/components/DiscoveryFooter.tsx:16"
       ]
     },
     {
@@ -304,7 +310,7 @@
       "bytes": 1310,
       "sha256": "e1e86e09cce17028e6b173d13e1fd1a6805e1b7ea61c7c98741ce339cf8fa5b4",
       "references": [
-        "src/features/discovery-shell/components/DiscoveryFooter.tsx:11"
+        "src/features/discovery-shell/components/DiscoveryFooter.tsx:13"
       ]
     },
     {
@@ -313,7 +319,7 @@
       "bytes": 308473,
       "sha256": "5f1ba8d4f2ceb71357b560253cbfe46e68eb01177f9a613c496642a9256b586d",
       "references": [
-        "src/features/discovery-shell/components/DiscoveryFooter.tsx:14"
+        "src/features/discovery-shell/components/DiscoveryFooter.tsx:16"
       ]
     },
     {
@@ -716,14 +722,14 @@
     {
       "path": "src/features/discovery-shell/components/DiscoveryFooter.tsx",
       "kind": "source",
-      "bytes": 1586,
-      "sha256": "8cce9b36923355cef4a657bb276644e6219ffe10dd91bbef5eb6e93551993f3d"
+      "bytes": 1709,
+      "sha256": "d80771687ef3274b909483ff38f316f7a06add9f96162ea69d8d3ebde38a0407"
     },
     {
       "path": "src/features/discovery-shell/components/DiscoveryHeader.tsx",
       "kind": "source",
-      "bytes": 2872,
-      "sha256": "1f20199628efea629c6ca5c2062e8f2aa95a381aeaa19323dcbf362b8a3f1650"
+      "bytes": 2880,
+      "sha256": "3bcbba9fe3bc0983585708cd14828cc10564faca1771986356a726a0abff2b04"
     },
     {
       "path": "src/features/discovery-shell/components/DiscoveryHero.tsx",
@@ -755,5 +761,26 @@
       "bytes": 12793,
       "sha256": "33908b8f12141a9e859f21a96544e1c793e8535671e73e80d51729266aa79d88"
     }
-  ]
+  ],
+  "qaSourceContext": {
+    "kind": "working tree validated before supplemental commit",
+    "parentCommit": "12febc0a23a2a1ea4a8ae012d9a64475bf82190a",
+    "pullRequest": 18,
+    "runtimeFiles": [
+      "src/features/discovery-shell/components/DiscoveryHeader.tsx",
+      "src/features/discovery-shell/components/DiscoveryFooter.tsx"
+    ],
+    "labelsPreserved": true,
+    "rootRedirectAdded": false
+  },
+  "initialStep3Snapshot": {
+    "productionBuildId": "YTlToMQsnXZuNrXDyP6BH",
+    "groupHashes": {
+      "source": "dfcd99e02af89548126728a5adc9b0c0aa7a90b97f189514432cd746a7f4449d",
+      "asset": "96f7816f42bb8eeeb219929f5a66ef6f59caa5f85b725519415853c54be8d724",
+      "test": "22464c704eeb46780ee12c6bfe373846b7dfb1fc5fe67e39a8f8757c4b27e293",
+      "combined": "dca7d6122bebebbb804f57150807fbafde5fef74a888f4645e546b1b15795568"
+    },
+    "status": "historical; Home destination gap superseded"
+  }
 }

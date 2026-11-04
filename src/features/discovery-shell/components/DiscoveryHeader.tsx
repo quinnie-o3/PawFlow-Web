@@ -11,7 +11,7 @@ import styles from "../shell.module.css";
 export function Brand() { return <Link href="/discover" className={styles.brand} aria-label="PawFlow · Khám phá cơ sở"><DesignAsset src="/customer-discovery/49717.svg" /><DesignAsset src="/customer-discovery/9eea8.svg" /></Link>; }
 export default function DiscoveryHeader() {
   const { persona } = useCatalogWorkspace(); const path = usePathname(); const menu = useRef<HTMLDetailsElement>(null);
-  const nav = <><Link href="/" prefetch={false}>Trang chủ</Link><Link href="/discover#results" prefetch={false}>Dịch vụ</Link><Link href="/discover" aria-current={path === "/discover" ? "page" : undefined}>Cơ sở</Link><span title="Đặt lịch chưa khả dụng"><button disabled>Đặt lịch</button></span><span title="Hồ sơ thú cưng chưa được kết nối"><button disabled>Thú cưng</button></span><span title="Liên hệ chưa khả dụng"><button disabled>Liên hệ</button></span></>;
+  const nav = <><Link href="/discover" prefetch={false}>Trang chủ</Link><Link href="/discover#results" prefetch={false}>Dịch vụ</Link><Link href="/discover" aria-current={path === "/discover" ? "page" : undefined}>Cơ sở</Link><span title="Đặt lịch chưa khả dụng"><button disabled>Đặt lịch</button></span><span title="Hồ sơ thú cưng chưa được kết nối"><button disabled>Thú cưng</button></span><span title="Liên hệ chưa khả dụng"><button disabled>Liên hệ</button></span></>;
   return <header className={styles.header}>
     <a className={styles.skip} href="#discovery-content">Đến nội dung chính</a>
     <div className={`${styles.container} ${styles.headerInner}`}><Brand />

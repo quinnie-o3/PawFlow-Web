@@ -2,7 +2,7 @@
 
 ## Scope and ownership
 
-Implemented in step 2/4; production QA completed in step 3/4 on 04/11/2026 (Asia/Ho_Chi_Minh). The user explicitly approved implementing both screens together. One branch `FE-020-021`, one isolated worktree `PawFlow-Discovery-FE020-021`, based on `origin/dev` at `b70d18b14c82cae036cd0d3f6c0bb69f47b421c5`. No staging, commit, push, PR, merge or task-sheet changes in steps 2 or 3. Final QA and per-task checklists: [QA report](FE-020-021-qa.md). Final handoff inventory/hashes: [manifest](FE-020-021-handoff-manifest.json).
+Implemented in step 2/4; production QA completed in step 3/4 with a prototype-backed Home navigation fix in step 4/4 on 04/11/2026 (Asia/Ho_Chi_Minh). The user explicitly approved implementing both screens together. One branch `FE-020-021`, one isolated worktree `PawFlow-Discovery-FE020-021`, based on `origin/dev` at `b70d18b14c82cae036cd0d3f6c0bb69f47b421c5`. No staging, commit, push, PR, merge or task-sheet changes in steps 2 or 3. Final QA and per-task checklists: [QA report](FE-020-021-qa.md). Final handoff inventory/hashes: [manifest](FE-020-021-handoff-manifest.json).
 
 After fetching origin, the remote branch inventory and open PRs showed no Discovery/detail source or FE-020/021 work from Nhi overlapping this implementation. PR #17 (Dashboard QA, `bec5faf`) and PR #16 (FE-023 account/pets, `0bb1222`) remain independent and open. This does not establish the absence of unpublished work on Nhi's computer. The latest task sheet assigns FE-020 to Dev 2 and FE-021 to Lead; that assignment is unchanged. FE-021 UI implemented here needs Nhi's review and coordination before handover.
 
@@ -28,6 +28,12 @@ Proposal: [PawFlow](https://docs.google.com/document/d/1wKi64dJuAjAQEmeSpXuUuB-M
 - `customer-catalog` owns fixture models, data, formatting/eligibility logic, the abortable repository and asynchronous resource hook. Discovery and detail use the same catalog. Repository results are copied so callers cannot mutate the shared fixtures.
 - `customer-discovery` owns search logic, query semantics, controls, dialog and card/list rendering. `customer-provider-detail` owns service/detail/availability display. `discovery-shell` is scoped to this route group and does not modify the existing shared Header/Sidebar or FE-023 shell.
 - Route files only supply metadata, parameters, Suspense boundaries, fonts and composition. Browser hooks live in client components.
+
+## Customer Home navigation fix for PR #18
+
+Keep the original `Trang chủ` label. Its actual href in the isolated header/mobile/footer is `/discover`, following the primary prototype: guest detail Home navigates to frame `4884:16017`; logged-in detail Home navigates to `4903:15039`. Both are the existing Discovery route variants. The root `/` instead resolves to `src/app/page.tsx` with the existing Provider Header/Sidebar and PawPal placeholder, outside the Discovery route group.
+
+Logos still target `/discover`. Footer `Khám phá` performs in-page `#results` scrolling on Discovery (query/page preserved), matching SCROLL_TO list nodes `4884:16066` / `4903:15090`; from detail it navigates to `/discover`. Other original labels/destinations remain unchanged. No root/shared/Provider/auth edit, global redirect, new landing page or route is introduced. The earlier unpushed label-changing workaround was replaced before this handoff.
 
 ## Search and query semantics
 
@@ -112,10 +118,10 @@ Production preview for this step: `npm run start -- --port 3020` from the isolat
 
 At the end of step 2, all 91 task files were new and untracked: 31 runtime source/style files, 3 test files, 56 original design assets and this document. The tracked and staged diffs are empty. The historical step 2 source/assets/test aggregate SHA-256 (excluding this document, paths plus per-file SHA-256) was `103c936c457284a1f59f34efef926afef5df160a8c4ff6c7e848ca0eae83e797`.
 
-### Step 3 outcome and remaining handover
+### Step 4 supplement for the existing PR #18
 
-Step 3 passed on the final production source: 26 pure tests in three process timezones, 27 Chromium behavior groups, 24 screen renders and four centered-dialog renders at 1440x1000, 1920x1080, 768x1024 and 390x844. Lint, typecheck and build pass. Checks, reproducible fixes, separate FE-020/021 checklists, reused results and untested environments are recorded in the [QA report](FE-020-021-qa.md).
+The initial source/QA snapshot was committed as `12febc0a23a2a1ea4a8ae012d9a64475bf82190a`; PR #18 targets dev and already requests quinnie-o3 review. The Home bug was reproduced against that exact published source, then fixed while retaining its labels. Current verification: normal lint/typecheck/build PASS and 51/51 Chromium groups, including 166 visible anchor activations, 16 four-viewport inventories, keyboard/focus, direct/reload/Back/Forward, selected-service/return URL and query-preserving Explore cases. Pure tests/assets reuse unchanged hashes; the initial broad QA remains historical evidence.
 
-Final handoff contains 81 new, unstaged files: 32 runtime/style/registry files, 3 tests, 43 assets and 3 documents/manifest files. The [manifest](FE-020-021-handoff-manifest.json) supersedes the step 2 candidate inventory and hashes every non-self handoff file. The final combined runtime/assets/tests hash is `dca7d6122bebebbb804f57150807fbafde5fef74a888f4645e546b1b15795568`.
+Current handoff still contains 81 files (32 runtime/style/registry, 3 tests, 43 assets, 3 docs/manifest). Final combined SHA-256 is `195bf65d872b24f1d193919c1d22a2c9f99a1c1f49a72fb1101f921d95e70192`; the [manifest](FE-020-021-handoff-manifest.json) records current bytes and the QA report preserves reproduction/prototype/check evidence. Only two shell components and three task documents change relative to the initial commit.
 
-Steps 1 (survey), 2 (implementation) and 3 (cluster UI/mock QA) are complete. Step 4/4 remains: recheck remote overlap, coordinate FE-021 review with Nhi/Lead and prepare one reviewed PR into dev when authorized. Keep FE-023 and Dashboard QA independent. No step 4 Git/PR action has been performed.
+Publish this correction through the same FE-020-021 branch and PR #18, without force push/new PR/merge or sheet/assignee changes. FE-023 and Dashboard QA remain independent. This remains UI/mock, not integrated booking/API/auth/RBAC; the audit contribution stays limited to FE-018's related scope.
