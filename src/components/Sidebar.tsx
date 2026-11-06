@@ -1,5 +1,7 @@
 "use client";
 
+import { vi } from "@/lib/locale";
+
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -7,13 +9,13 @@ import { Bell, BriefcaseBusiness, Building2, CalendarClock, CalendarDays, Layout
 import UserAvatar from "@/components/ui/UserAvatar";
 
 const sidebarItems = [
-  { label: "Tổng quan", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Lịch hẹn", href: "/dashboard/bookings", icon: CalendarDays },
-  { label: "Lịch khả dụng", href: "/dashboard/availability", icon: CalendarClock },
-  { label: "Dịch vụ", href: "/dashboard/services", icon: BriefcaseBusiness },
-  { label: "Khách hàng", href: "/dashboard/customers", icon: Users },
-  { label: "Thông báo", href: "/dashboard/notifications", icon: Bell },
-  { label: "Hồ sơ cơ sở", href: "/dashboard/profile", icon: Building2 },
+  { label: vi.common.navigation.overview, href: "/dashboard", icon: LayoutDashboard },
+  { label: vi.common.navigation.bookings, href: "/dashboard/bookings", icon: CalendarDays },
+  { label: vi.common.navigation.availability, href: "/dashboard/availability", icon: CalendarClock },
+  { label: vi.common.navigation.services, href: "/dashboard/services", icon: BriefcaseBusiness },
+  { label: vi.common.navigation.customers, href: "/dashboard/customers", icon: Users },
+  { label: vi.common.navigation.notifications, href: "/dashboard/notifications", icon: Bell },
+  { label: vi.common.navigation.providerProfile, href: "/dashboard/profile", icon: Building2 },
 ];
 
 export default function Sidebar({ provider = false }: { provider?: boolean }) {
@@ -44,7 +46,7 @@ export default function Sidebar({ provider = false }: { provider?: boolean }) {
       <div
         className="mb-[18px] flex w-full items-center gap-[15px]"
         role="group"
-        aria-label="Hồ sơ người dùng"
+        aria-label={vi.common.a11y.userProfile}
       >
         <UserAvatar size={54} />
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-[4px]">
@@ -54,14 +56,13 @@ export default function Sidebar({ provider = false }: { provider?: boolean }) {
           <div className="flex items-center gap-[4px] text-[13px] leading-[22px]">
             <span className="text-white">Dashboard</span>
             <span className="whitespace-nowrap font-semibold text-[#D6CCFF]">
-              Nhà cung cấp
-            </span>
+              {vi.provider.shell.role}</span>
           </div>
         </div>
       </div>
 
       <nav
-        aria-label={provider ? "Điều hướng provider" : undefined}
+        aria-label={provider ? vi.common.a11y.providerNavigation : undefined}
         className={provider ? "flex min-h-0 min-w-0 w-full flex-1 flex-col gap-1 overflow-y-auto overscroll-y-contain" : "flex w-full flex-col gap-1"}
       >
         {sidebarItems.map((item) => {

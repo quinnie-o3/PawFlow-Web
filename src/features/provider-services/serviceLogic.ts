@@ -1,3 +1,4 @@
+import { vi, formatMessage } from "../../lib/locale";
 import type { ProviderService, ServiceCommand, ServiceDraft, ServiceDuration, ServiceFilters, ServicesState } from "./types";
 
 export function formatPrice(price: number) {
@@ -5,7 +6,7 @@ export function formatPrice(price: number) {
 }
 
 export function formatDuration(duration: ServiceDuration) {
-  return duration.unit === "day" ? "1 ngày" : `${duration.value} phút`;
+  return duration.unit === "day" ? vi.provider.services.duration.oneDay : formatMessage(vi.provider.services.duration.minutes, { count: duration.value });
 }
 
 function normalize(value: string) {
@@ -38,18 +39,18 @@ function positiveNumber(value: string) {
 }
 
 export function validateServiceDraft(draft: ServiceDraft, categories: readonly string[], existing?: ProviderService): string | null {
-  if (!draft.name.trim()) return "Nhập tên dịch vụ, không chỉ gồm khoảng trắng.";
-  if (!draft.category.trim()) return "Chọn hoặc tạo danh mục cho dịch vụ.";
-  if (!categories.includes(draft.category)) return "Danh mục chưa có trong danh sách. Hãy tạo danh mục trước khi lưu.";
-  if (!positiveNumber(draft.price)) return "Giá dịch vụ phải là số hợp lệ lớn hơn 0. Nhập số, không kèm dấu phân cách hàng nghìn.";
+  if (!draft.name.trim()) return vi.provider.services.errors.nameRequired;
+  if (!draft.category.trim()) return vi.provider.services.errors.categoryRequired;
+  if (!categories.includes(draft.category)) return vi.provider.services.errors.categoryMissing;
+  if (!positiveNumber(draft.price)) return vi.provider.services.errors.priceInvalid;
   // The existing one-day service keeps its duration; no minutes conversion is inferred.
-  if (existing?.duration.unit !== "day" && !positiveNumber(draft.durationMinutes)) return "Thời lượng phải là số phút hợp lệ lớn hơn 0.";
+  if (existing?.duration.unit !== "day" && !positiveNumber(draft.durationMinutes)) return vi.provider.services.errors.durationInvalid;
   return null;
 }
 
 export function categoryError(categories: readonly string[], name: string): string | null {
-  if (!name.trim()) return "Nhập tên danh mục, không chỉ gồm khoảng trắng.";
-  if (categories.some((category) => category.toLocaleLowerCase("vi-VN") === name.trim().toLocaleLowerCase("vi-VN"))) return "Danh mục đã tồn tại. Hãy chọn danh mục trong danh sách.";
+  if (!name.trim()) return vi.provider.services.errors.categoryNameRequired;
+  if (categories.some((category) => category.toLocaleLowerCase("vi-VN") === name.trim().toLocaleLowerCase("vi-VN"))) return vi.provider.services.errors.categoryExists;
   return null;
 }
 
@@ -67,31 +68,31 @@ export function serviceCommandError(state: ServicesState, command: ServiceComman
   if (command.type === "createCategory") return categoryError(state.categories, command.name);
   const current = state.services.find((service) => service.id === command.id);
   if (command.type === "create") {
-    if (!command.id.trim() || current) return "Không thể tạo dịch vụ này. Hãy đóng form và thử lại.";
+    if (!command.id.trim() || current) return vi.provider.services.errors.createUnavailable;
     return validateServiceDraft(command.draft, state.categories);
   }
-  if (!current) return "Không tìm thấy dịch vụ. Hãy mở lại danh sách.";
-  if (command.expectedVersion !== current.version) return "Dịch vụ đã thay đổi. Hãy đóng và mở lại chi tiết trước khi thử lại.";
+  if (!current) return vi.provider.services.errors.serviceMissing;
+  if (command.expectedVersion !== current.version) return vi.provider.services.errors.versionChanged;
   if (command.type === "setActive") {
-    if (command.active === current.active) return "Dịch vụ đã ở trạng thái này.";
+    if (command.active === current.active) return vi.provider.services.errors.statusUnchanged;
     return null;
   }
   const error = validateServiceDraft(command.draft, state.categories, current);
   if (error) return error;
   const conflicts = affectedSlots(state, current, command.draft);
-  if (conflicts.length) return `Chưa thể đổi thời lượng vì các khung giờ sau bị ảnh hưởng:\n${conflicts.map((slot) => `${slot.id} · ${slot.label} · ${slot.durationMinutes} phút`).join("\n")}\nHãy xử lý các khung giờ liên quan tại Lịch khả dụng trước. Các khung giờ và lịch đã đặt được giữ nguyên.`;
+  if (conflicts.length) return formatMessage(vi.provider.services.errors.durationConflicts, { conflicts: conflicts.map((slot) => formatMessage(vi.provider.services.errors.slotDescription, { slotId: slot.id, slotLabel: slot.label, count: slot.durationMinutes })).join("\n") });
   return null;
 }
 
 /** Atomic synchronous mock command: validate against current state, then replace one collection. */
 export function applyServiceCommand(state: ServicesState, command: ServiceCommand, simulateFailure = false): ServicesState {
-  const error = serviceCommandError(state, command) || (simulateFailure ? "Chưa lưu được thay đổi. Dữ liệu đã nhập vẫn được giữ, hãy thử lại." : null);
+  const error = serviceCommandError(state, command) || (simulateFailure ? vi.provider.services.errors.saveFailed : null);
   if (error) return { ...state, feedback: { outcome: "error", message: error } };
-  if (command.type === "createCategory") return { ...state, categories: [...state.categories, command.name.trim()], feedback: { outcome: "success", message: "Đã tạo danh mục." } };
+  if (command.type === "createCategory") return { ...state, categories: [...state.categories, command.name.trim()], feedback: { outcome: "success", message: vi.provider.services.feedback.categoryCreated } };
   if (command.type === "setActive") return {
     ...state,
     services: state.services.map((service) => service.id === command.id ? { ...service, active: command.active, version: service.version + 1 } : service),
-    feedback: { outcome: "success", message: command.active ? "Đã hiển thị lại dịch vụ và bật nhận lịch mới theo khung giờ khả dụng." : "Đã tạm ẩn dịch vụ và ngừng nhận lịch mới. Lịch đã đặt được giữ nguyên." },
+    feedback: { outcome: "success", message: command.active ? vi.provider.services.feedback.serviceShown : vi.provider.services.feedback.serviceHidden },
   };
   const current = state.services.find((service) => service.id === command.id);
   const service: ProviderService = {
@@ -108,6 +109,6 @@ export function applyServiceCommand(state: ServicesState, command: ServiceComman
   return {
     ...state,
     services: command.type === "create" ? [...state.services, service] : state.services.map((item) => item.id === service.id ? service : item),
-    feedback: { outcome: "success", message: command.type === "create" ? "Đã tạo dịch vụ và hiển thị với khách." : "Đã lưu thay đổi dịch vụ. Giá và thời lượng của lịch đã đặt được giữ nguyên." },
+    feedback: { outcome: "success", message: command.type === "create" ? vi.provider.services.feedback.serviceCreated : vi.provider.services.feedback.serviceUpdated },
   };
 }

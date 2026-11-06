@@ -1,0 +1,1324 @@
+{
+  "common": {
+    "actions": {
+      "retry": "Thử lại",
+      "cancel": "Hủy",
+      "save": "Lưu",
+      "close": "Đóng",
+      "apply": "Áp dụng",
+      "edit": "Chỉnh sửa",
+      "delete": "Xóa",
+      "all": "Tất cả",
+      "reset": "Đặt lại"
+    },
+    "navigation": {
+      "overview": "Tổng quan",
+      "bookings": "Lịch hẹn",
+      "availability": "Lịch khả dụng",
+      "services": "Dịch vụ",
+      "customers": "Khách hàng",
+      "notifications": "Thông báo",
+      "providerProfile": "Hồ sơ cơ sở"
+    },
+    "a11y": {
+      "userProfile": "Hồ sơ người dùng",
+      "openNavigation": "Mở điều hướng",
+      "navigation": "Điều hướng",
+      "compactNavigation": "Điều hướng thu gọn",
+      "providerNavigation": "Điều hướng provider",
+      "dashboardContent": "Nội dung dashboard"
+    },
+    "language": {
+      "unavailable": "Chưa hỗ trợ đổi ngôn ngữ",
+      "switchUnavailable": "VI / EN: Chưa hỗ trợ đổi ngôn ngữ"
+    },
+    "fields": {
+      "password": "Mật khẩu",
+      "fullName": "Họ và tên",
+      "phone": "Số điện thoại"
+    },
+    "loading": {
+      "bookings": "Đang tải lịch hẹn…"
+    }
+  },
+  "provider": {
+    "shell": {
+      "role": "Nhà cung cấp"
+    },
+    "dashboard": {
+      "priority": {
+        "today": "Hôm nay: {date} · Dữ liệu mô phỏng",
+        "waitingRequests": "{count} yêu cầu chờ xác nhận",
+        "todayAppointments": "{count} lịch hẹn hôm nay",
+        "viewRequests": "Xem yêu cầu",
+        "title": "Cần xử lý hôm nay"
+      },
+      "requests": {
+        "detailsLabel": "Chi tiết {bookingId}",
+        "duration": "{count} phút",
+        "title": "Yêu cầu đặt lịch mới",
+        "viewAll": "Xem tất cả yêu cầu",
+        "pendingRegion": "Yêu cầu chờ xác nhận"
+      },
+      "chart": {
+        "pointSummary": "{week}: {completed} Completed, {other} khác",
+        "weeklyLabel": "Lịch hẹn theo tuần: {points}",
+        "otherCount": "{week}: {count} khác",
+        "week": "Tuần {number}",
+        "other": "Khác",
+        "empty": "Chưa có dữ liệu lịch hẹn trong kỳ.",
+        "note": "Biểu đồ nhóm theo tuần, chỉ tính lịch hẹn theo ngày slot đã lên lịch và chỉ hiển thị dữ liệu của PawCare Studio."
+      },
+      "metrics": {
+        "resolvedDescription": "{cancelled} / {resolved} lịch đã giải quyết",
+        "completedDescription": "{count} lịch Completed trong kỳ",
+        "ratingDescription": "{count} đánh giá hiển thị trong kỳ",
+        "region": "Chỉ số tổng quan",
+        "appointmentStatus": "Lịch hẹn theo trạng thái",
+        "recognizedRevenue": "Doanh thu ghi nhận",
+        "revenueDescription": "Lịch Completed có trạng thái thanh toán Paid",
+        "noData": "Chưa có dữ liệu trong kỳ",
+        "cancellationRate": "Tỷ lệ hủy",
+        "popularService": "Dịch vụ phổ biến",
+        "noCompletedBookings": "Chưa có lịch Completed trong kỳ",
+        "returningCustomers": "Khách hàng quay lại",
+        "returningDescription": "Có lịch Completed trước đó với cơ sở",
+        "averageRating": "Điểm đánh giá trung bình"
+      },
+      "alerts": {
+        "groomingCancellationDescription": "{percentage} trong kỳ; ngưỡng 25%. Xem lại lịch, giá hoặc phản hồi gần đây.",
+        "peakDemandDescription": "{percentage} lịch được chấp nhận; ngưỡng 40%. Xem lại sức chứa giờ cao điểm.",
+        "title": "Cảnh báo vận hành",
+        "viewData": "Xem dữ liệu & điều kiện",
+        "none": "Không có cảnh báo vượt ngưỡng trong kỳ.",
+        "noData": "Chưa có dữ liệu để đánh giá cảnh báo trong kỳ.",
+        "analysisPeriod": "Kỳ phân tích",
+        "scope": "Phạm vi",
+        "metric": "Chỉ số",
+        "ratio": "Tử số / mẫu số",
+        "threshold": "Ngưỡng",
+        "condition": "Điều kiện",
+        "periodNote": "Phân tích theo kỳ báo cáo đã chọn. Số yêu cầu cần xử lý hôm nay được theo dõi riêng.",
+        "groomingCancellationTitle": "Tỷ lệ hủy Grooming vượt ngưỡng",
+        "groomingCancellationMetric": "Tỷ lệ hủy Grooming",
+        "groomingCancellationCondition": "Số lịch Grooming bị hủy / số lịch Grooming đã giải quyết > 25%.",
+        "peakDemandTitle": "Nhu cầu tập trung 17:00–20:00",
+        "allServicesScope": "Tất cả dịch vụ · PawCare Studio",
+        "peakDemandMetric": "Tỷ trọng lịch được chấp nhận 17:00–20:00",
+        "peakDemandCondition": "Số lịch được chấp nhận 17:00–20:00 / tổng lịch được chấp nhận > 40%."
+      },
+      "intro": {
+        "sampleForProvider": "Dữ liệu mẫu cho {providerName}",
+        "title": "Tổng quan hoạt động",
+        "invalidRange": "Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc.",
+        "from": "Từ ngày",
+        "to": "Đến ngày"
+      },
+      "labels": {
+        "bookingId": "Mã lịch",
+        "customerAndPet": "Khách / thú cưng",
+        "service": "Dịch vụ",
+        "time": "Thời gian",
+        "status": "Trạng thái",
+        "details": "Chi tiết",
+        "pendingConfirmation": "Chờ xác nhận",
+        "bookingCode": "Mã booking",
+        "customer": "Khách hàng",
+        "pet": "Thú cưng",
+        "dateTime": "Ngày giờ",
+        "duration": "Thời lượng",
+        "price": "Giá",
+        "notes": "Ghi chú"
+      },
+      "dialog": {
+        "mockFacility": "Dữ liệu mô phỏng · PawCare Studio"
+      },
+      "page": {
+        "providerTab": "DÀNH CHO PROVIDER"
+      }
+    },
+    "bookings": {
+      "feedback": {
+        "statusUpdated": "{bookingId}: đã cập nhật thành {status}."
+      },
+      "list": {
+        "resultCount": "Hiển thị {visible} / {total} lịch hẹn",
+        "detailsLabel": "Xem chi tiết {bookingId}",
+        "title": "Danh sách lịch hẹn",
+        "description": "Chọn một lịch để xem chi tiết và xử lý đúng trạng thái.",
+        "region": "Bảng lịch hẹn, cuộn ngang để xem thêm",
+        "bookingId": "Mã lịch",
+        "customerAndPet": "Khách / thú cưng",
+        "time": "Thời gian",
+        "actions": "Thao tác",
+        "viewDetails": "Xem chi tiết",
+        "statusNote": "Trạng thái khác trong quy trình: Từ chối và Không đến. Chỉ cập nhật sau khi xem chi tiết lịch."
+      },
+      "mock": {
+        "clock": "Dữ liệu mô phỏng · Thời gian mô phỏng: {time} (Asia/Ho_Chi_Minh)",
+        "note": "Các số tổng hợp được tính từ danh sách mẫu. Thay đổi và nhật ký chỉ lưu trong phiên trang hiện tại; tải lại trang để bắt đầu lại.",
+        "failOperation": "Mô phỏng lỗi thao tác (tắt để thử lại)",
+        "empty": "Xem danh sách rỗng",
+        "restore": "Khôi phục dữ liệu mẫu"
+      },
+      "details": {
+        "title": "Chi tiết lịch #{bookingId}",
+        "duration": "{count} phút",
+        "clock": "Thời gian mô phỏng: {time} (Asia/Ho_Chi_Minh)",
+        "mockFacility": "Dữ liệu mô phỏng · PawCare Studio"
+      },
+      "logs": {
+        "title": "Nhật ký thao tác ({count})",
+        "noReason": "Không có",
+        "reason": "Lý do: {reason}",
+        "failedRequest": "{message} Yêu cầu: {status}.",
+        "success": "Thành công",
+        "failure": "Thất bại"
+      },
+      "status": {
+        "pendingConfirmation": "Chờ xác nhận",
+        "confirmed": "Đã xác nhận",
+        "rejected": "Từ chối",
+        "cancelled": "Đã hủy",
+        "completed": "Hoàn thành",
+        "noShow": "Không đến"
+      },
+      "actions": {
+        "confirmed": "Xác nhận yêu cầu",
+        "rejected": "Từ chối yêu cầu",
+        "cancelled": "Hủy lịch hẹn",
+        "completed": "Đánh dấu hoàn thành",
+        "noShow": "Đánh dấu không đến"
+      },
+      "errors": {
+        "ownerOnly": "Thao tác chỉ dành cho Provider Owner.",
+        "pendingTransition": "Yêu cầu đang chờ chỉ có thể được xác nhận hoặc từ chối.",
+        "finalStatus": "Lịch đã kết thúc; không thể chuyển trạng thái tiếp.",
+        "invalidTime": "Không thể xác minh thời gian của lịch hẹn.",
+        "cancelBeforeStart": "Chỉ được hủy trước giờ bắt đầu lịch hẹn.",
+        "completeAfterEnd": "Chỉ được hoàn thành từ giờ kết thúc dự kiến trở đi.",
+        "noShowAfterStart": "Chỉ được đánh dấu không đến từ giờ bắt đầu lịch hẹn.",
+        "invalidTransition": "Chuyển trạng thái không hợp lệ.",
+        "notFound": "Không tìm thấy lịch hẹn.",
+        "statusChanged": "Trạng thái đã thay đổi. Vui lòng kiểm tra lại lịch hẹn.",
+        "cancellationReason": "Vui lòng nhập lý do hủy; không được chỉ có khoảng trắng.",
+        "attestation": "Vui lòng xác nhận kết quả thực tế của lịch hẹn.",
+        "simulatedFailure": "Mô phỏng lỗi: chưa cập nhật lịch hẹn. Vui lòng thử lại."
+      },
+      "labels": {
+        "customer": "Khách hàng",
+        "pet": "Thú cưng",
+        "service": "Dịch vụ",
+        "dateTime": "Ngày giờ",
+        "duration": "Thời lượng",
+        "expectedEnd": "Kết thúc dự kiến",
+        "price": "Giá",
+        "notes": "Ghi chú",
+        "noNotes": "Không có ghi chú",
+        "status": "Trạng thái"
+      },
+      "confirmation": {
+        "cancellationReason": "Lý do hủy (bắt buộc)",
+        "completedAttestation": "Tôi xác nhận dịch vụ thực tế đã hoàn tất.",
+        "noShowAttestation": "Tôi xác nhận khách không đến lịch hẹn này.",
+        "pending": "Đang cập nhật…",
+        "submit": "Xác nhận thao tác",
+        "back": "Quay lại chi tiết"
+      },
+      "page": {
+        "providerTab": "DÀNH CHO PROVIDER",
+        "title": "Lịch hẹn",
+        "description": "Quản lý các yêu cầu và trạng thái lịch tại PawCare Studio",
+        "availability": "Lịch khả dụng"
+      },
+      "summary": {
+        "region": "Tổng hợp dữ liệu mô phỏng",
+        "priority": "Ưu tiên xử lý",
+        "confirmed": "Các lịch đã được xác nhận",
+        "excludesCancelled": "Không tính lịch bị hủy"
+      },
+      "filters": {
+        "status": "Lọc trạng thái lịch hẹn",
+        "searchLabel": "Tìm mã lịch, khách hàng hoặc thú cưng",
+        "searchPlaceholder": "Mã lịch hoặc khách"
+      },
+      "empty": {
+        "noBookings": "Chưa có lịch hẹn",
+        "noResults": "Không tìm thấy lịch hẹn",
+        "noStatusResults": "Không có lịch hẹn ở trạng thái này",
+        "noBookingsDescription": "Các yêu cầu đặt lịch mới sẽ hiển thị tại đây.",
+        "noResultsDescription": "Thử từ khóa khác hoặc xóa bộ lọc để xem lại danh sách.",
+        "clearFilters": "Xóa bộ lọc"
+      }
+    },
+    "availability": {
+      "conflicts": {
+        "slot": "{slotId} · {date} {start}–{end} · {held} chỗ đang giữ"
+      },
+      "errors": {
+        "hoursConflicts": "Slot nằm ngoài giờ hoạt động mới. Xử lý các slot này trước; booking được giữ nguyên:\n{conflicts}",
+        "dayRange": "{day}: {error}",
+        "heldCannotRemove": "Khung giờ đang giữ {held} chỗ (Chờ xác nhận + Đã xác nhận). Không thể đóng hoặc xóa; booking được giữ nguyên.",
+        "heldFieldsLocked": "Khung giờ đang giữ {held} chỗ. Chỉ được sửa sức chứa; không đổi dịch vụ, ngày giờ hoặc trạng thái mở.",
+        "capacityBelowHeld": "Khung giờ đang giữ {held} chỗ (Chờ xác nhận + Đã xác nhận). Không thể giảm sức chứa dưới {held}.",
+        "serviceDuration": "Độ dài slot phải bằng thời lượng dịch vụ: {minutes} phút.",
+        "overlappingSlots": "Slot cùng dịch vụ bị chồng lấn:\n{conflicts}",
+        "invalidDate": "Vui lòng chọn ngày hợp lệ.",
+        "invalidTimes": "Vui lòng nhập đủ giờ bắt đầu và kết thúc hợp lệ.",
+        "endAfterStart": "Giờ kết thúc phải sau giờ bắt đầu trong cùng ngày; chưa hỗ trợ khoảng qua đêm.",
+        "overlappingRanges": "Các khoảng giờ bị chồng lấn. Vui lòng kiểm tra lại.",
+        "weeklyDays": "Lịch tuần phải có đủ bảy ngày, không trùng ngày.",
+        "effectiveDateInPast": "Ngày hiệu lực không được trước ngày hiện tại theo Asia/Ho_Chi_Minh.",
+        "exceptionNotFound": "Ngoại lệ không còn tồn tại. Vui lòng kiểm tra lại.",
+        "exceptionExists": "Ngoại lệ đã tồn tại. Vui lòng sửa mục hiện có.",
+        "historicalException": "Ngoại lệ thuộc lịch sử; không được chỉnh sửa hoặc xóa.",
+        "exceptionDateChanged": "Không đổi ngày của cấu hình hiện có. Hãy tạo ngoại lệ cho ngày khác.",
+        "duplicateExceptionDate": "Ngày này đã có ngoại lệ. Hãy chỉnh sửa cấu hình hiện có.",
+        "slotNotFound": "Khung giờ không còn tồn tại. Vui lòng kiểm tra lại.",
+        "slotExists": "Khung giờ đã tồn tại. Vui lòng kiểm tra lại.",
+        "historicalSlot": "Slot đã bắt đầu hoặc thuộc lịch sử; không được chỉnh sửa, đóng hoặc xóa.",
+        "invalidCapacity": "Sức chứa phải là số nguyên dương.",
+        "invalidService": "Vui lòng chọn dịch vụ hợp lệ.",
+        "slotInPast": "Slot phải bắt đầu sau thời gian hiện tại theo Asia/Ho_Chi_Minh.",
+        "outsideHours": "Slot phải nằm hoàn toàn trong một khoảng giờ hoạt động có hiệu lực; ngoại lệ ngày thay thế toàn bộ giờ tuần.",
+        "simulatedFailure": "Mô phỏng lỗi lưu: dữ liệu chưa thay đổi. Tắt mô phỏng lỗi và thử lại."
+      },
+      "feedback": {
+        "weeklySaved": "Đã lưu giờ tuần từ {date}. Giữ lịch sử và toàn bộ slot đã tạo.",
+        "slotDeleted": "Đã xóa slot mô phỏng. Booking được giữ nguyên.",
+        "slotClosed": "Đã đóng slot mô phỏng. Booking được giữ nguyên.",
+        "exceptionDeleted": "Đã xóa ngoại lệ; dùng lại giờ tuần có hiệu lực.",
+        "exceptionSaved": "Đã lưu ngoại lệ ngày, thay thế toàn bộ giờ tuần của ngày đó.",
+        "slotSaved": "Đã lưu slot mô phỏng trong phiên này."
+      },
+      "exceptions": {
+        "viewLabel": "Xem ngoại lệ {date}",
+        "hours": "Chỉ nhận {ranges}",
+        "description": "Đóng hoặc thay đổi giờ theo ngày.",
+        "empty": "Chưa có ngày ngoại lệ.",
+        "heldNote": "Không xóa slot có lịch đang giữ chỗ; không giảm sức chứa dưới số chỗ đã đặt.",
+        "add": "Thêm ngoại lệ"
+      },
+      "page": {
+        "manageSlots": "Quản lý slot ({count})",
+        "weeklyHistory": "Lịch sử giờ tuần ({count}) · đang áp dụng từ {date}",
+        "scheduleStartUpcoming": "Từ {date} · sắp có hiệu lực",
+        "scheduleStart": "Từ {date}",
+        "editSchedule": "Sửa cấu hình từ {date}",
+        "providerTab": "DÀNH CHO PROVIDER",
+        "title": "Lịch khả dụng",
+        "description": "Thiết lập khung giờ để khách có thể đặt lịch phù hợp"
+      },
+      "slot": {
+        "title": "Quản lý slot {date} {start}",
+        "heldHistoricalNote": "Đang giữ {held} chỗ (Chờ xác nhận + Đã xác nhận). Dữ liệu lịch sử chỉ đọc.",
+        "heldEditableNote": "Đang giữ {held} chỗ (Chờ xác nhận + Đã xác nhận). Chỉ được sửa sức chứa, tối thiểu bằng số chỗ đang giữ.",
+        "serviceOption": "{serviceName} · {minutes} phút",
+        "noDate": "Chưa chọn ngày",
+        "hoursHintWithDuration": "Độ dài slot phải bằng {minutes} phút. Giờ có hiệu lực: {ranges} (Asia/Ho_Chi_Minh).",
+        "hoursHint": "Giờ có hiệu lực: {ranges} (Asia/Ho_Chi_Minh).",
+        "capacityFullHint": "{held}/{capacity} chỗ đang giữ · Hết chỗ, không nhận booking mới.",
+        "capacityHint": "{held}/{capacity} chỗ đang giữ.",
+        "deletePrompt": "Xóa slot {date} {start}?",
+        "closePrompt": "Đóng slot {date} {start}?",
+        "confirmDelete": "Xác nhận xóa slot",
+        "confirmClose": "Xác nhận đóng slot",
+        "create": "Tạo slot thủ công",
+        "note": "Mỗi slot thuộc một dịch vụ, có sức chứa riêng. Không chia sẻ sức chứa giữa dịch vụ hoặc nhân viên.",
+        "historical": "Slot đã bắt đầu hoặc thuộc lịch sử; chỉ được xem.",
+        "service": "Dịch vụ",
+        "chooseService": "Chọn dịch vụ",
+        "date": "Ngày",
+        "startLabel": "Giờ bắt đầu slot",
+        "endLabel": "Giờ kết thúc slot",
+        "open": "Mở nhận lịch",
+        "capacity": "Sức chứa",
+        "save": "Lưu slot",
+        "close": "Đóng slot",
+        "delete": "Xóa slot",
+        "alreadyClosed": "Slot đã đóng.",
+        "noHeldBookings": "Chỉ áp dụng khi không còn booking giữ chỗ.",
+        "keep": "Giữ slot",
+        "reservationsTitle": "Booking mô phỏng trong slot",
+        "reservationsNote": "Chỉ Chờ xác nhận (Pending Confirmation) và Đã xác nhận (Confirmed) chiếm chỗ; mỗi booking một chỗ.",
+        "noBookings": "Chưa có booking."
+      },
+      "slots": {
+        "viewLabel": "Xem slot {slotId}",
+        "summary": "{serviceName} · {held}/{capacity} chỗ",
+        "title": "Quản lý slot",
+        "note": "Slot tạo thủ công · Asia/Ho_Chi_Minh. Không tự sinh từ giờ tuần.",
+        "empty": "Chưa có slot. Tạo slot thủ công để bắt đầu.",
+        "closed": "Đã đóng",
+        "full": "Hết chỗ · không nhận lịch mới",
+        "open": "Đang mở · còn chỗ"
+      },
+      "ranges": {
+        "startLabel": "{day} bắt đầu {number}",
+        "endLabel": "{day} kết thúc {number}",
+        "deleteLabel": "Xóa khoảng {number} {day}",
+        "addLabel": "Thêm khoảng giờ {day}",
+        "add": "+ Thêm khoảng giờ"
+      },
+      "upcoming": {
+        "manageLabel": "Quản lý khung {date} {start}",
+        "heldCapacity": "{held}/{capacity} chỗ đã đặt",
+        "title": "Khung gần nhất",
+        "empty": "Chưa có khung giờ đang mở.",
+        "viewBookings": "Xem lịch hẹn"
+      },
+      "weekly": {
+        "existingVersion": "Đã có cấu hình từ {date}. Lưu sẽ cập nhật cấu hình của mốc này.",
+        "acceptBookings": "Nhận lịch {day}",
+        "edit": "Chỉnh sửa giờ mở cửa",
+        "note": "Asia/Ho_Chi_Minh · Giữ lịch sử trước ngày hiệu lực. Không tự sinh, xóa hoặc di chuyển slot.",
+        "effectiveFrom": "Ngày bắt đầu có hiệu lực",
+        "save": "Lưu giờ mở cửa",
+        "title": "Giờ hoạt động hằng tuần",
+        "description": "Các khung giờ mở sẽ hiển thị ở luồng đặt lịch của khách.",
+        "open": "Mở"
+      },
+      "labels": {
+        "noHours": "Không nhận lịch",
+        "historical": "Lịch sử · chỉ đọc",
+        "start": "Bắt đầu",
+        "end": "Kết thúc"
+      },
+      "summary": {
+        "openSlots": "Khung giờ đang mở",
+        "openSlotsNote": "Còn chỗ trong 7 ngày tới",
+        "heldBookings": "Lịch đang giữ chỗ",
+        "heldBookingsNote": "Chờ xác nhận + Đã xác nhận",
+        "exceptionsNote": "Đã đóng hoặc điều chỉnh giờ"
+      },
+      "exception": {
+        "title": "Ngày ngoại lệ",
+        "requiredRange": "Vui lòng thêm ít nhất một khoảng giờ nhận lịch.",
+        "blockDay": "Chặn ngày",
+        "note": "Asia/Ho_Chi_Minh · Một ngoại lệ mỗi ngày, thay thế toàn bộ giờ tuần. Xóa ngoại lệ sẽ dùng lại giờ tuần có hiệu lực.",
+        "historical": "Dữ liệu lịch sử chỉ đọc; không được sửa hoặc xóa.",
+        "hours": "Giờ nhận lịch",
+        "closedAllDay": "Đóng cả ngày",
+        "customHours": "Thay đổi giờ theo ngày",
+        "rangeLabel": "Ngoại lệ",
+        "bookingNote": "Mọi slot của ngày này đều phải nằm trong giờ mới. Không tự hủy hoặc chuyển booking.",
+        "save": "Lưu ngoại lệ",
+        "delete": "Xóa ngoại lệ",
+        "deletePrompt": "Xóa ngoại lệ và quay về giờ tuần của ngày này?",
+        "confirmDelete": "Xác nhận xóa ngoại lệ",
+        "keep": "Giữ ngoại lệ"
+      },
+      "mock": {
+        "failSave": "Mô phỏng lỗi khi lưu",
+        "clockNote": "Dữ liệu mô phỏng · Provider Owner · Đồng hồ cố định: 15/10/2026 10:00 (Asia/Ho_Chi_Minh).",
+        "persistenceNote": "Chỉ lưu trong phiên mở trang; tải lại hoặc rời trang sẽ mất thay đổi. Booking độc lập với FE-007, chưa đồng bộ API. Mỗi booking giữ một chỗ; chưa hỗ trợ nguồn lực dùng chung.",
+        "title": "Dữ liệu mô phỏng và trạng thái rỗng",
+        "resetNote": "Khôi phục mẫu hoặc thử không có slot/ngoại lệ sẽ thay thế dữ liệu phiên hiện tại.",
+        "empty": "Thử dữ liệu rỗng",
+        "restore": "Khôi phục mẫu"
+      },
+      "rules": {
+        "title": "Quy tắc nhận lịch",
+        "duration": "Thời lượng mỗi lượt: theo từng dịch vụ",
+        "capacity": "Số chỗ trong cùng khung: theo năng lực cơ sở",
+        "closedDays": "Ngày đóng: không tạo slot mới để khách chọn",
+        "relatedNavigation": "Thông tin liên quan đến lịch khả dụng",
+        "viewServices": "Xem dịch vụ",
+        "providerProfile": "Hồ sơ cơ sở"
+      },
+      "weekdays": {
+        "monday": "Thứ Hai",
+        "tuesday": "Thứ Ba",
+        "wednesday": "Thứ Tư",
+        "thursday": "Thứ Năm",
+        "friday": "Thứ Sáu",
+        "saturday": "Thứ Bảy",
+        "sunday": "Chủ Nhật"
+      }
+    },
+    "customers": {
+      "history": {
+        "startTime": "Giờ bắt đầu: {time}",
+        "title": "Lịch sử booking tại cơ sở",
+        "note": "Toàn bộ lịch sử tại PawCare Studio, gồm cả lịch sắp tới và đủ các trạng thái; không giới hạn theo kỳ báo cáo. Giờ hiển thị: Asia/Ho_Chi_Minh.",
+        "petUnavailable": "Thông tin thú cưng chưa có"
+      },
+      "details": {
+        "title": "Hồ sơ khách hàng · {customerName} ({customerId})",
+        "contact": "Thông tin liên hệ",
+        "note": "Thông tin chỉ đọc của khách có booking tại cơ sở này.",
+        "close": "Đóng hồ sơ"
+      },
+      "profile": {
+        "title": "Hồ sơ khách · {customerName} {customerId}",
+        "bookingCount": "{count} lịch",
+        "viewHistory": "Xem lịch sử booking",
+        "note": "Thông tin trong phạm vi PawCare Studio. Liên hệ và hồ sơ thú cưng chỉ đọc.",
+        "completedBookings": "Lịch hoàn thành · toàn bộ lịch sử",
+        "lastServed": "Lần phục vụ gần nhất · toàn bộ lịch sử",
+        "periodGroup": "Nhóm khách theo kỳ"
+      },
+      "list": {
+        "resultCount": "Hiển thị {visible} / {total} khách hàng tại cơ sở.",
+        "additionalPets": "+{count} thú cưng trong hồ sơ",
+        "viewLabel": "Xem hồ sơ {customerName} ({customerId})",
+        "title": "Danh sách khách hàng",
+        "description": "Thông tin được tổng hợp từ lịch hẹn của cơ sở.",
+        "region": "Bảng khách hàng, cuộn ngang để xem đầy đủ",
+        "caption": "Khách có booking tại cơ sở. Lịch hoàn thành và lần phục vụ gần nhất tính trên toàn bộ lịch sử; nhóm khách tính theo kỳ đang chọn.",
+        "pet": "Thú cưng",
+        "lastServed": "Lần phục vụ gần nhất",
+        "completedBookings": "Lịch hoàn thành",
+        "group": "Nhóm khách",
+        "details": "Chi tiết",
+        "viewProfile": "Xem hồ sơ",
+        "lifetimeNote": "Lịch hoàn thành và lần phục vụ gần nhất là chỉ số toàn bộ lịch sử tại cơ sở, không đổi theo kỳ. Lần phục vụ gần nhất không sau đồng hồ mô phỏng.",
+        "profileNote": "Mở hồ sơ để xem thông tin liên hệ, thú cưng và lịch sử booking tại cơ sở này."
+      },
+      "period": {
+        "selected": "Kỳ đang chọn: {range} · Asia/Ho_Chi_Minh",
+        "label": "Kỳ báo cáo",
+        "from": "Từ ngày",
+        "to": "Đến ngày",
+        "apply": "Áp dụng kỳ",
+        "note": "Chỉ số và nhóm khách tính theo giờ bắt đầu lịch đã hoàn thành. Kỳ báo cáo không giới hạn danh sách khách hoặc lịch sử booking.",
+        "invalidDates": "Nhập đầy đủ ngày bắt đầu và ngày kết thúc hợp lệ.",
+        "endBeforeStart": "Ngày kết thúc phải bằng hoặc sau ngày bắt đầu."
+      },
+      "page": {
+        "description": "Chỉ hiển thị khách đã phát sinh lịch với {facilityName}",
+        "title": "Khách hàng",
+        "providerTab": "DÀNH CHO PROVIDER",
+        "bookings": "Lịch hẹn"
+      },
+      "mock": {
+        "clock": "Dữ liệu mô phỏng · Chủ cơ sở · Đồng hồ mô phỏng: {time} · Asia/Ho_Chi_Minh",
+        "title": "Dữ liệu mô phỏng và trạng thái rỗng",
+        "note": "Mock riêng của Khách hàng, chưa API, không đồng bộ với Lịch hẹn hoặc module khác. Tải lại hoặc rời trang khôi phục dữ liệu và kỳ mặc định. Khách trùng tên được phân biệt bằng mã khách hàng.",
+        "empty": "Thử danh sách rỗng",
+        "restore": "Khôi phục mẫu"
+      },
+      "labels": {
+        "customerId": "Mã khách hàng",
+        "name": "Họ tên",
+        "phone": "Số điện thoại",
+        "unavailable": "Chưa có",
+        "petsAtFacility": "Thú cưng từng có booking tại cơ sở"
+      },
+      "empty": {
+        "noCustomers": "Chưa có khách hàng tại cơ sở",
+        "noResults": "Không tìm thấy khách hàng phù hợp",
+        "noCustomersDescription": "Khách hàng sẽ xuất hiện khi có booking tại cơ sở này.",
+        "noResultsDescription": "Thử tên khác hoặc bỏ bộ lọc nhóm khách theo kỳ đang chọn.",
+        "clearFilters": "Xóa tìm kiếm và bộ lọc"
+      },
+      "summary": {
+        "region": "Chỉ số khách hàng trong kỳ",
+        "servedCustomers": "Khách đã phục vụ trong kỳ",
+        "servedCustomersNote": "Có lịch hoàn thành trong kỳ, mỗi khách tính một lần.",
+        "returningCustomers": "Khách quay lại",
+        "returningCustomersNote": "Đã phục vụ trong kỳ và có lịch hoàn thành trước kỳ tại cơ sở.",
+        "servedPets": "Thú cưng đã phục vụ",
+        "servedPetsNote": "Có lịch hoàn thành trong kỳ, mỗi thú cưng tính một lần."
+      },
+      "groups": {
+        "returning": "Quay lại",
+        "new": "Mới",
+        "outsidePeriod": "Không có lịch hoàn thành trong kỳ",
+        "noCompleted": "Chưa có lịch hoàn thành"
+      },
+      "filters": {
+        "groupLabel": "Lọc nhóm khách theo kỳ",
+        "searchLabel": "Tìm mã khách, tên khách hoặc thú cưng",
+        "searchPlaceholder": "Tên khách, thú cưng hoặc mã khách"
+      }
+    },
+    "services": {
+      "page": {
+        "description": "Quản lý dịch vụ khách có thể chọn khi đặt lịch tại {facilityName}",
+        "providerTab": "DÀNH CHO PROVIDER",
+        "title": "Dịch vụ",
+        "addService": "Thêm dịch vụ",
+        "mockNote": "Dữ liệu mô phỏng · Chủ cơ sở. Thay đổi chỉ lưu trong lần mở trang này; tải lại hoặc rời trang sẽ khôi phục mẫu."
+      },
+      "card": {
+        "editLabel": "Chi tiết và chỉnh sửa {serviceName}",
+        "price": "Giá dịch vụ: {price}",
+        "completedCount": "{count} lịch Hoàn thành trong kỳ",
+        "existingBookingsKept": "Lịch đã xác nhận trước đó vẫn được giữ",
+        "capacityHint": "Giới hạn số chỗ theo năng lực cơ sở",
+        "availabilityHint": "Đặt lịch theo khung giờ khả dụng"
+      },
+      "dialog": {
+        "editTitle": "Chỉnh sửa {serviceName}",
+        "reactivateExplanation": "Dịch vụ sẽ nhận lịch mới theo các khung giờ khả dụng. Thao tác này chỉ đổi trạng thái; các nội dung đang nhập cần được lưu riêng.",
+        "hideExplanation": "Dịch vụ sẽ ngừng nhận lịch mới. Các lịch đã đặt được giữ nguyên. Thao tác này chỉ đổi trạng thái; các nội dung đang nhập cần được lưu riêng.",
+        "nameLabel": "Tên dịch vụ (bắt buộc)",
+        "priceLabel": "Giá dịch vụ (₫, bắt buộc)",
+        "priceHint": "Giá lớn hơn 0, ví dụ: 180000.",
+        "durationLabel": "Thời lượng",
+        "keepDuration": "Giữ nguyên thời lượng của dịch vụ này.",
+        "requiredDuration": "Thời lượng (phút, bắt buộc)",
+        "descriptionLabel": "Mô tả",
+        "bookingSnapshotHint": "Giá và thời lượng của lịch đã đặt được giữ nguyên. Khi đổi thời lượng, các khung giờ đã tạo cần được kiểm tra trước khi lưu.",
+        "saveChanges": "Lưu thay đổi",
+        "createService": "Tạo dịch vụ",
+        "hideService": "Tạm ẩn dịch vụ",
+        "showAgain": "Hiển thị lại",
+        "showAgainTitle": "Hiển thị lại dịch vụ?",
+        "hideTitle": "Tạm ẩn dịch vụ?",
+        "retryStatus": "Thử lại đổi trạng thái",
+        "confirmShow": "Xác nhận hiển thị lại",
+        "confirmHide": "Xác nhận tạm ẩn",
+        "back": "Quay lại"
+      },
+      "list": {
+        "resultCount": "Hiển thị {visible} / {total} dịch vụ",
+        "label": "Danh sách dịch vụ",
+        "emptyTitle": "Chưa có dịch vụ",
+        "noResultsTitle": "Không tìm thấy dịch vụ",
+        "emptyDescription": "Thêm dịch vụ đầu tiên để khách có thể lựa chọn khi đặt lịch.",
+        "noResultsDescription": "Thử từ khóa khác hoặc xóa bộ lọc để xem lại danh sách.",
+        "createFirst": "Thêm dịch vụ đầu tiên",
+        "clearFilters": "Xóa bộ lọc"
+      },
+      "summary": {
+        "popularService": "Lịch hoàn thành · {serviceName}",
+        "label": "Tổng hợp dịch vụ",
+        "bookable": "Khách có thể đặt lịch",
+        "hiddenHint": "Không hiện ở luồng đặt lịch",
+        "popularTitle": "Dịch vụ phổ biến",
+        "noCompletedBookings": "Chưa có lịch hoàn thành"
+      },
+      "duration": {
+        "minutes": "{count} phút",
+        "oneDay": "1 ngày"
+      },
+      "errors": {
+        "slotDescription": "{slotId} · {slotLabel} · {count} phút",
+        "durationConflicts": "Chưa thể đổi thời lượng vì các khung giờ sau bị ảnh hưởng:\n{conflicts}\nHãy xử lý các khung giờ liên quan tại Lịch khả dụng trước. Các khung giờ và lịch đã đặt được giữ nguyên.",
+        "nameRequired": "Nhập tên dịch vụ, không chỉ gồm khoảng trắng.",
+        "categoryRequired": "Chọn hoặc tạo danh mục cho dịch vụ.",
+        "categoryMissing": "Danh mục chưa có trong danh sách. Hãy tạo danh mục trước khi lưu.",
+        "priceInvalid": "Giá dịch vụ phải là số hợp lệ lớn hơn 0. Nhập số, không kèm dấu phân cách hàng nghìn.",
+        "durationInvalid": "Thời lượng phải là số phút hợp lệ lớn hơn 0.",
+        "categoryNameRequired": "Nhập tên danh mục, không chỉ gồm khoảng trắng.",
+        "categoryExists": "Danh mục đã tồn tại. Hãy chọn danh mục trong danh sách.",
+        "createUnavailable": "Không thể tạo dịch vụ này. Hãy đóng form và thử lại.",
+        "serviceMissing": "Không tìm thấy dịch vụ. Hãy mở lại danh sách.",
+        "versionChanged": "Dịch vụ đã thay đổi. Hãy đóng và mở lại chi tiết trước khi thử lại.",
+        "statusUnchanged": "Dịch vụ đã ở trạng thái này.",
+        "saveFailed": "Chưa lưu được thay đổi. Dữ liệu đã nhập vẫn được giữ, hãy thử lại."
+      },
+      "mock": {
+        "title": "Dữ liệu mô phỏng và trạng thái rỗng",
+        "description": "Dữ liệu dịch vụ, danh mục và các khung giờ minh họa được quản lý riêng trong màn này. Khôi phục mẫu hoặc thử danh sách rỗng sẽ thay thế các thay đổi hiện tại.",
+        "empty": "Thử danh sách rỗng",
+        "restore": "Khôi phục mẫu",
+        "failureTitle": "Thử tình huống lưu thất bại",
+        "failureLabel": "Mô phỏng lỗi khi lưu (tắt để thử lại)"
+      },
+      "category": {
+        "requiredLabel": "Danh mục (bắt buộc)",
+        "choose": "Chọn danh mục",
+        "add": "Thêm danh mục",
+        "newName": "Tên danh mục mới",
+        "retry": "Thử lại tạo danh mục",
+        "create": "Tạo danh mục",
+        "skip": "Bỏ qua"
+      },
+      "links": {
+        "availability": "Xem lịch khả dụng",
+        "profile": "Xem hồ sơ cơ sở"
+      },
+      "status": {
+        "visible": "Hiển thị",
+        "hidden": "Tạm ẩn",
+        "displayed": "Đang hiển thị"
+      },
+      "guidance": {
+        "visibilityTitle": "Hiển thị với khách",
+        "visibilityDescription": "Dịch vụ đang Hiển thị xuất hiện trong trang cơ sở và luồng đặt lịch. Giá và thời lượng cần rõ trước khi khách xác nhận yêu cầu.",
+        "availabilityTitle": "Liên kết lịch khả dụng",
+        "availabilityDescription": "Khung giờ đặt lịch phụ thuộc thời lượng, ngày mở và số chỗ còn lại. Tạm ẩn dịch vụ không tự hủy những lịch đã xác nhận."
+      },
+      "toolbar": {
+        "filterLabel": "Lọc trạng thái dịch vụ",
+        "search": "Tìm tên dịch vụ"
+      },
+      "feedback": {
+        "categoryCreated": "Đã tạo danh mục.",
+        "serviceShown": "Đã hiển thị lại dịch vụ và bật nhận lịch mới theo khung giờ khả dụng.",
+        "serviceHidden": "Đã tạm ẩn dịch vụ và ngừng nhận lịch mới. Lịch đã đặt được giữ nguyên.",
+        "serviceCreated": "Đã tạo dịch vụ và hiển thị với khách.",
+        "serviceUpdated": "Đã lưu thay đổi dịch vụ. Giá và thời lượng của lịch đã đặt được giữ nguyên."
+      }
+    },
+    "profile": {
+      "approval": {
+        "title": "{facilityName} · Đã được duyệt",
+        "description": "Thông tin cơ sở được hiển thị sau quy trình xét duyệt của quản trị viên.",
+        "approved": "Đã duyệt"
+      },
+      "dialog": {
+        "title": "Chỉnh sửa hồ sơ {facilityName}",
+        "optionalLabel": "{label} · không bắt buộc",
+        "requiredLabel": "{label} *",
+        "characterCount": "{count} / {limit} ký tự",
+        "requiredCharacterCount": "{count} / {limit} ký tự · bắt buộc",
+        "mockHint": "Chỉ lưu bản mô phỏng trong phiên xem trang, chưa gửi lên máy chủ. Tải lại hoặc rời trang sẽ khôi phục mẫu.",
+        "readonlyHint": "Loại hình, người phụ trách và trạng thái duyệt được giữ nguyên.",
+        "validationSummary": "Vui lòng kiểm tra các trường được báo lỗi bên dưới.",
+        "phoneHint": "0 hoặc +84 rồi 9 chữ số; có thể nhập khoảng trắng/dấu gạch. Chỉ kiểm tra định dạng, không xác minh sở hữu.",
+        "nameHint": "Bắt buộc · 2–100 ký tự sau trim.",
+        "contactHint": "Điện thoại và email là liên hệ của cơ sở; thay đổi tại đây không đổi tài khoản đăng nhập hoặc luồng xác minh.",
+        "save": "Lưu thông tin",
+        "cancel": "Hủy thay đổi"
+      },
+      "images": {
+        "logoLower": "logo",
+        "coverLower": "ảnh bìa",
+        "replace": "Thay {imageLabel}",
+        "select": "Chọn {imageLabel}",
+        "selectedDescription": "{fileName} · {width} × {height}px · ảnh vừa chọn",
+        "savedDescription": "{fileName} · {width} × {height}px · bản đã lưu trong phiên mock",
+        "checking": "Đang kiểm tra {imageLabel}…",
+        "discardAndRestore": "Bỏ {imageLabel} vừa chọn · quay lại ảnh đã lưu",
+        "discard": "Bỏ {imageLabel} vừa chọn",
+        "draftAlt": "{imageLabel} cơ sở · bản nháp",
+        "savedAlt": "{imageLabel} cơ sở · bản mô phỏng",
+        "missing": "Chưa có {imageLabel}",
+        "memoryDescription": "{fileName} · {width} × {height}px · chỉ trong bộ nhớ",
+        "checkingAll": "Đang kiểm tra ảnh…",
+        "legend": "Logo & ảnh bìa · không bắt buộc",
+        "selectionHint": "JPEG, PNG hoặc WebP, tối đa 5 MB mỗi ảnh. Xem toàn bộ ảnh gốc, không cắt ảnh. Chọn ảnh mới chỉ tạo bản nháp; bấm Lưu thông tin để cập nhật bản mô phỏng.",
+        "logo": "Logo",
+        "cover": "Ảnh bìa",
+        "title": "Hình ảnh cơ sở",
+        "edit": "Chỉnh sửa ảnh",
+        "storageHint": "Ảnh không bắt buộc. JPEG, PNG hoặc WebP, tối đa 5 MB mỗi ảnh. Ảnh chỉ lưu trong bộ nhớ của phiên mock, chưa upload lên máy chủ.",
+        "errors": {
+          "type": "Chỉ nhận ảnh JPEG, PNG hoặc WebP.",
+          "empty": "File ảnh trống. Vui lòng chọn ảnh khác.",
+          "size": "Mỗi ảnh tối đa 5 MB.",
+          "signature": "Nội dung file không khớp định dạng ảnh đã chọn.",
+          "decode": "Không giải mã được ảnh. File có thể bị hỏng; vui lòng chọn ảnh khác.",
+          "read": "Không đọc được ảnh. Vui lòng thử lại."
+        }
+      },
+      "fields": {
+        "name": "Tên cơ sở",
+        "description": "Mô tả",
+        "area": "Khu vực phục vụ",
+        "phone": "Số điện thoại",
+        "email": "Email"
+      },
+      "information": {
+        "title": "Thông tin cơ sở",
+        "editLabel": "Chỉnh sửa thông tin cơ sở",
+        "ownerReadonly": "Người phụ trách · chỉ đọc",
+        "categoryReadonly": "Loại hình · chỉ đọc",
+        "noDescription": "Chưa có mô tả"
+      },
+      "contact": {
+        "title": "Liên hệ & địa điểm",
+        "editLabel": "Chỉnh sửa liên hệ và địa điểm"
+      },
+      "modules": {
+        "servicesTitle": "Dịch vụ hiển thị",
+        "servicesLink": "Xem dịch vụ",
+        "hoursTitle": "Giờ hoạt động",
+        "hoursLink": "Xem lịch",
+        "mockHint": "Tóm tắt từ mẫu ban đầu của Dịch vụ và Lịch khả dụng; chưa đồng bộ thay đổi giữa các màn. Quản lý dịch vụ và giờ tuần tại module tương ứng."
+      },
+      "page": {
+        "providerTab": "DÀNH CHO PROVIDER",
+        "title": "Hồ sơ cơ sở",
+        "description": "Quản lý thông tin cơ sở và trạng thái hiển thị với khách hàng",
+        "edit": "Chỉnh sửa hồ sơ",
+        "mockHint": "Dữ liệu mô phỏng · Chủ cơ sở. Thay đổi chỉ trong lần mở trang này, chưa lưu lên máy chủ."
+      },
+      "mock": {
+        "title": "Dữ liệu mô phỏng và thử lỗi lưu",
+        "description": "Tải lại hoặc rời trang sẽ khôi phục mẫu, bao gồm logo và ảnh bìa. Trạng thái duyệt và thông tin do admin quản lý không đổi.",
+        "failNextSave": "Mô phỏng lỗi lưu tiếp theo (một lần)"
+      },
+      "validation": {
+        "name": "Tên cơ sở phải có từ 2 đến 100 ký tự sau khi bỏ khoảng trắng đầu/cuối.",
+        "description": "Mô tả tối đa 2.000 ký tự.",
+        "area": "Khu vực bắt buộc và tối đa 200 ký tự.",
+        "phone": "Nhập 0 hoặc +84 rồi 9 chữ số. Có thể dùng khoảng trắng và dấu gạch.",
+        "email": "Nhập email liên hệ hợp lệ, tối đa 254 ký tự."
+      },
+      "feedback": {
+        "saveFailed": "Chưa lưu được bản mô phỏng (lỗi mô phỏng). Bản nháp được giữ nguyên; bạn có thể thử lại.",
+        "saved": "Đã cập nhật bản mô phỏng trong phiên. Chưa lưu lên máy chủ; tải lại hoặc rời trang sẽ khôi phục mẫu."
+      }
+    },
+    "notifications": {
+      "details": {
+        "title": "Chi tiết thông báo · {notificationId}",
+        "recipient": "{ownerName} · Chủ cơ sở",
+        "recipientLabel": "Người nhận",
+        "facilityLabel": "Cơ sở",
+        "timeLabel": "Thời gian thông báo",
+        "bookingLabel": "Mã booking liên quan",
+        "bookingHint": "Mã booking được hiển thị để tham chiếu. Bản mô phỏng này chưa hỗ trợ mở booking từ thông báo.",
+        "close": "Đóng chi tiết"
+      },
+      "list": {
+        "emptyDescription": "Bạn chưa có thông báo tại {facilityName} trong dữ liệu mô phỏng này.",
+        "label": "Danh sách thông báo của bạn tại {facilityName}",
+        "dateTime": "{dateTime} · giờ Việt Nam",
+        "detailLabel": "Xem chi tiết {notificationId} · {title}",
+        "markReadLabel": "Đánh dấu {notificationId} đã đọc",
+        "emptyTitle": "Chưa có thông báo",
+        "noResultsTitle": "Không có thông báo khớp bộ lọc",
+        "noResultsDescription": "Chọn Tất cả để xem lại thông báo của bạn tại cơ sở.",
+        "clearFilters": "Xóa bộ lọc",
+        "processing": "Đang xử lý…",
+        "details": "Xem chi tiết",
+        "markRead": "Đánh dấu đã đọc"
+      },
+      "mock": {
+        "clockDescription": "Đồng hồ mô phỏng: {dateTime} · Asia/Ho_Chi_Minh. Mock riêng của Thông báo; chưa có API hoặc đồng bộ với module khác. Trạng thái đọc mất khi tải lại hoặc rời trang. Badge chuông Header chưa đồng bộ.",
+        "title": "Dữ liệu mô phỏng và các trạng thái thử",
+        "failNextUpdate": "Mô phỏng lỗi mở/cập nhật tiếp theo (một lần)",
+        "loadError": "Thử lỗi tải",
+        "empty": "Thử danh sách rỗng",
+        "longContent": "Thử nội dung dài",
+        "restore": "Khôi phục mẫu"
+      },
+      "toolbar": {
+        "scopeHint": "Áp dụng toàn bộ thông báo của bạn tại {facilityName}, kể cả thông báo ngoài bộ lọc đang chọn.",
+        "filterLabel": "Lọc trạng thái thông báo",
+        "markAllRead": "Đánh dấu tất cả của tôi tại cơ sở là đã đọc"
+      },
+      "page": {
+        "description": "Cập nhật liên quan đến lịch hẹn, đánh giá và hồ sơ {facilityName}",
+        "unreadCount": "{count} chưa đọc",
+        "mockNote": "Dữ liệu mô phỏng · {ownerName} · Chủ cơ sở · {facilityName}",
+        "scopeDescription": "Chỉ thông báo gửi cho bạn tại {facilityName}.",
+        "resultCount": "Hiển thị {visible} / {total} thông báo của bạn tại cơ sở · Giờ Việt Nam (UTC+07:00)",
+        "accessDescription": "Danh sách và số chưa đọc chỉ tính thông báo dành cho Owner hiện tại tại {facilityName}. Mở chi tiết thành công sẽ đánh dấu thông báo đó đã đọc.",
+        "providerTab": "DÀNH CHO PROVIDER",
+        "title": "Thông báo",
+        "unreadLabel": "Số thông báo chưa đọc của bạn tại cơ sở",
+        "loadingShort": "Đang tải…",
+        "loadUnavailable": "Chưa tải được",
+        "listTitle": "Thông báo của cơ sở",
+        "loading": "Đang tải thông báo…",
+        "loadFailed": "Không tải được thông báo",
+        "retryLoad": "Thử tải lại",
+        "opening": "Đang mở chi tiết…",
+        "updatingRead": "Đang cập nhật trạng thái đọc…",
+        "accessTitle": "Thông báo & quyền truy cập",
+        "bulkReadExplanation": "“Đánh dấu tất cả của tôi tại cơ sở là đã đọc” áp dụng toàn bộ danh sách của bạn tại cơ sở, kể cả thông báo ngoài bộ lọc."
+      },
+      "feedback": {
+        "allRead": "Đã đánh dấu {count} thông báo chưa đọc của bạn tại cơ sở đang quản lý là đã đọc, trên toàn bộ danh sách, kể cả ngoài bộ lọc.",
+        "retry": "Thử lại thao tác",
+        "openedAndRead": "Đã mở thông báo và đánh dấu đã đọc.",
+        "opened": "Đã mở thông báo.",
+        "read": "Đã đánh dấu thông báo là đã đọc."
+      },
+      "status": {
+        "read": "Đã đọc",
+        "unread": "Chưa đọc"
+      },
+      "errors": {
+        "loadFailed": "Không tải được thông báo (lỗi mô phỏng). Thử tải lại để tiếp tục.",
+        "notFound": "Không tìm thấy thông báo trong phạm vi của bạn tại cơ sở này.",
+        "openFailed": "Chưa mở được chi tiết (lỗi mô phỏng). Thông báo và số chưa đọc được giữ nguyên. Bạn có thể thử lại.",
+        "updateFailed": "Chưa cập nhật được trạng thái đọc (lỗi mô phỏng). Dữ liệu và số chưa đọc được giữ nguyên. Bạn có thể thử lại."
+      }
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "CHÀO MỪNG TRỞ LẠI",
+      "description": "Đăng nhập để quản lý thú cưng, lịch hẹn và hoạt động của bạn trên PawFlow.",
+      "emailPlaceholder": "Nhập địa chỉ email",
+      "passwordPlaceholder": "Nhập mật khẩu",
+      "remember": "Ghi nhớ đăng nhập",
+      "forgotPassword": "Quên mật khẩu?",
+      "submitting": "Đang đăng nhập...",
+      "submit": "Đăng nhập",
+      "registerNow": "Đăng ký ngay",
+      "introduction": {
+        "title": "Mọi hoạt động chăm sóc thú cưng trong một nơi",
+        "description": "Tìm dịch vụ, quản lý hồ sơ thú cưng và theo dõi trạng thái lịch hẹn thuận tiện trên PawFlow.",
+        "benefitsTitle": "PawFlow giúp bạn",
+        "findServices": "Tìm dịch vụ và nhà cung cấp",
+        "trackBookings": "Theo dõi trạng thái lịch hẹn",
+        "managePets": "Quản lý hồ sơ thú cưng"
+      },
+      "pageLabel": "Đăng nhập PawFlow",
+      "registerPrompt": "Chưa có tài khoản? {registerLink}"
+    },
+    "introductionLabel": "Giới thiệu PawFlow",
+    "register": {
+      "passwordMismatch": "Mật khẩu xác nhận chưa khớp.",
+      "title": "ĐĂNG KÝ",
+      "confirmPassword": "Nhập lại mật khẩu",
+      "stepLabel": "Bước 1 trên 2",
+      "submitting": "Đang đăng ký...",
+      "continue": "Tiếp tục",
+      "or": "Hoặc",
+      "google": "Đăng ký bằng Google",
+      "introduction": {
+        "title": "Chăm sóc thú cưng thuận tiện hơn cùng PawFlow",
+        "benefitsTitle": "Mọi thứ trong một nơi",
+        "findServices": "Khám phá cơ sở và dịch vụ phù hợp.",
+        "manageCare": "Lưu hồ sơ thú cưng, đặt lịch và theo dõi trạng thái từng cuộc hẹn."
+      },
+      "pageLabel": "Đăng ký PawFlow",
+      "loginPrompt": "Đã có tài khoản? {loginLink}"
+    },
+    "errors": {
+      "loginUnexpected": "Đã xảy ra lỗi khi đăng nhập.",
+      "registerUnexpected": "Đã xảy ra lỗi khi đăng ký tài khoản.",
+      "loginApiMissing": "Chưa cấu hình địa chỉ API đăng nhập.",
+      "loginFailed": "Không thể đăng nhập. Vui lòng thử lại.",
+      "accessTokenMissing": "API đăng nhập không trả về accessToken.",
+      "registerApiMissing": "Chưa cấu hình địa chỉ API đăng ký.",
+      "registerFailed": "Không thể đăng ký tài khoản. Vui lòng thử lại."
+    }
+  },
+  "admin": {
+    "route": {
+      "errorTitle": "Không hiển thị được màn Admin",
+      "errorDescription": "Vui lòng thử tải lại giao diện.",
+      "loading": "Đang tải giao diện Admin…"
+    },
+    "metadata": {
+      "title": "PawFlow Admin · Giao diện mô phỏng",
+      "description": "Khu vực Admin với dữ liệu mẫu chỉ đọc."
+    },
+    "overview": {
+      "title": "Tổng quan hệ thống",
+      "description": "Thống kê toàn nền tảng · Giao diện mô phỏng chỉ đọc",
+      "pendingPeriod": "Kỳ báo cáo: chờ xác nhận",
+      "priorityTitle": "Cần xử lý hôm nay",
+      "priorityDescription": "Xem các hồ sơ, phản ánh và đánh giá cần rà soát trong dữ liệu mẫu.",
+      "viewProfiles": "Xem hồ sơ",
+      "viewComplaints": "Xem khiếu nại",
+      "appointmentsTitle": "Lịch hẹn toàn hệ thống",
+      "pendingChart": "Chưa hiển thị biểu đồ khi công thức, trạng thái và kỳ báo cáo chưa được xác nhận.",
+      "queueTitle": "Hàng đợi quản trị",
+      "queueDescription": "Đi đến các màn rà soát",
+      "pendingProvidersTitle": "Cơ sở chờ phê duyệt",
+      "pendingProvidersDescription": "Hồ sơ mẫu từ màn Duyệt cơ sở",
+      "viewAll": "Xem tất cả",
+      "loadingProfiles": "Đang tải hồ sơ mẫu…",
+      "loadError": "Không tải được hồ sơ mẫu",
+      "noPendingProfiles": "Chưa có hồ sơ mẫu chờ duyệt",
+      "pendingTableLabel": "Cơ sở chờ phê duyệt, cuộn ngang để xem thêm",
+      "facilityColumn": "Cơ sở",
+      "ownerColumn": "Chủ cơ sở",
+      "submittedDateColumn": "Ngày gửi",
+      "serviceColumn": "Dịch vụ",
+      "statusColumn": "Trạng thái",
+      "detailsColumn": "Chi tiết",
+      "viewDetailsLabel": "Xem chi tiết {title}",
+      "fixtureNotice": "Dữ liệu minh họa từ Figma · Chưa tính KPI từ các hàng mẫu",
+      "mockToolsTitle": "Dữ liệu mô phỏng · Kiểm tra trạng thái giao diện",
+      "mockToolsDescription": "Chỉ thay đổi tình huống tải hồ sơ của màn Tổng quan.",
+      "simulateLoadError": "Mô phỏng lỗi tải",
+      "emptyList": "Danh sách rỗng",
+      "restoreFixtures": "Khôi phục dữ liệu mẫu",
+      "view": "Xem"
+    },
+    "shell": {
+      "navigation": {
+        "overview": "Tổng quan",
+        "providers": "Duyệt cơ sở",
+        "users": "Người dùng",
+        "categories": "Danh mục",
+        "reviews": "Đánh giá",
+        "complaints": "Khiếu nại",
+        "activityLogs": "Nhật ký"
+      },
+      "header": {
+        "homeLabel": "PawFlow Admin — Tổng quan",
+        "mockArea": "Khu vực Admin mô phỏng",
+        "languageUnavailable": "Chưa hỗ trợ đổi ngôn ngữ",
+        "openMenu": "Mở menu Admin",
+        "compactMenu": "Menu Admin thu gọn"
+      },
+      "contentLabel": "Nội dung Admin",
+      "roleHeading": "DÀNH CHO ADMIN",
+      "skipToContent": "Đến nội dung Admin",
+      "sidebar": {
+        "areaLabel": "Khu vực quản trị",
+        "identity": "Admin · Quản trị viên",
+        "navigationLabel": "Điều hướng Admin"
+      }
+    },
+    "collection": {
+      "pendingRules": "Chờ xác nhận quy tắc",
+      "filterLabel": "Lọc {title}",
+      "fromDate": "Từ ngày",
+      "toDate": "Đến ngày",
+      "invalidDateRange": "Ngày kết thúc phải từ ngày bắt đầu trở đi.",
+      "resultCount": "{visible} / {total} mục mẫu",
+      "loading": "Đang tải dữ liệu mẫu…",
+      "loadError": "Không tải được dữ liệu mẫu",
+      "loadErrorHint": "Thử tải lại để xem danh sách.",
+      "noResults": "Không tìm thấy kết quả",
+      "emptyTitle": "Chưa có dữ liệu",
+      "invalidDateHint": "Kiểm tra lại khoảng ngày.",
+      "noResultsHint": "Thử từ khóa khác hoặc xóa bộ lọc.",
+      "emptyDescription": "Danh sách mẫu hiện đang rỗng.",
+      "clearFilters": "Xóa bộ lọc",
+      "tableLabel": "{title}, cuộn ngang để xem thêm",
+      "details": "Chi tiết",
+      "viewDetailsLabel": "Xem chi tiết {title}",
+      "fixtureNotice": "Dữ liệu minh họa từ Figma · Chỉ đọc · Không kết nối API",
+      "quickPreviewLabel": "Chi tiết nhanh bản ghi đầu danh sách",
+      "sampleRecord": "Bản ghi mẫu",
+      "viewFull": "Xem đầy đủ",
+      "mockToolsTitle": "Dữ liệu mô phỏng · Kiểm tra trạng thái giao diện",
+      "mockToolsDescription": "Các tình huống dưới đây chỉ đổi cách tải fixture của màn này; không cập nhật bản ghi hoặc KPI.",
+      "simulateLoadError": "Mô phỏng lỗi tải",
+      "emptyList": "Danh sách rỗng",
+      "restoreFixtures": "Khôi phục dữ liệu mẫu",
+      "pendingActionsDescription": "Chi tiết thao tác đang chờ xác nhận quy tắc. Bạn có thể tìm kiếm, lọc và xem bản ghi mẫu; chưa cập nhật dữ liệu trong phiên UI này.",
+      "view": "Xem",
+      "pendingMetricsLabel": "Chỉ số chờ xác nhận công thức",
+      "noMetricData": "{label}: chưa có số liệu",
+      "pendingMetricFormula": "Chờ xác nhận công thức",
+      "pendingActionsNotice": "Thao tác chờ xác nhận quy tắc; bản UI hiện tại chỉ đọc.",
+      "fixtureDescription": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+      "fixtureValueUnavailable": "Chưa có trong fixture đã đối chiếu."
+    },
+    "dialog": {
+      "closeDetails": "Đóng chi tiết",
+      "readonlyNotice": "Dữ liệu mô phỏng · Chỉ đọc"
+    },
+    "labels": {
+      "pendingApproval": "Chờ duyệt",
+      "facility": "Cơ sở",
+      "owner": "Chủ sở hữu",
+      "submittedDate": "Ngày gửi",
+      "service": "Dịch vụ",
+      "status": "Trạng thái",
+      "address": "Địa chỉ",
+      "contact": "Liên hệ",
+      "openingHours": "Giờ mở cửa",
+      "approved": "Đã duyệt",
+      "rejected": "Từ chối",
+      "all": "Tất cả",
+      "active": "Hoạt động",
+      "fullName": "Họ tên",
+      "role": "Vai trò",
+      "createdDate": "Ngày tạo",
+      "linkedFacility": "Cơ sở liên kết",
+      "staffPermissions": "Quyền Staff",
+      "suspended": "Tạm khóa",
+      "customer": "Khách hàng",
+      "providerOwner": "Chủ cơ sở",
+      "staff": "Nhân viên",
+      "activeAccounts": "Tài khoản hoạt động",
+      "ownersAndStaff": "Chủ cơ sở / nhân viên",
+      "visible": "Hiển thị",
+      "categoryName": "Tên danh mục",
+      "type": "Loại",
+      "code": "Mã",
+      "linkedCount": "Số liên kết",
+      "inactive": "Tạm ẩn",
+      "serviceCategory": "Nhóm dịch vụ",
+      "petType": "Loại thú cưng",
+      "inUse": "Đang sử dụng",
+      "reported": "Bị báo cáo",
+      "bookingId": "Mã lịch",
+      "review": "Đánh giá",
+      "pet": "Thú cưng",
+      "bookingStatus": "Trạng thái lịch",
+      "content": "Nội dung",
+      "reportReason": "Lý do báo cáo",
+      "reviewReportDetails": "Nội dung / báo cáo chi tiết",
+      "hidden": "Đã ẩn",
+      "currentlyVisible": "Đang hiển thị",
+      "new": "Mới",
+      "sender": "Người gửi",
+      "designNotes": "Ghi chú trong thiết kế",
+      "inProgress": "Đang xử lý",
+      "complaintConclusion": "Nội dung / kết luận chi tiết",
+      "resolved": "Đã giải quyết",
+      "newlyReceived": "Mới tiếp nhận",
+      "success": "Thành công",
+      "time": "Thời gian",
+      "actor": "Tác nhân",
+      "action": "Hành động",
+      "target": "Đối tượng",
+      "outcome": "Kết quả",
+      "previousStatus": "Trạng thái trước",
+      "nextStatus": "Trạng thái sau",
+      "blocked": "Bị chặn",
+      "eventsInPeriod": "Sự kiện trong kỳ",
+      "administrativeActions": "Thao tác quản trị",
+      "statusChanges": "Thay đổi trạng thái",
+      "approvedFacilities": "Cơ sở đã duyệt",
+      "users": "Người dùng",
+      "bookingsInPeriod": "Lịch hẹn trong kỳ",
+      "visibleServices": "Dịch vụ đang hiển thị",
+      "averageRating": "Điểm đánh giá trung bình",
+      "openComplaints": "Khiếu nại mở",
+      "pendingFacilities": "Cơ sở chờ duyệt",
+      "unresolvedComplaints": "Khiếu nại chưa giải quyết",
+      "reportedReviews": "Đánh giá bị báo cáo",
+      "completed": "Hoàn thành"
+    },
+    "actions": {
+      "approve": "Phê duyệt",
+      "reject": "Từ chối",
+      "suspend": "Tạm khóa",
+      "reactivate": "Mở khóa",
+      "edit": "Chỉnh sửa",
+      "hide": "Tạm ẩn",
+      "showAgain": "Hiển thị lại",
+      "keepVisible": "Giữ hiển thị",
+      "hideReview": "Ẩn đánh giá",
+      "receiveComplaint": "Tiếp nhận",
+      "addNote": "Thêm ghi chú",
+      "markResolved": "Đánh dấu đã giải quyết"
+    },
+    "providers": {
+      "title": "Duyệt cơ sở",
+      "description": "Kiểm tra hồ sơ trước khi cơ sở hiển thị trên nền tảng",
+      "listTitle": "Hồ sơ đăng ký",
+      "listDescription": "Xem thông tin cơ sở theo từng hồ sơ",
+      "searchLabel": "Tên cơ sở hoặc chủ sở hữu",
+      "introAction": "Quy trình duyệt",
+      "approvalRule": "Proposal UC-PRO-01: Admin xem hồ sơ đang chờ trước khi duyệt hoặc từ chối.",
+      "publicVisibilityRule": "BR-01: chỉ cơ sở đã duyệt và dịch vụ hoạt động được tìm kiếm và đặt lịch.",
+      "recordTitle": "Hồ sơ · {facilityName}"
+    },
+    "users": {
+      "pendingStaffPermissions": "Chờ xác nhận ở FE-014; không suy ra quyền từ tài khoản mẫu.",
+      "title": "Người dùng",
+      "description": "Quản lý tài khoản và vai trò ở cấp nền tảng",
+      "listTitle": "Danh sách người dùng",
+      "listDescription": "Vai trò và thông tin liên kết trong bản ghi mẫu",
+      "searchLabel": "Tên hoặc email",
+      "introAction": "Quyền truy cập",
+      "accessRule": "Proposal Table 6: Customer xem dữ liệu của mình; Owner và Staff được phân công chỉ truy cập dữ liệu của cơ sở liên quan.",
+      "staffScopeRule": "Quyền thao tác cụ thể của Staff sẽ được chốt trong FE-014. UI này không thay đổi vai trò hoặc trạng thái tài khoản.",
+      "recordTitle": "Tài khoản · {userName}"
+    },
+    "categories": {
+      "title": "Danh mục chung",
+      "description": "Quản lý loại dịch vụ và loại thú cưng dùng chung",
+      "listTitle": "Danh mục nền tảng",
+      "listDescription": "Danh mục chung được tham chiếu khi cơ sở tạo dịch vụ",
+      "searchLabel": "Tên hoặc mã danh mục",
+      "introAction": "Thêm danh mục",
+      "recordTitle": "Danh mục · {categoryName}",
+      "serviceCount": "{count} dịch vụ",
+      "profileCount": "{count} hồ sơ"
+    },
+    "reviews": {
+      "title": "Kiểm duyệt đánh giá",
+      "description": "Xem nội dung bị báo cáo và lịch hẹn liên quan",
+      "listTitle": "Danh sách đánh giá",
+      "listDescription": "Kiểm tra nội dung, lịch hoàn thành và lý do báo cáo",
+      "searchLabel": "Khách hàng, cơ sở hoặc mã lịch",
+      "introAction": "Quy tắc đánh giá",
+      "reviewEligibilityRule": "Proposal BR-09/10: Customer chỉ đánh giá booking của mình sau khi hoàn thành; mỗi booking tối đa một review.",
+      "moderationRule": "Thiết kế yêu cầu xem nội dung, người gửi, lịch hẹn và lý do báo cáo trước khi kiểm duyệt.",
+      "recordTitle": "Đánh giá · {bookingId}",
+      "starCount": "{count} sao"
+    },
+    "complaints": {
+      "title": "Khiếu nại",
+      "description": "Theo dõi phản ánh liên quan đến lịch hẹn và chất lượng dịch vụ",
+      "listTitle": "Danh sách khiếu nại",
+      "listDescription": "Liên kết phản ánh với lịch hẹn, khách hàng và cơ sở",
+      "searchLabel": "Mã khiếu nại hoặc mã lịch",
+      "introAction": "Quy trình xử lý",
+      "complaintScopeRule": "Proposal §7.3 và thiết kế: Admin xem phản ánh liên quan đến lịch hẹn hoặc chất lượng dịch vụ, với khách hàng và cơ sở liên quan.",
+      "pendingResolutionRule": "Chuyển trạng thái, ghi chú, kết luận và điều kiện mở lại chưa được người dùng xác nhận.",
+      "recordTitle": "Khiếu nại · {complaintId}"
+    },
+    "activityLogs": {
+      "recordNotice": "Nhật ký mẫu chỉ đọc. Không có thao tác sửa hoặc xóa.",
+      "title": "Nhật ký hoạt động",
+      "description": "Truy vết thao tác quản trị và thay đổi trạng thái quan trọng",
+      "listTitle": "Dòng sự kiện",
+      "listDescription": "Nhật ký chỉ đọc: thời gian, tác nhân, hành động và kết quả",
+      "searchLabel": "Tác nhân, đối tượng hoặc mã bản ghi"
+    }
+  },
+  "staff": {
+    "metadata": {
+      "title": "PawFlow Staff · Lịch hẹn",
+      "description": "Khu vực lịch hẹn Staff với thao tác mô phỏng trong phiên."
+    },
+    "bookings": {
+      "audit": {
+        "title": "Nhật ký trong phiên ({count})",
+        "transition": "Trước: {previous} → Sau: {next}.",
+        "outOfScope": "Không có dữ liệu trong phạm vi",
+        "requested": "Yêu cầu: {status}. Xác nhận kết quả thực tế: {confirmed}.",
+        "yes": "Có",
+        "no": "Không",
+        "none": "Không có",
+        "reason": "Lý do / ghi nhận: {reason}",
+        "description": "Ghi nhận thao tác thành công và thất bại của bản mô phỏng; mất khi rời trang, tải lại hoặc khôi phục mẫu.",
+        "empty": "Chưa có thao tác trong phiên.",
+        "success": "Thành công",
+        "failure": "Thất bại",
+        "unknownTime": "Chưa xác định thời gian"
+      },
+      "list": {
+        "resultCount": "Hiển thị {visible} / {total} lịch hẹn",
+        "caption": "Lịch hẹn thuộc cơ sở {facility}",
+        "tableLabel": "Bảng lịch hẹn Staff, cuộn ngang để xem thêm",
+        "idColumn": "Mã lịch",
+        "customerPetColumn": "Khách / thú cưng",
+        "serviceColumn": "Dịch vụ",
+        "timeColumn": "Thời gian",
+        "statusColumn": "Trạng thái",
+        "actionColumn": "Thao tác",
+        "viewDetailsLabel": "Xem chi tiết {bookingId}",
+        "viewDetails": "Xem chi tiết",
+        "noResults": "Không có lịch phù hợp",
+        "emptyTitle": "Chưa có lịch hẹn",
+        "noResultsHint": "Thử từ khóa khác hoặc xóa bộ lọc để xem danh sách.",
+        "emptyDescription": "Lịch hẹn của cơ sở sẽ hiển thị tại đây.",
+        "clearFilters": "Xóa bộ lọc"
+      },
+      "details": {
+        "confirmationTitle": "Xác nhận thao tác: {action}",
+        "mockTime": "Thời gian mô phỏng: {time} (UTC+7).",
+        "sessionResult": "{message} Thay đổi chỉ lưu trong phiên mô phỏng.",
+        "snapshotDuration": "Thời lượng snapshot: {duration}",
+        "durationMinutes": "{count} phút",
+        "invalidDuration": "Chưa có dữ liệu hợp lệ",
+        "completionHint": "Chỉ xác nhận khi dịch vụ đã thực hiện xong. Không yêu cầu đã thanh toán.",
+        "reasonLabel": "Lý do / ghi nhận (bắt buộc)",
+        "attestCompleted": "Tôi xác nhận đã thực hiện xong dịch vụ.",
+        "attestNoShow": "Tôi xác nhận khách / pet chưa đến.",
+        "processingNotice": "Đang xử lý thao tác mô phỏng…",
+        "backToDetails": "Về chi tiết",
+        "back": "Quay lại",
+        "processing": "Đang xử lý…",
+        "confirmAction": "Xác nhận thao tác",
+        "title": "Chi tiết lịch #{bookingId}",
+        "informationTitle": "Thông tin lịch hẹn",
+        "customerLabel": "Khách hàng",
+        "contactLabel": "Liên hệ cho lịch hẹn",
+        "noPhone": "Chưa có số điện thoại trong booking",
+        "petLabel": "Thú cưng trong lịch",
+        "ageLabel": "Tuổi",
+        "weightLabel": "Cân nặng",
+        "allergiesLabel": "Dị ứng trong booking",
+        "serviceLabel": "Dịch vụ",
+        "priceLabel": "Giá snapshot (chỉ đọc)",
+        "appointmentTimeLabel": "Thời gian hẹn",
+        "expectedEndLabel": "Kết thúc dự kiến",
+        "unknownEnd": "Chưa xác định — không cho Hoàn thành",
+        "notesLabel": "Lưu ý chăm sóc trong lịch",
+        "noNotes": "Chưa có lưu ý trong booking.",
+        "actionRules": "Mỗi thao tác có bước xác nhận và kiểm tra lại trạng thái, giờ mô phỏng. Không tự động đổi trạng thái.",
+        "terminalNotice": "Lịch đã kết thúc, chỉ xem kết quả; không được sửa lại trạng thái.",
+        "ownerPaymentNotice": "Ghi nhận thanh toán thuộc quyền chủ cơ sở. Không mở hồ sơ khách / pet đầy đủ từ lịch hẹn này."
+      },
+      "page": {
+        "roleTab": "NHÂN VIÊN · {facility}",
+        "description": "Lịch của {facility} trong phạm vi nhân viên được phân công.",
+        "mockNotice": "Dữ liệu mô phỏng trong phiên · Thời gian mô phỏng: {time} · Asia/Ho_Chi_Minh (UTC+7). Tải lại hoặc rời trang sẽ mất thay đổi.",
+        "invalidMockTime": "Nhập ngày giờ hợp lệ theo Asia/Ho_Chi_Minh (UTC+7).",
+        "title": "Lịch hẹn",
+        "permissions": "Quyền Staff",
+        "listTitle": "Danh sách lịch hẹn",
+        "listDescription": "Chọn một lịch để xem thông tin khách, thú cưng và trạng thái.",
+        "loading": "Đang tải lịch hẹn…",
+        "loadError": "Không thể tải danh sách lịch hẹn mô phỏng.",
+        "transitionRules": "Chờ xác nhận → Đã xác nhận / Từ chối. Đã xác nhận → Hoàn thành / Không đến theo điều kiện thời gian. Lịch kết thúc chỉ xem kết quả."
+      },
+      "dialog": {
+        "notice": "{facility} · Dữ liệu mô phỏng trong phiên",
+        "closeDetails": "Đóng chi tiết"
+      },
+      "toolbar": {
+        "statusFilterLabel": "Lọc trạng thái lịch hẹn",
+        "searchLabel": "Tìm mã lịch, khách hàng hoặc thú cưng",
+        "searchPlaceholder": "Mã lịch, khách hàng hoặc thú cưng",
+        "clearFilters": "Xóa bộ lọc"
+      },
+      "mockTools": {
+        "title": "Thử dữ liệu mô phỏng",
+        "description": "Đồng hồ cố định, không chạy theo giờ máy. Điều khiển bên dưới chỉ tác động tới phiên mẫu, không gọi API.",
+        "clockLabel": "Ngày giờ mô phỏng (Asia/Ho_Chi_Minh · UTC+7)",
+        "applyClock": "Áp dụng thời gian",
+        "simulateOperationError": "Giả lập lỗi thao tác",
+        "resetDescription": "“Danh sách rỗng” làm rỗng dữ liệu phiên. Lỗi tải / Thử lại giữ dữ liệu, đồng hồ và nhật ký. “Khôi phục mẫu” xóa thay đổi, nhật ký, lỗi, lựa chọn và bộ lọc; đưa đồng hồ về 21/10/2026 08:00.",
+        "simulateLoadError": "Giả lập lỗi tải",
+        "emptyList": "Danh sách rỗng",
+        "restoreFixtures": "Khôi phục mẫu"
+      },
+      "logic": {
+        "pendingConfirmation": "Chờ xác nhận",
+        "confirmed": "Đã xác nhận",
+        "completed": "Hoàn thành",
+        "cancelled": "Đã hủy",
+        "rejected": "Từ chối",
+        "noShow": "Không đến",
+        "noTime": "Chưa có thời gian",
+        "confirmAction": "Xác nhận yêu cầu",
+        "rejectAction": "Từ chối yêu cầu",
+        "completeAction": "Hoàn thành lịch",
+        "noShowAction": "Đánh dấu không đến",
+        "permissionDenied": "Không có quyền xử lý lịch hẹn này tại cơ sở được phân công.",
+        "terminalState": "Lịch đã kết thúc, không được sửa lại trạng thái.",
+        "invalidPendingTransition": "Lịch chờ chỉ có thể được xác nhận hoặc từ chối.",
+        "invalidTime": "Không thể xác minh thời gian lịch hẹn.",
+        "confirmBeforeStart": "Chỉ được xác nhận trước giờ bắt đầu lịch hẹn.",
+        "invalidConfirmedTransition": "Lịch đã xác nhận chỉ có thể chuyển Hoàn thành hoặc Không đến.",
+        "noShowAfterStart": "Chỉ được đánh dấu không đến từ giờ bắt đầu lịch hẹn.",
+        "missingDuration": "Thiếu thời lượng snapshot hợp lệ của booking; chưa thể hoàn thành lịch.",
+        "completeAfterEnd": "Chỉ được hoàn thành từ giờ kết thúc dự kiến trở đi.",
+        "missingPrice": "Chưa có giá snapshot trong booking"
+      },
+      "session": {
+        "bookingNotFound": "Không tìm thấy lịch hẹn trong phạm vi cơ sở được phân công.",
+        "notReady": "Danh sách chưa sẵn sàng. Vui lòng tải lại rồi thử lại.",
+        "staleStatus": "Trạng thái đã thay đổi. Vui lòng kiểm tra lại lịch hẹn.",
+        "reasonRequired": "Vui lòng nhập lý do / ghi nhận, không chỉ có khoảng trắng.",
+        "actualOutcomeRequired": "Vui lòng xác nhận kết quả thực tế của lịch hẹn.",
+        "simulatedFailure": "Mô phỏng lỗi: chưa cập nhật lịch hẹn. Đóng chi tiết, tắt lỗi trong khu vực dữ liệu mô phỏng rồi thử lại.",
+        "updated": "{bookingId}: đã cập nhật thành {status}."
+      }
+    },
+    "shell": {
+      "staffIdentity": "{name} · Nhân viên",
+      "header": {
+        "homeLabel": "PawFlow Staff — Lịch hẹn",
+        "languageUnavailable": "Chưa hỗ trợ đổi ngôn ngữ",
+        "openMenu": "Mở menu Staff",
+        "compactMenu": "Menu Staff thu gọn"
+      },
+      "bookings": "Lịch hẹn",
+      "skipToContent": "Đến nội dung Staff",
+      "contentLabel": "Nội dung Staff",
+      "sidebar": {
+        "areaLabel": "Khu vực nhân viên",
+        "bookings": "Lịch hẹn",
+        "staffRole": "Nhân viên",
+        "navigationLabel": "Điều hướng Staff"
+      }
+    },
+    "permissions": {
+      "title": "Nhân viên tại một cơ sở",
+      "membershipRule": "Staff ACTIVE chỉ xem và xử lý booking của cơ sở được phân công. Bản mock dùng quyền chung, không có cấp quyền riêng từng nhân viên.",
+      "transitionsRule": "Chờ xác nhận → Đã xác nhận hoặc Từ chối. Đã xác nhận → Hoàn thành hoặc Không đến. Không hủy, sửa lịch hoặc sửa trạng thái kết thúc.",
+      "timingRule": "Chỉ xác nhận trước giờ bắt đầu. Từ chối bắt buộc có lý do. Hoàn thành từ giờ kết thúc theo thời lượng snapshot, phải xác nhận đã làm xong dịch vụ và không yêu cầu đã thanh toán. Không đến từ giờ bắt đầu, phải xác nhận khách / pet chưa đến và ghi lý do.",
+      "bookingProjectionRule": "Xem tên khách, số điện thoại gắn với lịch, giá snapshot chỉ đọc và thông tin pet cần cho dịch vụ nếu booking có dữ liệu. Chưa hiển thị email hoặc mở hồ sơ đầy đủ.",
+      "restrictedAreasRule": "Không có quyền dashboard kinh doanh, truy cập quản lý dịch vụ / giá hoặc quản trị nền tảng.",
+      "ownerPaymentRule": "Ghi nhận thanh toán thuộc quyền chủ cơ sở.",
+      "mockLimitation": "Đây là quy tắc UI/mock đã chốt, chưa xác nhận API/backend hỗ trợ đầy đủ hoặc đã bảo đảm phân quyền thật."
+    }
+  }
+}

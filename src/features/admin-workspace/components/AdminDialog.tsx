@@ -1,5 +1,7 @@
 "use client";
 
+import { vi } from "@/lib/locale";
+
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 import styles from "../admin.module.css";
@@ -32,9 +34,9 @@ export default function AdminDialog({ title, children, onClose }: { title: strin
         event.preventDefault(); (event.shiftKey ? last : first)?.focus();
       }
     }}>
-    <div className={styles.dialogHeading}><h2 id={titleId}>{title}</h2><button type="button" onClick={onClose} autoFocus aria-label="Đóng chi tiết"><X aria-hidden="true" size={20} /></button></div>
-    <p className={styles.muted}>Dữ liệu mô phỏng · Chỉ đọc</p>
+    <div className={styles.dialogHeading}><h2 id={titleId}>{title}</h2><button type="button" onClick={onClose} autoFocus aria-label={vi.admin.dialog.closeDetails}><X aria-hidden="true" size={20} /></button></div>
+    <p className={styles.muted}>{vi.admin.dialog.readonlyNotice}</p>
     {children}
-    <button type="button" className={styles.secondaryButton} onClick={onClose}>Đóng</button>
+    <button type="button" className={styles.secondaryButton} onClick={onClose}>{vi.common.actions.close}</button>
   </dialog>;
 }

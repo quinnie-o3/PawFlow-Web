@@ -1,5 +1,7 @@
 "use client";
 
+import { vi } from "@/lib/locale";
+
 import { useEffect, useRef, useState } from "react";
 import { createProviderProfileMock } from "./data/providerProfileMock";
 import { applyProfileValues, canEditProfileImages, getProfileValues, profileFields } from "./profileLogic";
@@ -98,7 +100,7 @@ export function useProfileMock() {
       setEditor((current) => current && ({ ...current, images: { ...current.images, [slot]: image }, decoding: { ...current.decoding, [slot]: false } }));
     } catch (error) {
       if (!mounted.current || generation.current !== currentGeneration || requests.current[slot] !== request) return;
-      setEditor((current) => current && ({ ...current, decoding: { ...current.decoding, [slot]: false }, imageErrors: { ...current.imageErrors, [slot]: error instanceof Error ? error.message : "Không đọc được ảnh. Vui lòng thử lại." } }));
+      setEditor((current) => current && ({ ...current, decoding: { ...current.decoding, [slot]: false }, imageErrors: { ...current.imageErrors, [slot]: error instanceof Error ? error.message : vi.provider.profile.images.errors.read } }));
     } finally {
       if (decoders.current[slot] === decoder) decoders.current[slot] = null;
     }
@@ -130,7 +132,7 @@ export function useProfileMock() {
     }
     if (failNextSave) {
       setFailNextSave(false);
-      setEditor({ ...editor, errors: {}, saveError: "Chưa lưu được bản mô phỏng (lỗi mô phỏng). Bản nháp được giữ nguyên; bạn có thể thử lại." });
+      setEditor({ ...editor, errors: {}, saveError: vi.provider.profile.feedback.saveFailed });
       return false;
     }
     setProfile(applyProfileValues(profile, values, editor.section));
@@ -143,7 +145,7 @@ export function useProfileMock() {
     }
     generation.current++;
     setEditor(null);
-    setFeedback("Đã cập nhật bản mô phỏng trong phiên. Chưa lưu lên máy chủ; tải lại hoặc rời trang sẽ khôi phục mẫu.");
+    setFeedback(vi.provider.profile.feedback.saved);
     return true;
   }
   return { profile, images, editor, feedback, hasChanges, failNextSave, setFailNextSave, open, close, change, selectImage, discardImage, save };

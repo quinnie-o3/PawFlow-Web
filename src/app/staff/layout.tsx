@@ -1,3 +1,4 @@
+import { vi } from "@/lib/locale";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Be_Vietnam_Pro } from "next/font/google";
@@ -11,8 +12,8 @@ const staffFont = Be_Vietnam_Pro({
 });
 
 export const metadata: Metadata = {
-  title: "PawFlow Staff · Lịch hẹn",
-  description: "Khu vực lịch hẹn Staff với thao tác mô phỏng trong phiên.",
+  title: vi.staff.metadata.title,
+  description: vi.staff.metadata.description,
 };
 
 export default function StaffLayout({ children }: { children: ReactNode }) {

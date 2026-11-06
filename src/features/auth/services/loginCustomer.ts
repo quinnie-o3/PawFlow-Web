@@ -1,3 +1,4 @@
+import { vi } from "@/lib/locale";
 export type LoginCustomerPayload = {
   email: string;
   password: string;
@@ -24,7 +25,7 @@ export async function loginCustomer(payload: LoginCustomerPayload): Promise<Logi
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   if (!apiUrl) {
-    throw new LoginCustomerError("Chưa cấu hình địa chỉ API đăng nhập.");
+    throw new LoginCustomerError(vi.auth.errors.loginApiMissing);
   }
 
   const response = await fetch(`${apiUrl.replace(/\/$/, "")}/auth/login`, {
@@ -37,11 +38,11 @@ export async function loginCustomer(payload: LoginCustomerPayload): Promise<Logi
   const body = await response.json().catch(() => null) as LoginCustomerResponseBody | null;
 
   if (!response.ok) {
-    throw new LoginCustomerError(typeof body?.message === "string" ? body.message : "Không thể đăng nhập. Vui lòng thử lại.");
+    throw new LoginCustomerError(typeof body?.message === "string" ? body.message : vi.auth.errors.loginFailed);
   }
 
   if (!body || typeof body.accessToken !== "string" || !body.accessToken) {
-    throw new LoginCustomerError("API đăng nhập không trả về accessToken.");
+    throw new LoginCustomerError(vi.auth.errors.accessTokenMissing);
   }
 
   return {

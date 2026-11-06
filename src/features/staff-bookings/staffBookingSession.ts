@@ -1,3 +1,4 @@
+import { vi, formatMessage } from "../../lib/locale";
 import { findStaffBooking, staffStatusLabels, staffTransitionError } from "./staffBookingLogic";
 import type { StaffBooking, StaffBookingCommand, StaffMockScenario, StaffSessionState, StaffViewContext } from "./types";
 
@@ -39,15 +40,15 @@ export function staffSessionReducer(state: StaffSessionState, action: StaffSessi
       // Lookup is scoped before reading detail or creating a log. Do not leak foreign status.
       const booking = findStaffBooking(state.bookings, context, command.bookingId);
       const reason = command.reason.trim();
-      let error = !booking ? "Không tìm thấy lịch hẹn trong phạm vi cơ sở được phân công."
-        : state.phase !== "ready" || state.scenario !== "normal" ? "Danh sách chưa sẵn sàng. Vui lòng tải lại rồi thử lại."
-        : booking.status !== command.expectedStatus ? "Trạng thái đã thay đổi. Vui lòng kiểm tra lại lịch hẹn."
+      let error = !booking ? vi.staff.bookings.session.bookingNotFound
+        : state.phase !== "ready" || state.scenario !== "normal" ? vi.staff.bookings.session.notReady
+        : booking.status !== command.expectedStatus ? vi.staff.bookings.session.staleStatus
         : staffTransitionError(booking, command.targetStatus, context, state.now);
-      if (!error && (command.targetStatus === "rejected" || command.targetStatus === "noShow") && !reason) error = "Vui lòng nhập lý do / ghi nhận, không chỉ có khoảng trắng.";
-      if (!error && (command.targetStatus === "completed" || command.targetStatus === "noShow") && !command.confirmedActualOutcome) error = "Vui lòng xác nhận kết quả thực tế của lịch hẹn.";
-      if (!error && state.simulateFailure) error = "Mô phỏng lỗi: chưa cập nhật lịch hẹn. Đóng chi tiết, tắt lỗi trong khu vực dữ liệu mô phỏng rồi thử lại.";
+      if (!error && (command.targetStatus === "rejected" || command.targetStatus === "noShow") && !reason) error = vi.staff.bookings.session.reasonRequired;
+      if (!error && (command.targetStatus === "completed" || command.targetStatus === "noShow") && !command.confirmedActualOutcome) error = vi.staff.bookings.session.actualOutcomeRequired;
+      if (!error && state.simulateFailure) error = vi.staff.bookings.session.simulatedFailure;
       const outcome = error ? "error" : "success";
-      const result = { bookingId: command.bookingId, outcome, message: error ?? `${command.bookingId}: đã cập nhật thành ${staffStatusLabels[command.targetStatus].toLowerCase()}.` } as const;
+      const result = { bookingId: command.bookingId, outcome, message: error ?? formatMessage(vi.staff.bookings.session.updated, { bookingId: command.bookingId, status: staffStatusLabels[command.targetStatus].toLowerCase() }) } as const;
       return {
         ...state,
         bookings: error ? state.bookings : state.bookings.map((item) => item.id === booking!.id && item.providerId === booking!.providerId ? { ...item, status: command.targetStatus } : item),

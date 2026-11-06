@@ -1,5 +1,7 @@
 "use client";
 
+import { vi, formatMessage } from "@/lib/locale";
+
 import { useState } from "react";
 import { filterServices } from "../serviceLogic";
 import { useServicesMock } from "../useServicesMock";
@@ -26,10 +28,10 @@ export default function ProviderServicesPage() {
   function resetScenario(empty: boolean) { reset(empty); setFilters({ query: "", status: "all" }); }
 
   return <div className={styles.page} lang="vi">
-    <div className={styles.providerTab}>DÀNH CHO PROVIDER</div>
+    <div className={styles.providerTab}>{vi.provider.services.page.providerTab}</div>
     <header className={styles.intro}>
-      <div><h1 id="services-title" tabIndex={-1}>Dịch vụ</h1><p>Quản lý dịch vụ khách có thể chọn khi đặt lịch tại PawCare Studio</p></div>
-      <button type="button" className={styles.addButton} onClick={openCreate}>Thêm dịch vụ</button>
+      <div><h1 id="services-title" tabIndex={-1}>{vi.provider.services.page.title}</h1><p>{formatMessage(vi.provider.services.page.description, { facilityName: "PawCare Studio" })}</p></div>
+      <button type="button" className={styles.addButton} onClick={openCreate}>{vi.provider.services.page.addService}</button>
     </header>
     <ServicesSummary services={state.services} />
     <ServicesToolbar filters={filters} onChange={setFilters} />
@@ -37,11 +39,11 @@ export default function ProviderServicesPage() {
     <ServicesList services={filterServices(state.services, filters)} total={state.services.length}
       onSelect={(id) => { clearFeedback(); setDialog({ type: "edit", id }); }} onCreate={openCreate} onClearFilters={() => setFilters({ query: "", status: "all" })} />
     <ServicesGuidance />
-    <p className={styles.mockNote}>Dữ liệu mô phỏng · Chủ cơ sở. Thay đổi chỉ lưu trong lần mở trang này; tải lại hoặc rời trang sẽ khôi phục mẫu.</p>
+    <p className={styles.mockNote}>{vi.provider.services.page.mockNote}</p>
     <details className={styles.mockTools}>
-      <summary>Dữ liệu mô phỏng và trạng thái rỗng</summary>
-      <p>Dữ liệu dịch vụ, danh mục và các khung giờ minh họa được quản lý riêng trong màn này. Khôi phục mẫu hoặc thử danh sách rỗng sẽ thay thế các thay đổi hiện tại.</p>
-      <div className={styles.scenarios}><button type="button" className={styles.softButton} onClick={() => resetScenario(true)}>Thử danh sách rỗng</button><button type="button" className={styles.softButton} onClick={() => resetScenario(false)}>Khôi phục mẫu</button></div>
+      <summary>{vi.provider.services.mock.title}</summary>
+      <p>{vi.provider.services.mock.description}</p>
+      <div className={styles.scenarios}><button type="button" className={styles.softButton} onClick={() => resetScenario(true)}>{vi.provider.services.mock.empty}</button><button type="button" className={styles.softButton} onClick={() => resetScenario(false)}>{vi.provider.services.mock.restore}</button></div>
     </details>
     {dialog && <ServiceDialog key={dialog.type === "create" ? "create" : dialog.id} service={selected} categories={state.categories} onSubmit={submit} onClose={closeDialog} />}
   </div>;

@@ -1,5 +1,7 @@
 "use client";
 
+import { vi } from "@/lib/locale";
+
 export default function AdminError({ reset }: { reset: () => void }) {
-  return <section><h1>Không hiển thị được màn Admin</h1><p role="alert">Vui lòng thử tải lại giao diện.</p><button type="button" onClick={reset}>Thử lại</button></section>;
+  return <section><h1>{vi.admin.route.errorTitle}</h1><p role="alert">{vi.admin.route.errorDescription}</p><button type="button" onClick={reset}>{vi.common.actions.retry}</button></section>;
 }

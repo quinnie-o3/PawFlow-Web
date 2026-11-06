@@ -1,14 +1,15 @@
+import { vi, formatMessage } from "../../lib/locale";
 import type { Booking, BookingActor, BookingCommand, BookingFilters, BookingStatus, MockBookingsState } from "./types";
 
 export const bookingTimeZone = "Asia/Ho_Chi_Minh";
 export const statusLabels: Record<BookingStatus, string> = {
-  pendingConfirmation: "Chờ xác nhận", confirmed: "Đã xác nhận", rejected: "Từ chối",
-  cancelled: "Đã hủy", completed: "Hoàn thành", noShow: "Không đến",
+  pendingConfirmation: vi.provider.bookings.status.pendingConfirmation, confirmed: vi.provider.bookings.status.confirmed, rejected: vi.provider.bookings.status.rejected,
+  cancelled: vi.provider.bookings.status.cancelled, completed: vi.provider.bookings.status.completed, noShow: vi.provider.bookings.status.noShow,
 };
 export const statusOrder: BookingStatus[] = ["pendingConfirmation", "confirmed", "completed", "cancelled", "rejected", "noShow"];
 export const actionLabels: Partial<Record<BookingStatus, string>> = {
-  confirmed: "Xác nhận yêu cầu", rejected: "Từ chối yêu cầu", cancelled: "Hủy lịch hẹn",
-  completed: "Đánh dấu hoàn thành", noShow: "Đánh dấu không đến",
+  confirmed: vi.provider.bookings.actions.confirmed, rejected: vi.provider.bookings.actions.rejected, cancelled: vi.provider.bookings.actions.cancelled,
+  completed: vi.provider.bookings.actions.completed, noShow: vi.provider.bookings.actions.noShow,
 };
 
 export function formatBookingDate(value: string, includeYear = false) {
@@ -46,21 +47,21 @@ export function scheduledEnd(booking: Booking) {
 
 /** No staff permissions are inferred. Time is injected, never read from the host clock. */
 export function transitionError(booking: Booking, target: BookingStatus, actor: BookingActor, now: string): string | null {
-  if (actor.role !== "providerOwner") return "Thao tác chỉ dành cho Provider Owner.";
+  if (actor.role !== "providerOwner") return vi.provider.bookings.errors.ownerOnly;
   if (booking.status === "pendingConfirmation") {
-    return target === "confirmed" || target === "rejected" ? null : "Yêu cầu đang chờ chỉ có thể được xác nhận hoặc từ chối.";
+    return target === "confirmed" || target === "rejected" ? null : vi.provider.bookings.errors.pendingTransition;
   }
-  if (booking.status !== "confirmed") return "Lịch đã kết thúc; không thể chuyển trạng thái tiếp.";
+  if (booking.status !== "confirmed") return vi.provider.bookings.errors.finalStatus;
   const time = new Date(now).getTime();
   const start = new Date(booking.scheduledAt).getTime();
   if (!Number.isFinite(time) || !Number.isFinite(start) || !Number.isFinite(booking.durationMinutes) || booking.durationMinutes <= 0) {
-    return "Không thể xác minh thời gian của lịch hẹn.";
+    return vi.provider.bookings.errors.invalidTime;
   }
   switch (target) {
-    case "cancelled": return time < start ? null : "Chỉ được hủy trước giờ bắt đầu lịch hẹn.";
-    case "completed": return time >= scheduledEnd(booking) ? null : "Chỉ được hoàn thành từ giờ kết thúc dự kiến trở đi.";
-    case "noShow": return time >= start ? null : "Chỉ được đánh dấu không đến từ giờ bắt đầu lịch hẹn.";
-    default: return "Chuyển trạng thái không hợp lệ.";
+    case "cancelled": return time < start ? null : vi.provider.bookings.errors.cancelBeforeStart;
+    case "completed": return time >= scheduledEnd(booking) ? null : vi.provider.bookings.errors.completeAfterEnd;
+    case "noShow": return time >= start ? null : vi.provider.bookings.errors.noShowAfterStart;
+    default: return vi.provider.bookings.errors.invalidTransition;
   }
 }
 
@@ -77,14 +78,14 @@ export function createMockState(bookings: Booking[]): MockBookingsState {
 /** Resolve against the latest state, rechecking status, role, time, reason, and attestation. */
 export function resolveMockCommand(state: MockBookingsState, command: BookingCommand, actor: BookingActor, now: string): MockBookingsState {
   const booking = state.bookings.find((item) => item.id === command.bookingId);
-  if (!booking) return { ...state, pending: null, feedback: { bookingId: command.bookingId, outcome: "error", message: "Không tìm thấy lịch hẹn." } };
+  if (!booking) return { ...state, pending: null, feedback: { bookingId: command.bookingId, outcome: "error", message: vi.provider.bookings.errors.notFound } };
   const reason = command.reason.trim();
-  let error = booking.status !== command.expectedStatus ? "Trạng thái đã thay đổi. Vui lòng kiểm tra lại lịch hẹn." : transitionError(booking, command.targetStatus, actor, now);
-  if (!error && command.targetStatus === "cancelled" && !reason) error = "Vui lòng nhập lý do hủy; không được chỉ có khoảng trắng.";
-  if (!error && ["completed", "noShow"].includes(command.targetStatus) && !command.confirmedActualOutcome) error = "Vui lòng xác nhận kết quả thực tế của lịch hẹn.";
-  if (!error && command.simulateFailure) error = "Mô phỏng lỗi: chưa cập nhật lịch hẹn. Vui lòng thử lại.";
+  let error = booking.status !== command.expectedStatus ? vi.provider.bookings.errors.statusChanged : transitionError(booking, command.targetStatus, actor, now);
+  if (!error && command.targetStatus === "cancelled" && !reason) error = vi.provider.bookings.errors.cancellationReason;
+  if (!error && ["completed", "noShow"].includes(command.targetStatus) && !command.confirmedActualOutcome) error = vi.provider.bookings.errors.attestation;
+  if (!error && command.simulateFailure) error = vi.provider.bookings.errors.simulatedFailure;
   const outcome = error ? "error" : "success";
-  const message = error ?? `${booking.id}: đã cập nhật thành ${statusLabels[command.targetStatus].toLowerCase()}.`;
+  const message = error ?? formatMessage(vi.provider.bookings.feedback.statusUpdated, { bookingId: booking.id, status: statusLabels[command.targetStatus].toLowerCase() });
   const nextStatus = error ? booking.status : command.targetStatus;
   return {
     bookings: error ? state.bookings : state.bookings.map((item) => item.id === booking.id ? { ...item, status: nextStatus } : item),
