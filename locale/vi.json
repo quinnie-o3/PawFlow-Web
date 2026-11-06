@@ -873,7 +873,11 @@
         "manageCare": "Lưu hồ sơ thú cưng, đặt lịch và theo dõi trạng thái từng cuộc hẹn."
       },
       "pageLabel": "Đăng ký PawFlow",
-      "loginPrompt": "Đã có tài khoản? {loginLink}"
+      "loginPrompt": "Đã có tài khoản? {loginLink}",
+      "submit": "Đăng ký",
+      "optionalPhone": "Số điện thoại (tùy chọn)",
+      "immediateAccess": "Tạo tài khoản và sử dụng ngay, chưa cần xác nhận email.",
+      "loginAfterSuccess": "Đăng ký thành công. Vui lòng đăng nhập để tiếp tục."
     },
     "errors": {
       "loginUnexpected": "Đã xảy ra lỗi khi đăng nhập.",
@@ -883,6 +887,108 @@
       "accessTokenMissing": "API đăng nhập không trả về accessToken.",
       "registerApiMissing": "Chưa cấu hình địa chỉ API đăng ký.",
       "registerFailed": "Không thể đăng ký tài khoản. Vui lòng thử lại."
+    },
+    "loading": "Đang tải giao diện…",
+    "validation": {
+      "emailRequired": "Vui lòng nhập email.",
+      "emailLength": "Email không được dài quá 255 ký tự.",
+      "emailInvalid": "Vui lòng nhập email hợp lệ.",
+      "passwordLength": "Mật khẩu cần từ 8 đến 72 ký tự.",
+      "passwordHint": "Từ 8 đến 72 ký tự.",
+      "nameLength": "Họ và tên cần từ 2 đến 150 ký tự sau khi bỏ khoảng trắng đầu/cuối.",
+      "phoneLength": "Số điện thoại không được dài quá 20 ký tự.",
+      "checkFields": "Vui lòng kiểm tra các trường được đánh dấu."
+    },
+    "feedback": {
+      "invalidCredentials": "Email hoặc mật khẩu không đúng. Kiểm tra thông tin và thử lại.",
+      "accountNotActive": "Tài khoản hiện không hoạt động. Vui lòng liên hệ hỗ trợ.",
+      "emailConflict": "Email này đã được đăng ký. Bạn có thể đăng nhập bằng tài khoản hiện có.",
+      "tooManyRequests": "Có quá nhiều yêu cầu. Vui lòng thử lại sau.",
+      "serverError": "Dịch vụ tạm thời gặp lỗi. Thông tin đã nhập được giữ lại để bạn thử lại.",
+      "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+      "requestFailed": "Không thể xử lý yêu cầu. Vui lòng thử lại.",
+      "networkError": "Không thể hoàn tất kết nối. Kiểm tra mạng và thử lại.",
+      "storageError": "Không thể lưu phiên đăng nhập trên trình duyệt này. Vui lòng kiểm tra cài đặt và thử lại."
+    },
+    "mock": {
+      "notice": "Đây là giao diện mô phỏng: không gửi email, không đổi mật khẩu trên máy chủ và không thay đổi phiên đăng nhập.",
+      "tools": "Công cụ mô phỏng",
+      "failNext": "Cho yêu cầu hợp lệ tiếp theo thất bại một lần",
+      "configNote": "Độ trễ mẫu {delay} ms. Dữ liệu chỉ tồn tại trong lần mở màn, tải lại sẽ khôi phục mô phỏng.",
+      "backToLogin": "Quay lại đăng nhập",
+      "errors": {
+        "failure": "Yêu cầu mô phỏng thất bại. Bạn có thể thử lại; dữ liệu đã nhập vẫn được giữ.",
+        "invalid_code": "Mã mô phỏng không đúng. Vui lòng kiểm tra và thử lại.",
+        "expired_code": "Mã mô phỏng đã hết hạn. Bạn có thể gửi lại mã mẫu.",
+        "used_code": "Mã mô phỏng đã được sử dụng.",
+        "cooldown": "Chưa đến lúc gửi lại mã mô phỏng.",
+        "invalid_token": "Liên kết mô phỏng không hợp lệ.",
+        "expired_token": "Liên kết mô phỏng đã hết hạn.",
+        "used_token": "Liên kết mô phỏng đã được sử dụng."
+      }
+    },
+    "forgot": {
+      "title": "Khôi phục mật khẩu",
+      "description": "Nhập email để xem luồng khôi phục. Khi kết nối dịch vụ thật, phản hồi sẽ không tiết lộ tài khoản có tồn tại hay không.",
+      "submit": "Mô phỏng gửi liên kết đặt lại",
+      "pending": "Đang xử lý mô phỏng…",
+      "success": "Đã hoàn tất mô phỏng yêu cầu khôi phục. Không có email nào được gửi.",
+      "openDemoReset": "Mở liên kết đặt lại mô phỏng",
+      "close": "Đóng"
+    },
+    "reset": {
+      "title": "Đặt lại mật khẩu",
+      "description": "Thử giao diện đặt lại mật khẩu bằng liên kết mô phỏng.",
+      "passwordPolicy": "Quy tắc mô phỏng: từ 8 đến 72 ký tự; chính sách chính thức sẽ theo backend.",
+      "submit": "Mô phỏng đặt lại mật khẩu",
+      "pending": "Đang xử lý mô phỏng…",
+      "success": "Đã hoàn tất mô phỏng. Mật khẩu thật và phiên đăng nhập không thay đổi.",
+      "newRequest": "Tạo lại yêu cầu mô phỏng",
+      "tokenStates": {
+        "missing": "Liên kết thiếu mã đặt lại. Hãy tạo một yêu cầu mô phỏng mới.",
+        "invalid": "Liên kết không thuộc bộ dữ liệu mô phỏng hoặc có nhiều mã đặt lại.",
+        "expired": "Liên kết mô phỏng đã hết hạn. Hãy tạo yêu cầu mới.",
+        "used": "Liên kết mô phỏng đã được sử dụng. Hãy tạo yêu cầu mới."
+      }
+    },
+    "verification": {
+      "title": "XÁC NHẬN EMAIL",
+      "disabledTitle": "Chưa yêu cầu xác nhận email",
+      "disabledBody": "Tài khoản đăng ký mới có thể sử dụng ngay. Xác nhận email chưa được kích hoạt.",
+      "preview": "Xem mô phỏng xác nhận email",
+      "demoDescription": "Mã mẫu dành cho ma****@example.com, không được gửi qua email.",
+      "codeLabel": "Mã xác nhận mô phỏng",
+      "digit": "Chữ số {index} của mã xác nhận",
+      "codeRequired": "Vui lòng nhập đủ 6 chữ số của mã mô phỏng.",
+      "remaining": "Mã mô phỏng hết hạn sau {time}.",
+      "expired": "Mã mô phỏng đã hết hạn.",
+      "resend": "Chưa nhận được mã? Gửi lại mã mô phỏng",
+      "resending": "Đang mô phỏng gửi lại…",
+      "cooldown": "Có thể gửi lại mã mô phỏng sau {seconds} giây.",
+      "resent": "Đã tạo lại mã trong mô phỏng. Không có email nào được gửi.",
+      "pending": "Đang kiểm tra mô phỏng…",
+      "submit": "Xác nhận mã mô phỏng",
+      "success": "Đã hoàn tất mô phỏng xác nhận email. Trạng thái tài khoản thật không thay đổi.",
+      "demoValues": "Giá trị mẫu: mã {code}, hiệu lực {ttl} giây, chờ gửi lại {cooldown} giây. Đây không phải contract của backend."
+    },
+    "demo": {
+      "title": "Mô phỏng trạng thái tài khoản",
+      "description": "Các trạng thái dưới đây là dữ liệu thiết kế riêng, không được suy từ lỗi 401/403 và không thay đổi tài khoản thật.",
+      "select": "Trạng thái cần xem",
+      "states": {
+        "invalid": "Sai thông tin đăng nhập",
+        "locked": "Tài khoản bị khóa — mẫu thiết kế",
+        "suspended": "Tài khoản bị đình chỉ — mẫu thiết kế",
+        "unverified": "Chưa xác nhận email — mẫu thiết kế",
+        "expired": "Phiên hết hạn — mẫu thiết kế"
+      },
+      "messages": {
+        "invalid": "Mô phỏng: email hoặc mật khẩu không đúng. Bạn có thể quay lại và thử lại.",
+        "locked": "Mô phỏng: tài khoản bị khóa. Cách khôi phục cần được backend xác nhận.",
+        "suspended": "Mô phỏng: tài khoản bị đình chỉ. Đây không phải kết quả kiểm tra tài khoản thật.",
+        "unverified": "Mô phỏng: tài khoản chưa xác nhận email. Luồng đăng ký hiện tại chưa yêu cầu bước này.",
+        "expired": "Mô phỏng: phiên đã hết hạn. Chưa thực hiện thu hồi hoặc thay đổi phiên thật."
+      }
     }
   },
   "admin": {

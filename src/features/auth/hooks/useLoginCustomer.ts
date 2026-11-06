@@ -1,29 +1,20 @@
 "use client";
-
 import { vi } from "@/lib/locale";
-
-import { useState } from "react";
 import { saveAccessToken } from "../services/authToken";
-import { LoginCustomerError, loginCustomer, type LoginCustomerPayload } from "../services/loginCustomer";
+import { AuthRequestError } from "../services/authError";
+import { loginCustomer, type LoginCustomerPayload } from "../services/loginCustomer";
+import { useAuthSubmission } from "./useAuthSubmission";
 
 export function useLoginCustomer() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submitLogin(payload: LoginCustomerPayload) {
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      const response = await loginCustomer(payload);
-      saveAccessToken(response.accessToken);
-    } catch (requestError) {
-      setError(requestError instanceof LoginCustomerError ? requestError.message : vi.auth.errors.loginUnexpected);
-      throw requestError;
-    } finally {
-      setIsSubmitting(false);
-    }
+  const request = useAuthSubmission<{ authenticated: true }>();
+  function submitLogin(payload: LoginCustomerPayload) {
+    return request.submit(async (signal) => {
+      const response = await loginCustomer(payload, signal);
+      if (signal.aborted) return { authenticated: true };
+      try { saveAccessToken(response.accessToken); }
+      catch { throw new AuthRequestError(vi.auth.feedback.storageError); }
+      return { authenticated: true };
+    });
   }
-
-  return { error, isSubmitting, submitLogin };
+  return { ...request, error: request.requestError?.message, submitLogin };
 }

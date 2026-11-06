@@ -1,27 +1,23 @@
 "use client";
-
-import { vi } from "@/lib/locale";
-
-import { useState } from "react";
-import { RegisterCustomerError, registerCustomer, type RegisterCustomerPayload } from "../services/registerCustomer";
+import { saveAccessToken } from "../services/authToken";
+import { registerCustomer, type RegisterCustomerPayload } from "../services/registerCustomer";
+import type { RegisterResult } from "../types";
+import { useAuthSubmission } from "./useAuthSubmission";
 
 export function useRegisterCustomer() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submitRegistration(payload: RegisterCustomerPayload) {
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      await registerCustomer(payload);
-    } catch (requestError) {
-      setError(requestError instanceof RegisterCustomerError ? requestError.message : vi.auth.errors.registerUnexpected);
-      throw requestError;
-    } finally {
-      setIsSubmitting(false);
-    }
+  const request = useAuthSubmission<RegisterResult>();
+  function submitRegistration(payload: RegisterCustomerPayload) {
+    return request.submit(async (signal) => {
+      const response = await registerCustomer(payload, signal);
+      if (!response.accessToken || signal.aborted) return { authenticated: false };
+      try {
+        saveAccessToken(response.accessToken);
+        return { authenticated: true };
+      } catch {
+        // The account was created. Ask for login instead of repeating a successful registration.
+        return { authenticated: false };
+      }
+    });
   }
-
-  return { error, isSubmitting, submitRegistration };
+  return { ...request, error: request.requestError?.message, submitRegistration };
 }

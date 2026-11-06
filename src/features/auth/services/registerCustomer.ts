@@ -1,23 +1,21 @@
 import { vi } from "@/lib/locale";
+import type { AuthResponse } from "../types";
+import { AuthRequestError, describeAuthError, readAccessToken, readAuthBody } from "./authError";
 export type RegisterCustomerPayload = {
   fullName: string;
   email: string;
-  phone: string;
+  phone?: string;
   password: string;
 };
 
-type RegisterCustomerResponse = {
-  message?: string;
-};
-
-export class RegisterCustomerError extends Error {
-  constructor(message: string) {
-    super(message);
+export class RegisterCustomerError extends AuthRequestError {
+  constructor(message: string, status?: number, fieldErrors = {}) {
+    super(message, status, fieldErrors);
     this.name = "RegisterCustomerError";
   }
 }
 
-export async function registerCustomer(payload: RegisterCustomerPayload): Promise<RegisterCustomerResponse> {
+export async function registerCustomer(payload: RegisterCustomerPayload, signal?: AbortSignal): Promise<AuthResponse> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   if (!apiUrl) {
@@ -26,15 +24,17 @@ export async function registerCustomer(payload: RegisterCustomerPayload): Promis
 
   const response = await fetch(`${apiUrl.replace(/\/$/, "")}/auth/register`, {
     method: "POST",
+    signal,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 
-  const body = await response.json().catch(() => null) as RegisterCustomerResponse | { message?: string } | null;
+  const body = await readAuthBody(response);
 
   if (!response.ok) {
-    throw new RegisterCustomerError(body?.message ?? vi.auth.errors.registerFailed);
+    const error = describeAuthError(body, response.status);
+    throw new RegisterCustomerError(error.message, response.status, error.fieldErrors);
   }
 
-  return body ?? {};
+  return { accessToken: readAccessToken(body) };
 }
