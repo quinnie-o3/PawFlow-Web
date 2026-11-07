@@ -1,4 +1,5 @@
 import { vi } from "@/lib/locale";
+import { AuthRequestError, describeAuthError, readAccessToken, readAuthBody } from "./authError";
 export type LoginCustomerPayload = {
   email: string;
   password: string;
@@ -9,19 +10,14 @@ export type LoginCustomerResponse = {
   message?: string;
 };
 
-type LoginCustomerResponseBody = {
-  accessToken?: unknown;
-  message?: unknown;
-};
-
-export class LoginCustomerError extends Error {
-  constructor(message: string) {
-    super(message);
+export class LoginCustomerError extends AuthRequestError {
+  constructor(message: string, status?: number, fieldErrors = {}) {
+    super(message, status, fieldErrors);
     this.name = "LoginCustomerError";
   }
 }
 
-export async function loginCustomer(payload: LoginCustomerPayload): Promise<LoginCustomerResponse> {
+export async function loginCustomer(payload: LoginCustomerPayload, signal?: AbortSignal): Promise<LoginCustomerResponse> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   if (!apiUrl) {
@@ -31,22 +27,24 @@ export async function loginCustomer(payload: LoginCustomerPayload): Promise<Logi
   const response = await fetch(`${apiUrl.replace(/\/$/, "")}/auth/login`, {
     method: "POST",
     credentials: "include",
+    signal,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 
-  const body = await response.json().catch(() => null) as LoginCustomerResponseBody | null;
+  const body = await readAuthBody(response);
 
   if (!response.ok) {
-    throw new LoginCustomerError(typeof body?.message === "string" ? body.message : vi.auth.errors.loginFailed);
+    const error = describeAuthError(body, response.status);
+    throw new LoginCustomerError(error.message, response.status, error.fieldErrors);
   }
 
-  if (!body || typeof body.accessToken !== "string" || !body.accessToken) {
+  const accessToken = readAccessToken(body);
+  if (!accessToken) {
     throw new LoginCustomerError(vi.auth.errors.accessTokenMissing);
   }
 
   return {
-    accessToken: body.accessToken,
-    message: typeof body.message === "string" ? body.message : undefined,
+    accessToken,
   };
 }
