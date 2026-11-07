@@ -1,3 +1,4 @@
+import { vi, formatMessage } from "../../lib/locale";
 import type { NotificationFilter, NotificationScope, NotificationsAction, NotificationsState, ProviderNotification } from "./types";
 
 export function belongsToScope(item: ProviderNotification, scope: NotificationScope) {
@@ -28,7 +29,7 @@ export function notificationsReducer(state: NotificationsState, action: Notifica
       return { ...state, loadStatus: "loading", loadRequest: { empty: !!action.empty, longContent: !!action.longContent, simulateFailure: !!action.simulateFailure }, selectedId: null, failedCommand: null, feedback: null };
     case "loaded": {
       if (!state.loadRequest) return state;
-      if (state.loadRequest.simulateFailure) return { ...state, loadStatus: "error", loadRequest: null, feedback: { outcome: "error", message: "Không tải được thông báo (lỗi mô phỏng). Thử tải lại để tiếp tục." } };
+      if (state.loadRequest.simulateFailure) return { ...state, loadStatus: "error", loadRequest: null, feedback: { outcome: "error", message: vi.provider.notifications.errors.loadFailed } };
       const scoped = selectNotifications(action.source, action.scope, "all").all;
       return { ...state, notifications: scoped.map((item) => ({ ...item })), loadStatus: "ready", loadRequest: null, feedback: null };
     }
@@ -40,12 +41,12 @@ export function notificationsReducer(state: NotificationsState, action: Notifica
       const { command, simulateFailure } = state.pending;
       const scoped = selectNotifications(state.notifications, action.scope, "all");
       const target = command.type === "readAll" ? null : scoped.all.find((item) => item.id === command.id);
-      if (command.type !== "readAll" && !target) return { ...state, pending: null, failedCommand: null, feedback: { outcome: "error", message: "Không tìm thấy thông báo trong phạm vi của bạn tại cơ sở này." } };
-      if (simulateFailure) return { ...state, pending: null, failedCommand: command, feedback: { outcome: "error", message: command.type === "open" ? "Chưa mở được chi tiết (lỗi mô phỏng). Thông báo và số chưa đọc được giữ nguyên. Bạn có thể thử lại." : "Chưa cập nhật được trạng thái đọc (lỗi mô phỏng). Dữ liệu và số chưa đọc được giữ nguyên. Bạn có thể thử lại." } };
+      if (command.type !== "readAll" && !target) return { ...state, pending: null, failedCommand: null, feedback: { outcome: "error", message: vi.provider.notifications.errors.notFound } };
+      if (simulateFailure) return { ...state, pending: null, failedCommand: command, feedback: { outcome: "error", message: command.type === "open" ? vi.provider.notifications.errors.openFailed : vi.provider.notifications.errors.updateFailed } };
       const notifications = state.notifications.map((item) => belongsToScope(item, action.scope) && item.readAt === null && (command.type === "readAll" || item.id === command.id) ? { ...item, readAt: action.now } : item);
       const message = command.type === "readAll"
-        ? `Đã đánh dấu ${scoped.unreadCount} thông báo chưa đọc của bạn tại cơ sở đang quản lý là đã đọc, trên toàn bộ danh sách, kể cả ngoài bộ lọc.`
-        : command.type === "open" ? target?.readAt === null ? "Đã mở thông báo và đánh dấu đã đọc." : "Đã mở thông báo." : "Đã đánh dấu thông báo là đã đọc.";
+        ? formatMessage(vi.provider.notifications.feedback.allRead, { count: scoped.unreadCount })
+        : command.type === "open" ? target?.readAt === null ? vi.provider.notifications.feedback.openedAndRead : vi.provider.notifications.feedback.opened : vi.provider.notifications.feedback.read;
       return { ...state, notifications, pending: null, failedCommand: null, selectedId: command.type === "open" ? command.id : state.selectedId, feedback: { outcome: "success", message } };
     }
     case "close":

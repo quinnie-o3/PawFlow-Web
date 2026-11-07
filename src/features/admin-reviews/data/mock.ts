@@ -1,350 +1,351 @@
+import { vi, formatMessage } from "../../../lib/locale";
 import type { AdminCollectionDefinition, AdminRecord } from "../../admin-workspace/types";
 
 // Read-only Figma fixtures. Local IDs and view models are not an API contract.
 export const records: readonly AdminRecord[] = [
   {
     "id": "review-PF-2075",
-    "title": "Đánh giá · PF-2075",
+    "title": formatMessage(vi.admin.reviews.recordTitle, { bookingId: "PF-2075" }),
     "cells": [
       "Mai Anh",
       "PawCare Studio",
       "PF-2075",
-      "5 sao",
-      "Bị báo cáo"
+      formatMessage(vi.admin.reviews.starCount, { count: "5" }),
+      vi.admin.labels.reported
     ],
     "status": {
-      "label": "Bị báo cáo",
+      "label": vi.admin.labels.reported,
       "tone": "warning"
     },
     "tags": [
       "reported"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Khách hàng",
+        "label": vi.admin.labels.customer,
         "value": "Mai Anh"
       },
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "PawCare Studio"
       },
       {
-        "label": "Mã lịch",
+        "label": vi.admin.labels.bookingId,
         "value": "PF-2075"
       },
       {
-        "label": "Đánh giá",
-        "value": "5 sao"
+        "label": vi.admin.labels.review,
+        "value": formatMessage(vi.admin.reviews.starCount, { count: "5" })
       },
       {
-        "label": "Trạng thái",
-        "value": "Bị báo cáo"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.reported
       },
       {
-        "label": "Thú cưng",
+        "label": vi.admin.labels.pet,
         "value": "Lạc"
       },
       {
-        "label": "Trạng thái lịch",
-        "value": "Hoàn thành"
+        "label": vi.admin.labels.bookingStatus,
+        "value": vi.admin.labels.completed
       },
       {
-        "label": "Nội dung",
+        "label": vi.admin.labels.content,
         "value": "Lạc được chăm sóc kỹ."
       },
       {
-        "label": "Lý do báo cáo",
+        "label": vi.admin.labels.reportReason,
         "value": "Nghi ngờ sai đối tượng."
       }
     ],
     "pendingActions": [
-      "Giữ hiển thị",
-      "Ẩn đánh giá"
+      vi.admin.actions.keepVisible,
+      vi.admin.actions.hideReview
     ]
   },
   {
     "id": "review-PF-2058",
-    "title": "Đánh giá · PF-2058",
+    "title": formatMessage(vi.admin.reviews.recordTitle, { bookingId: "PF-2058" }),
     "cells": [
       "Quang Minh",
       "Happy Paws",
       "PF-2058",
-      "4 sao",
-      "Bị báo cáo"
+      formatMessage(vi.admin.reviews.starCount, { count: "4" }),
+      vi.admin.labels.reported
     ],
     "status": {
-      "label": "Bị báo cáo",
+      "label": vi.admin.labels.reported,
       "tone": "warning"
     },
     "tags": [
       "reported"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Khách hàng",
+        "label": vi.admin.labels.customer,
         "value": "Quang Minh"
       },
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "Happy Paws"
       },
       {
-        "label": "Mã lịch",
+        "label": vi.admin.labels.bookingId,
         "value": "PF-2058"
       },
       {
-        "label": "Đánh giá",
-        "value": "4 sao"
+        "label": vi.admin.labels.review,
+        "value": formatMessage(vi.admin.reviews.starCount, { count: "4" })
       },
       {
-        "label": "Trạng thái",
-        "value": "Bị báo cáo"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.reported
       },
       {
-        "label": "Nội dung / báo cáo chi tiết",
-        "value": "Chưa có trong fixture đã đối chiếu."
+        "label": vi.admin.labels.reviewReportDetails,
+        "value": vi.admin.collection.fixtureValueUnavailable
       }
     ],
     "pendingActions": [
-      "Giữ hiển thị",
-      "Ẩn đánh giá"
+      vi.admin.actions.keepVisible,
+      vi.admin.actions.hideReview
     ]
   },
   {
     "id": "review-PF-2051",
-    "title": "Đánh giá · PF-2051",
+    "title": formatMessage(vi.admin.reviews.recordTitle, { bookingId: "PF-2051" }),
     "cells": [
       "Mai Anh",
       "PawCare Studio",
       "PF-2051",
-      "5 sao",
-      "Hiển thị"
+      formatMessage(vi.admin.reviews.starCount, { count: "5" }),
+      vi.admin.labels.visible
     ],
     "status": {
-      "label": "Hiển thị",
+      "label": vi.admin.labels.visible,
       "tone": "success"
     },
     "tags": [
       "visible"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Khách hàng",
+        "label": vi.admin.labels.customer,
         "value": "Mai Anh"
       },
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "PawCare Studio"
       },
       {
-        "label": "Mã lịch",
+        "label": vi.admin.labels.bookingId,
         "value": "PF-2051"
       },
       {
-        "label": "Đánh giá",
-        "value": "5 sao"
+        "label": vi.admin.labels.review,
+        "value": formatMessage(vi.admin.reviews.starCount, { count: "5" })
       },
       {
-        "label": "Trạng thái",
-        "value": "Hiển thị"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.visible
       },
       {
-        "label": "Nội dung / báo cáo chi tiết",
-        "value": "Chưa có trong fixture đã đối chiếu."
+        "label": vi.admin.labels.reviewReportDetails,
+        "value": vi.admin.collection.fixtureValueUnavailable
       }
     ],
     "pendingActions": [
-      "Giữ hiển thị",
-      "Ẩn đánh giá"
+      vi.admin.actions.keepVisible,
+      vi.admin.actions.hideReview
     ]
   },
   {
     "id": "review-PF-2047",
-    "title": "Đánh giá · PF-2047",
+    "title": formatMessage(vi.admin.reviews.recordTitle, { bookingId: "PF-2047" }),
     "cells": [
       "Ngọc Anh",
       "Little Tails",
       "PF-2047",
-      "2 sao",
-      "Bị báo cáo"
+      formatMessage(vi.admin.reviews.starCount, { count: "2" }),
+      vi.admin.labels.reported
     ],
     "status": {
-      "label": "Bị báo cáo",
+      "label": vi.admin.labels.reported,
       "tone": "warning"
     },
     "tags": [
       "reported"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Khách hàng",
+        "label": vi.admin.labels.customer,
         "value": "Ngọc Anh"
       },
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "Little Tails"
       },
       {
-        "label": "Mã lịch",
+        "label": vi.admin.labels.bookingId,
         "value": "PF-2047"
       },
       {
-        "label": "Đánh giá",
-        "value": "2 sao"
+        "label": vi.admin.labels.review,
+        "value": formatMessage(vi.admin.reviews.starCount, { count: "2" })
       },
       {
-        "label": "Trạng thái",
-        "value": "Bị báo cáo"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.reported
       },
       {
-        "label": "Nội dung / báo cáo chi tiết",
-        "value": "Chưa có trong fixture đã đối chiếu."
+        "label": vi.admin.labels.reviewReportDetails,
+        "value": vi.admin.collection.fixtureValueUnavailable
       }
     ],
     "pendingActions": [
-      "Giữ hiển thị",
-      "Ẩn đánh giá"
+      vi.admin.actions.keepVisible,
+      vi.admin.actions.hideReview
     ]
   },
   {
     "id": "review-PF-2040",
-    "title": "Đánh giá · PF-2040",
+    "title": formatMessage(vi.admin.reviews.recordTitle, { bookingId: "PF-2040" }),
     "cells": [
       "Đức Huy",
       "Miu House",
       "PF-2040",
-      "4 sao",
-      "Đã ẩn"
+      formatMessage(vi.admin.reviews.starCount, { count: "4" }),
+      vi.admin.labels.hidden
     ],
     "status": {
-      "label": "Đã ẩn",
+      "label": vi.admin.labels.hidden,
       "tone": "danger"
     },
     "tags": [
       "hidden"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Khách hàng",
+        "label": vi.admin.labels.customer,
         "value": "Đức Huy"
       },
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "Miu House"
       },
       {
-        "label": "Mã lịch",
+        "label": vi.admin.labels.bookingId,
         "value": "PF-2040"
       },
       {
-        "label": "Đánh giá",
-        "value": "4 sao"
+        "label": vi.admin.labels.review,
+        "value": formatMessage(vi.admin.reviews.starCount, { count: "4" })
       },
       {
-        "label": "Trạng thái",
-        "value": "Đã ẩn"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.hidden
       },
       {
-        "label": "Nội dung / báo cáo chi tiết",
-        "value": "Chưa có trong fixture đã đối chiếu."
+        "label": vi.admin.labels.reviewReportDetails,
+        "value": vi.admin.collection.fixtureValueUnavailable
       }
     ],
     "pendingActions": [
-      "Hiển thị lại"
+      vi.admin.actions.showAgain
     ]
   },
   {
     "id": "review-PF-2036",
-    "title": "Đánh giá · PF-2036",
+    "title": formatMessage(vi.admin.reviews.recordTitle, { bookingId: "PF-2036" }),
     "cells": [
       "Lan Phương",
       "PetNest Care",
       "PF-2036",
-      "5 sao",
-      "Hiển thị"
+      formatMessage(vi.admin.reviews.starCount, { count: "5" }),
+      vi.admin.labels.visible
     ],
     "status": {
-      "label": "Hiển thị",
+      "label": vi.admin.labels.visible,
       "tone": "success"
     },
     "tags": [
       "visible"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Khách hàng",
+        "label": vi.admin.labels.customer,
         "value": "Lan Phương"
       },
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "PetNest Care"
       },
       {
-        "label": "Mã lịch",
+        "label": vi.admin.labels.bookingId,
         "value": "PF-2036"
       },
       {
-        "label": "Đánh giá",
-        "value": "5 sao"
+        "label": vi.admin.labels.review,
+        "value": formatMessage(vi.admin.reviews.starCount, { count: "5" })
       },
       {
-        "label": "Trạng thái",
-        "value": "Hiển thị"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.visible
       },
       {
-        "label": "Nội dung / báo cáo chi tiết",
-        "value": "Chưa có trong fixture đã đối chiếu."
+        "label": vi.admin.labels.reviewReportDetails,
+        "value": vi.admin.collection.fixtureValueUnavailable
       }
     ],
     "pendingActions": [
-      "Giữ hiển thị",
-      "Ẩn đánh giá"
+      vi.admin.actions.keepVisible,
+      vi.admin.actions.hideReview
     ]
   }
 ];
 
 export const definition: AdminCollectionDefinition = {
-  "title": "Kiểm duyệt đánh giá",
-  "description": "Xem nội dung bị báo cáo và lịch hẹn liên quan",
-  "listTitle": "Danh sách đánh giá",
-  "listDescription": "Kiểm tra nội dung, lịch hoàn thành và lý do báo cáo",
+  "title": vi.admin.reviews.title,
+  "description": vi.admin.reviews.description,
+  "listTitle": vi.admin.reviews.listTitle,
+  "listDescription": vi.admin.reviews.listDescription,
   "headers": [
-    "Khách hàng",
-    "Cơ sở",
-    "Mã lịch",
-    "Đánh giá",
-    "Trạng thái"
+    vi.admin.labels.customer,
+    vi.admin.labels.facility,
+    vi.admin.labels.bookingId,
+    vi.admin.labels.review,
+    vi.admin.labels.status
   ],
   "filters": [
     {
       "value": "all",
-      "label": "Tất cả"
+      "label": vi.admin.labels.all
     },
     {
       "value": "reported",
-      "label": "Bị báo cáo"
+      "label": vi.admin.labels.reported
     },
     {
       "value": "visible",
-      "label": "Hiển thị"
+      "label": vi.admin.labels.visible
     },
     {
       "value": "hidden",
-      "label": "Đã ẩn"
+      "label": vi.admin.labels.hidden
     }
   ],
   "metricLabels": [
-    "Bị báo cáo",
-    "Đang hiển thị",
-    "Đã ẩn"
+    vi.admin.labels.reported,
+    vi.admin.labels.currentlyVisible,
+    vi.admin.labels.hidden
   ],
-  "searchLabel": "Khách hàng, cơ sở hoặc mã lịch",
-  "introAction": "Quy tắc đánh giá",
-  "introNotes": ["Proposal BR-09/10: Customer chỉ đánh giá booking của mình sau khi hoàn thành; mỗi booking tối đa một review.", "Thiết kế yêu cầu xem nội dung, người gửi, lịch hẹn và lý do báo cáo trước khi kiểm duyệt."]
+  "searchLabel": vi.admin.reviews.searchLabel,
+  "introAction": vi.admin.reviews.introAction,
+  "introNotes": [vi.admin.reviews.reviewEligibilityRule, vi.admin.reviews.moderationRule]
 };

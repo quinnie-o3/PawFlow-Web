@@ -1,3 +1,4 @@
+import { vi } from "@/lib/locale";
 export type RegisterCustomerPayload = {
   fullName: string;
   email: string;
@@ -20,7 +21,7 @@ export async function registerCustomer(payload: RegisterCustomerPayload): Promis
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   if (!apiUrl) {
-    throw new RegisterCustomerError("Chưa cấu hình địa chỉ API đăng ký.");
+    throw new RegisterCustomerError(vi.auth.errors.registerApiMissing);
   }
 
   const response = await fetch(`${apiUrl.replace(/\/$/, "")}/auth/register`, {
@@ -32,7 +33,7 @@ export async function registerCustomer(payload: RegisterCustomerPayload): Promis
   const body = await response.json().catch(() => null) as RegisterCustomerResponse | { message?: string } | null;
 
   if (!response.ok) {
-    throw new RegisterCustomerError(body?.message ?? "Không thể đăng ký tài khoản. Vui lòng thử lại.");
+    throw new RegisterCustomerError(body?.message ?? vi.auth.errors.registerFailed);
   }
 
   return body ?? {};

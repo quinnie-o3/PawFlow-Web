@@ -1,5 +1,7 @@
 "use client";
 
+import { vi } from "@/lib/locale";
+
 import { useState } from "react";
 import { RegisterCustomerError, registerCustomer, type RegisterCustomerPayload } from "../services/registerCustomer";
 
@@ -14,7 +16,7 @@ export function useRegisterCustomer() {
     try {
       await registerCustomer(payload);
     } catch (requestError) {
-      setError(requestError instanceof RegisterCustomerError ? requestError.message : "Đã xảy ra lỗi khi đăng ký tài khoản.");
+      setError(requestError instanceof RegisterCustomerError ? requestError.message : vi.auth.errors.registerUnexpected);
       throw requestError;
     } finally {
       setIsSubmitting(false);

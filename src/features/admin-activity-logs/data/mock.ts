@@ -1,3 +1,4 @@
+import { vi } from "../../../lib/locale";
 import type { AdminCollectionDefinition, AdminRecord } from "../../admin-workspace/types";
 
 // Read-only Figma fixtures. Local IDs and view models are not an API contract.
@@ -13,41 +14,41 @@ export const records: readonly AdminRecord[] = [
       "Thành công"
     ],
     "status": {
-      "label": "Thành công",
+      "label": vi.admin.labels.success,
       "tone": "success"
     },
     "tags": [
       "admin",
       "status"
     ],
-    "description": "Nhật ký mẫu chỉ đọc. Không có thao tác sửa hoặc xóa.",
+    "description": vi.admin.activityLogs.recordNotice,
     "details": [
       {
-        "label": "Thời gian",
+        "label": vi.admin.labels.time,
         "value": "29/09 · 15:42"
       },
       {
-        "label": "Tác nhân",
+        "label": vi.admin.labels.actor,
         "value": "Admin Huy"
       },
       {
-        "label": "Hành động",
+        "label": vi.admin.labels.action,
         "value": "Duyệt cơ sở"
       },
       {
-        "label": "Đối tượng",
+        "label": vi.admin.labels.target,
         "value": "PR-048"
       },
       {
-        "label": "Kết quả",
+        "label": vi.admin.labels.outcome,
         "value": "Thành công"
       },
       {
-        "label": "Trạng thái trước",
+        "label": vi.admin.labels.previousStatus,
         "value": "Chờ duyệt"
       },
       {
-        "label": "Trạng thái sau",
+        "label": vi.admin.labels.nextStatus,
         "value": "Đã duyệt"
       }
     ],
@@ -64,33 +65,33 @@ export const records: readonly AdminRecord[] = [
       "Thành công"
     ],
     "status": {
-      "label": "Thành công",
+      "label": vi.admin.labels.success,
       "tone": "success"
     },
     "tags": [
       "admin",
       "status"
     ],
-    "description": "Nhật ký mẫu chỉ đọc. Không có thao tác sửa hoặc xóa.",
+    "description": vi.admin.activityLogs.recordNotice,
     "details": [
       {
-        "label": "Thời gian",
+        "label": vi.admin.labels.time,
         "value": "29/09 · 14:16"
       },
       {
-        "label": "Tác nhân",
+        "label": vi.admin.labels.actor,
         "value": "Admin Huy"
       },
       {
-        "label": "Hành động",
+        "label": vi.admin.labels.action,
         "value": "Ẩn đánh giá"
       },
       {
-        "label": "Đối tượng",
+        "label": vi.admin.labels.target,
         "value": "RV-105"
       },
       {
-        "label": "Kết quả",
+        "label": vi.admin.labels.outcome,
         "value": "Thành công"
       }
     ],
@@ -107,32 +108,32 @@ export const records: readonly AdminRecord[] = [
       "Thành công"
     ],
     "status": {
-      "label": "Thành công",
+      "label": vi.admin.labels.success,
       "tone": "success"
     },
     "tags": [
       "admin"
     ],
-    "description": "Nhật ký mẫu chỉ đọc. Không có thao tác sửa hoặc xóa.",
+    "description": vi.admin.activityLogs.recordNotice,
     "details": [
       {
-        "label": "Thời gian",
+        "label": vi.admin.labels.time,
         "value": "29/09 · 11:04"
       },
       {
-        "label": "Tác nhân",
+        "label": vi.admin.labels.actor,
         "value": "Admin Mai"
       },
       {
-        "label": "Hành động",
+        "label": vi.admin.labels.action,
         "value": "Ghi chú khiếu nại"
       },
       {
-        "label": "Đối tượng",
+        "label": vi.admin.labels.target,
         "value": "KN-013"
       },
       {
-        "label": "Kết quả",
+        "label": vi.admin.labels.outcome,
         "value": "Thành công"
       }
     ],
@@ -149,33 +150,33 @@ export const records: readonly AdminRecord[] = [
       "Thành công"
     ],
     "status": {
-      "label": "Thành công",
+      "label": vi.admin.labels.success,
       "tone": "success"
     },
     "tags": [
       "provider",
       "status"
     ],
-    "description": "Nhật ký mẫu chỉ đọc. Không có thao tác sửa hoặc xóa.",
+    "description": vi.admin.activityLogs.recordNotice,
     "details": [
       {
-        "label": "Thời gian",
+        "label": vi.admin.labels.time,
         "value": "28/09 · 17:20"
       },
       {
-        "label": "Tác nhân",
+        "label": vi.admin.labels.actor,
         "value": "Dane Nguyen"
       },
       {
-        "label": "Hành động",
+        "label": vi.admin.labels.action,
         "value": "Xác nhận lịch"
       },
       {
-        "label": "Đối tượng",
+        "label": vi.admin.labels.target,
         "value": "PF-2083"
       },
       {
-        "label": "Kết quả",
+        "label": vi.admin.labels.outcome,
         "value": "Thành công"
       }
     ],
@@ -192,33 +193,33 @@ export const records: readonly AdminRecord[] = [
       "Thành công"
     ],
     "status": {
-      "label": "Thành công",
+      "label": vi.admin.labels.success,
       "tone": "success"
     },
     "tags": [
       "admin",
       "status"
     ],
-    "description": "Nhật ký mẫu chỉ đọc. Không có thao tác sửa hoặc xóa.",
+    "description": vi.admin.activityLogs.recordNotice,
     "details": [
       {
-        "label": "Thời gian",
+        "label": vi.admin.labels.time,
         "value": "28/09 · 09:31"
       },
       {
-        "label": "Tác nhân",
+        "label": vi.admin.labels.actor,
         "value": "Admin Mai"
       },
       {
-        "label": "Hành động",
+        "label": vi.admin.labels.action,
         "value": "Từ chối cơ sở"
       },
       {
-        "label": "Đối tượng",
+        "label": vi.admin.labels.target,
         "value": "PR-046"
       },
       {
-        "label": "Kết quả",
+        "label": vi.admin.labels.outcome,
         "value": "Thành công"
       }
     ],
@@ -235,30 +236,30 @@ export const records: readonly AdminRecord[] = [
       "Bị chặn"
     ],
     "status": {
-      "label": "Bị chặn",
+      "label": vi.admin.labels.blocked,
       "tone": "danger"
     },
     "tags": [],
-    "description": "Nhật ký mẫu chỉ đọc. Không có thao tác sửa hoặc xóa.",
+    "description": vi.admin.activityLogs.recordNotice,
     "details": [
       {
-        "label": "Thời gian",
+        "label": vi.admin.labels.time,
         "value": "27/09 · 18:05"
       },
       {
-        "label": "Tác nhân",
+        "label": vi.admin.labels.actor,
         "value": "Không xác định"
       },
       {
-        "label": "Hành động",
+        "label": vi.admin.labels.action,
         "value": "Truy cập trái quyền"
       },
       {
-        "label": "Đối tượng",
+        "label": vi.admin.labels.target,
         "value": "PR-048"
       },
       {
-        "label": "Kết quả",
+        "label": vi.admin.labels.outcome,
         "value": "Bị chặn"
       }
     ],
@@ -267,21 +268,21 @@ export const records: readonly AdminRecord[] = [
 ];
 
 export const definition: AdminCollectionDefinition = {
-  "title": "Nhật ký hoạt động",
-  "description": "Truy vết thao tác quản trị và thay đổi trạng thái quan trọng",
-  "listTitle": "Dòng sự kiện",
-  "listDescription": "Nhật ký chỉ đọc: thời gian, tác nhân, hành động và kết quả",
+  "title": vi.admin.activityLogs.title,
+  "description": vi.admin.activityLogs.description,
+  "listTitle": vi.admin.activityLogs.listTitle,
+  "listDescription": vi.admin.activityLogs.listDescription,
   "headers": [
-    "Thời gian",
-    "Tác nhân",
-    "Hành động",
-    "Đối tượng",
-    "Kết quả"
+    vi.admin.labels.time,
+    vi.admin.labels.actor,
+    vi.admin.labels.action,
+    vi.admin.labels.target,
+    vi.admin.labels.outcome
   ],
   "filters": [
     {
       "value": "all",
-      "label": "Tất cả"
+      "label": vi.admin.labels.all
     },
     {
       "value": "admin",
@@ -289,18 +290,18 @@ export const definition: AdminCollectionDefinition = {
     },
     {
       "value": "provider",
-      "label": "Cơ sở"
+      "label": vi.admin.labels.facility
     },
     {
       "value": "status",
-      "label": "Trạng thái"
+      "label": vi.admin.labels.status
     }
   ],
   "metricLabels": [
-    "Sự kiện trong kỳ",
-    "Thao tác quản trị",
-    "Thay đổi trạng thái"
+    vi.admin.labels.eventsInPeriod,
+    vi.admin.labels.administrativeActions,
+    vi.admin.labels.statusChanges
   ],
-  "searchLabel": "Tác nhân, đối tượng hoặc mã bản ghi",
+  "searchLabel": vi.admin.activityLogs.searchLabel,
   "dateFilter": true
 };

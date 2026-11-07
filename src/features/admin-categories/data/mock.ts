@@ -1,316 +1,317 @@
+import { vi, formatMessage } from "../../../lib/locale";
 import type { AdminCollectionDefinition, AdminRecord } from "../../admin-workspace/types";
 
 // Read-only Figma fixtures. Local IDs and view models are not an API contract.
 export const records: readonly AdminRecord[] = [
   {
     "id": "SV-01",
-    "title": "Danh mục · Grooming",
+    "title": formatMessage(vi.admin.categories.recordTitle, { categoryName: "Grooming" }),
     "cells": [
       "Grooming",
-      "Nhóm dịch vụ",
+      vi.admin.labels.serviceCategory,
       "SV-01",
-      "42 dịch vụ",
-      "Hiển thị"
+      formatMessage(vi.admin.categories.serviceCount, { count: "42" }),
+      vi.admin.labels.visible
     ],
     "status": {
-      "label": "Hiển thị",
+      "label": vi.admin.labels.visible,
       "tone": "success"
     },
     "tags": [
       "service"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Tên danh mục",
+        "label": vi.admin.labels.categoryName,
         "value": "Grooming"
       },
       {
-        "label": "Loại",
-        "value": "Nhóm dịch vụ"
+        "label": vi.admin.labels.type,
+        "value": vi.admin.labels.serviceCategory
       },
       {
-        "label": "Mã",
+        "label": vi.admin.labels.code,
         "value": "SV-01"
       },
       {
-        "label": "Số liên kết",
-        "value": "42 dịch vụ"
+        "label": vi.admin.labels.linkedCount,
+        "value": formatMessage(vi.admin.categories.serviceCount, { count: "42" })
       },
       {
-        "label": "Trạng thái",
-        "value": "Hiển thị"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.visible
       }
     ],
     "pendingActions": [
-      "Chỉnh sửa",
-      "Tạm ẩn"
+      vi.admin.actions.edit,
+      vi.admin.actions.hide
     ]
   },
   {
     "id": "SV-02",
-    "title": "Danh mục · Tắm & vệ sinh",
+    "title": formatMessage(vi.admin.categories.recordTitle, { categoryName: "Tắm & vệ sinh" }),
     "cells": [
       "Tắm & vệ sinh",
-      "Nhóm dịch vụ",
+      vi.admin.labels.serviceCategory,
       "SV-02",
-      "38 dịch vụ",
-      "Hiển thị"
+      formatMessage(vi.admin.categories.serviceCount, { count: "38" }),
+      vi.admin.labels.visible
     ],
     "status": {
-      "label": "Hiển thị",
+      "label": vi.admin.labels.visible,
       "tone": "success"
     },
     "tags": [
       "service"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Tên danh mục",
+        "label": vi.admin.labels.categoryName,
         "value": "Tắm & vệ sinh"
       },
       {
-        "label": "Loại",
-        "value": "Nhóm dịch vụ"
+        "label": vi.admin.labels.type,
+        "value": vi.admin.labels.serviceCategory
       },
       {
-        "label": "Mã",
+        "label": vi.admin.labels.code,
         "value": "SV-02"
       },
       {
-        "label": "Số liên kết",
-        "value": "38 dịch vụ"
+        "label": vi.admin.labels.linkedCount,
+        "value": formatMessage(vi.admin.categories.serviceCount, { count: "38" })
       },
       {
-        "label": "Trạng thái",
-        "value": "Hiển thị"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.visible
       }
     ],
     "pendingActions": [
-      "Chỉnh sửa",
-      "Tạm ẩn"
+      vi.admin.actions.edit,
+      vi.admin.actions.hide
     ]
   },
   {
     "id": "SV-03",
-    "title": "Danh mục · Trông giữ",
+    "title": formatMessage(vi.admin.categories.recordTitle, { categoryName: "Trông giữ" }),
     "cells": [
       "Trông giữ",
-      "Nhóm dịch vụ",
+      vi.admin.labels.serviceCategory,
       "SV-03",
-      "24 dịch vụ",
-      "Hiển thị"
+      formatMessage(vi.admin.categories.serviceCount, { count: "24" }),
+      vi.admin.labels.visible
     ],
     "status": {
-      "label": "Hiển thị",
+      "label": vi.admin.labels.visible,
       "tone": "success"
     },
     "tags": [
       "service"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Tên danh mục",
+        "label": vi.admin.labels.categoryName,
         "value": "Trông giữ"
       },
       {
-        "label": "Loại",
-        "value": "Nhóm dịch vụ"
+        "label": vi.admin.labels.type,
+        "value": vi.admin.labels.serviceCategory
       },
       {
-        "label": "Mã",
+        "label": vi.admin.labels.code,
         "value": "SV-03"
       },
       {
-        "label": "Số liên kết",
-        "value": "24 dịch vụ"
+        "label": vi.admin.labels.linkedCount,
+        "value": formatMessage(vi.admin.categories.serviceCount, { count: "24" })
       },
       {
-        "label": "Trạng thái",
-        "value": "Hiển thị"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.visible
       }
     ],
     "pendingActions": [
-      "Chỉnh sửa",
-      "Tạm ẩn"
+      vi.admin.actions.edit,
+      vi.admin.actions.hide
     ]
   },
   {
     "id": "PET-02",
-    "title": "Danh mục · Mèo",
+    "title": formatMessage(vi.admin.categories.recordTitle, { categoryName: "Mèo" }),
     "cells": [
       "Mèo",
-      "Loại thú cưng",
+      vi.admin.labels.petType,
       "PET-02",
-      "320 hồ sơ",
-      "Hiển thị"
+      formatMessage(vi.admin.categories.profileCount, { count: "320" }),
+      vi.admin.labels.visible
     ],
     "status": {
-      "label": "Hiển thị",
+      "label": vi.admin.labels.visible,
       "tone": "success"
     },
     "tags": [
       "pet"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Tên danh mục",
+        "label": vi.admin.labels.categoryName,
         "value": "Mèo"
       },
       {
-        "label": "Loại",
-        "value": "Loại thú cưng"
+        "label": vi.admin.labels.type,
+        "value": vi.admin.labels.petType
       },
       {
-        "label": "Mã",
+        "label": vi.admin.labels.code,
         "value": "PET-02"
       },
       {
-        "label": "Số liên kết",
-        "value": "320 hồ sơ"
+        "label": vi.admin.labels.linkedCount,
+        "value": formatMessage(vi.admin.categories.profileCount, { count: "320" })
       },
       {
-        "label": "Trạng thái",
-        "value": "Hiển thị"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.visible
       }
     ],
     "pendingActions": [
-      "Chỉnh sửa",
-      "Tạm ẩn"
+      vi.admin.actions.edit,
+      vi.admin.actions.hide
     ]
   },
   {
     "id": "PET-01",
-    "title": "Danh mục · Chó",
+    "title": formatMessage(vi.admin.categories.recordTitle, { categoryName: "Chó" }),
     "cells": [
       "Chó",
-      "Loại thú cưng",
+      vi.admin.labels.petType,
       "PET-01",
-      "612 hồ sơ",
-      "Hiển thị"
+      formatMessage(vi.admin.categories.profileCount, { count: "612" }),
+      vi.admin.labels.visible
     ],
     "status": {
-      "label": "Hiển thị",
+      "label": vi.admin.labels.visible,
       "tone": "success"
     },
     "tags": [
       "pet"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Tên danh mục",
+        "label": vi.admin.labels.categoryName,
         "value": "Chó"
       },
       {
-        "label": "Loại",
-        "value": "Loại thú cưng"
+        "label": vi.admin.labels.type,
+        "value": vi.admin.labels.petType
       },
       {
-        "label": "Mã",
+        "label": vi.admin.labels.code,
         "value": "PET-01"
       },
       {
-        "label": "Số liên kết",
-        "value": "612 hồ sơ"
+        "label": vi.admin.labels.linkedCount,
+        "value": formatMessage(vi.admin.categories.profileCount, { count: "612" })
       },
       {
-        "label": "Trạng thái",
-        "value": "Hiển thị"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.visible
       }
     ],
     "pendingActions": [
-      "Chỉnh sửa",
-      "Tạm ẩn"
+      vi.admin.actions.edit,
+      vi.admin.actions.hide
     ]
   },
   {
     "id": "PET-05",
-    "title": "Danh mục · Thú nhỏ",
+    "title": formatMessage(vi.admin.categories.recordTitle, { categoryName: "Thú nhỏ" }),
     "cells": [
       "Thú nhỏ",
-      "Loại thú cưng",
+      vi.admin.labels.petType,
       "PET-05",
-      "16 hồ sơ",
-      "Tạm ẩn"
+      formatMessage(vi.admin.categories.profileCount, { count: "16" }),
+      vi.admin.labels.inactive
     ],
     "status": {
-      "label": "Tạm ẩn",
+      "label": vi.admin.labels.inactive,
       "tone": "warning"
     },
     "tags": [
       "pet",
       "hidden"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Tên danh mục",
+        "label": vi.admin.labels.categoryName,
         "value": "Thú nhỏ"
       },
       {
-        "label": "Loại",
-        "value": "Loại thú cưng"
+        "label": vi.admin.labels.type,
+        "value": vi.admin.labels.petType
       },
       {
-        "label": "Mã",
+        "label": vi.admin.labels.code,
         "value": "PET-05"
       },
       {
-        "label": "Số liên kết",
-        "value": "16 hồ sơ"
+        "label": vi.admin.labels.linkedCount,
+        "value": formatMessage(vi.admin.categories.profileCount, { count: "16" })
       },
       {
-        "label": "Trạng thái",
-        "value": "Tạm ẩn"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.inactive
       }
     ],
     "pendingActions": [
-      "Chỉnh sửa",
-      "Hiển thị lại"
+      vi.admin.actions.edit,
+      vi.admin.actions.showAgain
     ]
   }
 ];
 
 export const definition: AdminCollectionDefinition = {
-  "title": "Danh mục chung",
-  "description": "Quản lý loại dịch vụ và loại thú cưng dùng chung",
-  "listTitle": "Danh mục nền tảng",
-  "listDescription": "Danh mục chung được tham chiếu khi cơ sở tạo dịch vụ",
+  "title": vi.admin.categories.title,
+  "description": vi.admin.categories.description,
+  "listTitle": vi.admin.categories.listTitle,
+  "listDescription": vi.admin.categories.listDescription,
   "headers": [
-    "Tên danh mục",
-    "Loại",
-    "Mã",
-    "Số liên kết",
-    "Trạng thái"
+    vi.admin.labels.categoryName,
+    vi.admin.labels.type,
+    vi.admin.labels.code,
+    vi.admin.labels.linkedCount,
+    vi.admin.labels.status
   ],
   "filters": [
     {
       "value": "all",
-      "label": "Tất cả"
+      "label": vi.admin.labels.all
     },
     {
       "value": "service",
-      "label": "Nhóm dịch vụ"
+      "label": vi.admin.labels.serviceCategory
     },
     {
       "value": "pet",
-      "label": "Loại thú cưng"
+      "label": vi.admin.labels.petType
     },
     {
       "value": "hidden",
-      "label": "Tạm ẩn"
+      "label": vi.admin.labels.inactive
     }
   ],
   "metricLabels": [
-    "Nhóm dịch vụ",
-    "Loại thú cưng",
-    "Đang sử dụng"
+    vi.admin.labels.serviceCategory,
+    vi.admin.labels.petType,
+    vi.admin.labels.inUse
   ],
-  "searchLabel": "Tên hoặc mã danh mục",
-  "introAction": "Thêm danh mục",
+  "searchLabel": vi.admin.categories.searchLabel,
+  "introAction": vi.admin.categories.introAction,
   "introActionPending": true
 };

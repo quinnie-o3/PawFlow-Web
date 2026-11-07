@@ -1,279 +1,280 @@
+import { vi, formatMessage } from "../../../lib/locale";
 import type { AdminCollectionDefinition, AdminRecord } from "../../admin-workspace/types";
 
 // Read-only Figma fixtures. Local IDs and view models are not an API contract.
 export const records: readonly AdminRecord[] = [
   {
     "id": "provider-1",
-    "title": "Hồ sơ · Mộc Pet Care",
+    "title": formatMessage(vi.admin.providers.recordTitle, { facilityName: "Mộc Pet Care" }),
     "cells": [
       "Mộc Pet Care",
       "Tuấn Anh",
       "29/09/2026",
       "Grooming",
-      "Chờ duyệt"
+      vi.admin.labels.pendingApproval
     ],
     "status": {
-      "label": "Chờ duyệt",
+      "label": vi.admin.labels.pendingApproval,
       "tone": "warning"
     },
     "tags": [
       "pending"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "Mộc Pet Care"
       },
       {
-        "label": "Chủ sở hữu",
+        "label": vi.admin.labels.owner,
         "value": "Tuấn Anh"
       },
       {
-        "label": "Ngày gửi",
+        "label": vi.admin.labels.submittedDate,
         "value": "29/09/2026"
       },
       {
-        "label": "Dịch vụ",
+        "label": vi.admin.labels.service,
         "value": "Grooming"
       },
       {
-        "label": "Trạng thái",
-        "value": "Chờ duyệt"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.pendingApproval
       },
       {
-        "label": "Địa chỉ",
+        "label": vi.admin.labels.address,
         "value": "Quận 3, TP. Hồ Chí Minh"
       },
       {
-        "label": "Liên hệ",
+        "label": vi.admin.labels.contact,
         "value": "mocpet@example.com · 0900 000 003"
       },
       {
-        "label": "Giờ mở cửa",
+        "label": vi.admin.labels.openingHours,
         "value": "09:00–18:00"
       }
     ],
     "pendingActions": [
-      "Phê duyệt",
-      "Từ chối"
+      vi.admin.actions.approve,
+      vi.admin.actions.reject
     ]
   },
   {
     "id": "provider-2",
-    "title": "Hồ sơ · PawNest Spa",
+    "title": formatMessage(vi.admin.providers.recordTitle, { facilityName: "PawNest Spa" }),
     "cells": [
       "PawNest Spa",
       "Trần Minh",
       "28/09/2026",
       "Trông giữ",
-      "Chờ duyệt"
+      vi.admin.labels.pendingApproval
     ],
     "status": {
-      "label": "Chờ duyệt",
+      "label": vi.admin.labels.pendingApproval,
       "tone": "warning"
     },
     "tags": [
       "pending"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "PawNest Spa"
       },
       {
-        "label": "Chủ sở hữu",
+        "label": vi.admin.labels.owner,
         "value": "Trần Minh"
       },
       {
-        "label": "Ngày gửi",
+        "label": vi.admin.labels.submittedDate,
         "value": "28/09/2026"
       },
       {
-        "label": "Dịch vụ",
+        "label": vi.admin.labels.service,
         "value": "Trông giữ"
       },
       {
-        "label": "Trạng thái",
-        "value": "Chờ duyệt"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.pendingApproval
       }
     ],
     "pendingActions": [
-      "Phê duyệt",
-      "Từ chối"
+      vi.admin.actions.approve,
+      vi.admin.actions.reject
     ]
   },
   {
     "id": "provider-3",
-    "title": "Hồ sơ · Miu & Me",
+    "title": formatMessage(vi.admin.providers.recordTitle, { facilityName: "Miu & Me" }),
     "cells": [
       "Miu & Me",
       "Ngọc Hà",
       "27/09/2026",
       "Spa thú cưng",
-      "Chờ duyệt"
+      vi.admin.labels.pendingApproval
     ],
     "status": {
-      "label": "Chờ duyệt",
+      "label": vi.admin.labels.pendingApproval,
       "tone": "warning"
     },
     "tags": [
       "pending"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "Miu & Me"
       },
       {
-        "label": "Chủ sở hữu",
+        "label": vi.admin.labels.owner,
         "value": "Ngọc Hà"
       },
       {
-        "label": "Ngày gửi",
+        "label": vi.admin.labels.submittedDate,
         "value": "27/09/2026"
       },
       {
-        "label": "Dịch vụ",
+        "label": vi.admin.labels.service,
         "value": "Spa thú cưng"
       },
       {
-        "label": "Trạng thái",
-        "value": "Chờ duyệt"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.pendingApproval
       }
     ],
     "pendingActions": [
-      "Phê duyệt",
-      "Từ chối"
+      vi.admin.actions.approve,
+      vi.admin.actions.reject
     ]
   },
   {
     "id": "provider-4",
-    "title": "Hồ sơ · Tiny Paws Care",
+    "title": formatMessage(vi.admin.providers.recordTitle, { facilityName: "Tiny Paws Care" }),
     "cells": [
       "Tiny Paws Care",
       "Phương Lan",
       "26/09/2026",
       "Chăm sóc",
-      "Chờ duyệt"
+      vi.admin.labels.pendingApproval
     ],
     "status": {
-      "label": "Chờ duyệt",
+      "label": vi.admin.labels.pendingApproval,
       "tone": "warning"
     },
     "tags": [
       "pending"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "Tiny Paws Care"
       },
       {
-        "label": "Chủ sở hữu",
+        "label": vi.admin.labels.owner,
         "value": "Phương Lan"
       },
       {
-        "label": "Ngày gửi",
+        "label": vi.admin.labels.submittedDate,
         "value": "26/09/2026"
       },
       {
-        "label": "Dịch vụ",
+        "label": vi.admin.labels.service,
         "value": "Chăm sóc"
       },
       {
-        "label": "Trạng thái",
-        "value": "Chờ duyệt"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.pendingApproval
       }
     ],
     "pendingActions": [
-      "Phê duyệt",
-      "Từ chối"
+      vi.admin.actions.approve,
+      vi.admin.actions.reject
     ]
   },
   {
     "id": "provider-5",
-    "title": "Hồ sơ · PawCare Studio",
+    "title": formatMessage(vi.admin.providers.recordTitle, { facilityName: "PawCare Studio" }),
     "cells": [
       "PawCare Studio",
       "Dane Nguyen",
       "20/09/2026",
       "Grooming",
-      "Đã duyệt"
+      vi.admin.labels.approved
     ],
     "status": {
-      "label": "Đã duyệt",
+      "label": vi.admin.labels.approved,
       "tone": "success"
     },
     "tags": [
       "approved"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "PawCare Studio"
       },
       {
-        "label": "Chủ sở hữu",
+        "label": vi.admin.labels.owner,
         "value": "Dane Nguyen"
       },
       {
-        "label": "Ngày gửi",
+        "label": vi.admin.labels.submittedDate,
         "value": "20/09/2026"
       },
       {
-        "label": "Dịch vụ",
+        "label": vi.admin.labels.service,
         "value": "Grooming"
       },
       {
-        "label": "Trạng thái",
-        "value": "Đã duyệt"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.approved
       }
     ],
     "pendingActions": []
   },
   {
     "id": "provider-6",
-    "title": "Hồ sơ · Cozy Pet",
+    "title": formatMessage(vi.admin.providers.recordTitle, { facilityName: "Cozy Pet" }),
     "cells": [
       "Cozy Pet",
       "Quốc Bảo",
       "18/09/2026",
       "Trông giữ",
-      "Từ chối"
+      vi.admin.labels.rejected
     ],
     "status": {
-      "label": "Từ chối",
+      "label": vi.admin.labels.rejected,
       "tone": "danger"
     },
     "tags": [
       "rejected"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "Cozy Pet"
       },
       {
-        "label": "Chủ sở hữu",
+        "label": vi.admin.labels.owner,
         "value": "Quốc Bảo"
       },
       {
-        "label": "Ngày gửi",
+        "label": vi.admin.labels.submittedDate,
         "value": "18/09/2026"
       },
       {
-        "label": "Dịch vụ",
+        "label": vi.admin.labels.service,
         "value": "Trông giữ"
       },
       {
-        "label": "Trạng thái",
-        "value": "Từ chối"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.rejected
       }
     ],
     "pendingActions": []
@@ -281,41 +282,41 @@ export const records: readonly AdminRecord[] = [
 ];
 
 export const definition: AdminCollectionDefinition = {
-  "title": "Duyệt cơ sở",
-  "description": "Kiểm tra hồ sơ trước khi cơ sở hiển thị trên nền tảng",
-  "listTitle": "Hồ sơ đăng ký",
-  "listDescription": "Xem thông tin cơ sở theo từng hồ sơ",
+  "title": vi.admin.providers.title,
+  "description": vi.admin.providers.description,
+  "listTitle": vi.admin.providers.listTitle,
+  "listDescription": vi.admin.providers.listDescription,
   "headers": [
-    "Cơ sở",
-    "Chủ sở hữu",
-    "Ngày gửi",
-    "Dịch vụ",
-    "Trạng thái"
+    vi.admin.labels.facility,
+    vi.admin.labels.owner,
+    vi.admin.labels.submittedDate,
+    vi.admin.labels.service,
+    vi.admin.labels.status
   ],
   "filters": [
     {
       "value": "all",
-      "label": "Tất cả"
+      "label": vi.admin.labels.all
     },
     {
       "value": "pending",
-      "label": "Chờ duyệt"
+      "label": vi.admin.labels.pendingApproval
     },
     {
       "value": "approved",
-      "label": "Đã duyệt"
+      "label": vi.admin.labels.approved
     },
     {
       "value": "rejected",
-      "label": "Từ chối"
+      "label": vi.admin.labels.rejected
     }
   ],
   "metricLabels": [
-    "Chờ duyệt",
-    "Đã duyệt",
-    "Từ chối"
+    vi.admin.labels.pendingApproval,
+    vi.admin.labels.approved,
+    vi.admin.labels.rejected
   ],
-  "searchLabel": "Tên cơ sở hoặc chủ sở hữu",
-  "introAction": "Quy trình duyệt",
-  "introNotes": ["Proposal UC-PRO-01: Admin xem hồ sơ đang chờ trước khi duyệt hoặc từ chối.", "BR-01: chỉ cơ sở đã duyệt và dịch vụ hoạt động được tìm kiếm và đặt lịch."]
+  "searchLabel": vi.admin.providers.searchLabel,
+  "introAction": vi.admin.providers.introAction,
+  "introNotes": [vi.admin.providers.approvalRule, vi.admin.providers.publicVisibilityRule]
 };

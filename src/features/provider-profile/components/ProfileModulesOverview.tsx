@@ -1,3 +1,4 @@
+import { vi } from "@/lib/locale";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { mockWeeklyHours } from "@/features/provider-availability/data/providerAvailabilityMock";
@@ -20,21 +21,21 @@ export default function ProfileModulesOverview() {
     <div className={styles.modules}>
       <section className={`${styles.card} ${styles.moduleCard}`} aria-labelledby="profile-services-title">
         <div className={styles.sectionHeading}>
-          <h2 id="profile-services-title">Dịch vụ hiển thị</h2>
-          <Link className={styles.outlineButton} href="/dashboard/services" prefetch={false}>Xem dịch vụ<ArrowUpRight aria-hidden="true" size={14} /></Link>
+          <h2 id="profile-services-title">{vi.provider.profile.modules.servicesTitle}</h2>
+          <Link className={styles.outlineButton} href="/dashboard/services" prefetch={false}>{vi.provider.profile.modules.servicesLink}<ArrowUpRight aria-hidden="true" size={14} /></Link>
         </div>
         <ul className={styles.services}>{services.map((service) => <li key={service.id}>{service.name}</li>)}</ul>
       </section>
       <section className={`${styles.card} ${styles.moduleCard}`} aria-labelledby="profile-hours-title">
         <div className={styles.sectionHeading}>
-          <h2 id="profile-hours-title">Giờ hoạt động</h2>
-          <Link className={styles.outlineButton} href="/dashboard/availability" prefetch={false}>Xem lịch<ArrowUpRight aria-hidden="true" size={14} /></Link>
+          <h2 id="profile-hours-title">{vi.provider.profile.modules.hoursTitle}</h2>
+          <Link className={styles.outlineButton} href="/dashboard/availability" prefetch={false}>{vi.provider.profile.modules.hoursLink}<ArrowUpRight aria-hidden="true" size={14} /></Link>
         </div>
         <dl className={styles.hours}>{hourGroups.map((group) => <div key={group.label}>
           <dt>{group.label === group.lastDay ? group.label : `${group.label} – ${group.lastDay}`}</dt><dd>{group.hours}</dd>
         </div>)}</dl>
       </section>
     </div>
-    <p className={styles.help}>Tóm tắt từ mẫu ban đầu của Dịch vụ và Lịch khả dụng; chưa đồng bộ thay đổi giữa các màn. Quản lý dịch vụ và giờ tuần tại module tương ứng.</p>
+    <p className={styles.help}>{vi.provider.profile.modules.mockHint}</p>
   </>;
 }

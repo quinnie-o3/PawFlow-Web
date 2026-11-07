@@ -1,10 +1,11 @@
+import { vi } from "../../lib/locale";
 import type { StaffBooking, StaffBookingFilters, StaffBookingStatus, StaffBookingTarget, StaffViewContext } from "./types";
 
 export const staffBookingTimeZone = "Asia/Ho_Chi_Minh";
 
 export const staffStatusLabels: Record<StaffBookingStatus, string> = {
-  pendingConfirmation: "Chờ xác nhận", confirmed: "Đã xác nhận", completed: "Hoàn thành",
-  cancelled: "Đã hủy", rejected: "Từ chối", noShow: "Không đến",
+  pendingConfirmation: vi.staff.bookings.logic.pendingConfirmation, confirmed: vi.staff.bookings.logic.confirmed, completed: vi.staff.bookings.logic.completed,
+  cancelled: vi.staff.bookings.logic.cancelled, rejected: vi.staff.bookings.logic.rejected, noShow: vi.staff.bookings.logic.noShow,
 };
 export const staffStatusOrder: readonly StaffBookingStatus[] = ["pendingConfirmation", "confirmed", "completed", "cancelled", "rejected", "noShow"];
 
@@ -39,7 +40,7 @@ const dateFormatter = new Intl.DateTimeFormat("vi-VN", {
 
 export function formatStaffBookingDate(value: string) {
   const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "Chưa có thời gian";
+  if (!Number.isFinite(date.getTime())) return vi.staff.bookings.logic.noTime;
   const parts = dateFormatter.formatToParts(date);
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value;
   return `${part("day")}/${part("month")}/${part("year")} · ${part("hour")}:${part("minute")}`;
@@ -58,28 +59,28 @@ export function staffBookingEnd(booking: StaffBooking) {
 }
 
 export const staffActionLabels: Record<StaffBookingTarget, string> = {
-  confirmed: "Xác nhận yêu cầu", rejected: "Từ chối yêu cầu",
-  completed: "Hoàn thành lịch", noShow: "Đánh dấu không đến",
+  confirmed: vi.staff.bookings.logic.confirmAction, rejected: vi.staff.bookings.logic.rejectAction,
+  completed: vi.staff.bookings.logic.completeAction, noShow: vi.staff.bookings.logic.noShowAction,
 };
 
 /** Frontend demo rules only; backend must independently authorize and recheck. */
 export function staffTransitionError(booking: StaffBooking, target: StaffBookingTarget, context: StaffViewContext, now: number): string | null {
-  if (!canViewStaffBookings(context) || booking.providerId !== context.providerId) return "Không có quyền xử lý lịch hẹn này tại cơ sở được phân công.";
-  if (booking.status !== "pendingConfirmation" && booking.status !== "confirmed") return "Lịch đã kết thúc, không được sửa lại trạng thái.";
+  if (!canViewStaffBookings(context) || booking.providerId !== context.providerId) return vi.staff.bookings.logic.permissionDenied;
+  if (booking.status !== "pendingConfirmation" && booking.status !== "confirmed") return vi.staff.bookings.logic.terminalState;
   if (booking.status === "pendingConfirmation") {
     if (target === "rejected") return null;
-    if (target !== "confirmed") return "Lịch chờ chỉ có thể được xác nhận hoặc từ chối.";
+    if (target !== "confirmed") return vi.staff.bookings.logic.invalidPendingTransition;
     const start = staffBookingStart(booking);
-    if (!Number.isFinite(now) || !Number.isFinite(start)) return "Không thể xác minh thời gian lịch hẹn.";
-    return now < start ? null : "Chỉ được xác nhận trước giờ bắt đầu lịch hẹn.";
+    if (!Number.isFinite(now) || !Number.isFinite(start)) return vi.staff.bookings.logic.invalidTime;
+    return now < start ? null : vi.staff.bookings.logic.confirmBeforeStart;
   }
-  if (target !== "completed" && target !== "noShow") return "Lịch đã xác nhận chỉ có thể chuyển Hoàn thành hoặc Không đến.";
+  if (target !== "completed" && target !== "noShow") return vi.staff.bookings.logic.invalidConfirmedTransition;
   const start = staffBookingStart(booking);
-  if (!Number.isFinite(now) || !Number.isFinite(start)) return "Không thể xác minh thời gian lịch hẹn.";
-  if (target === "noShow") return now >= start ? null : "Chỉ được đánh dấu không đến từ giờ bắt đầu lịch hẹn.";
+  if (!Number.isFinite(now) || !Number.isFinite(start)) return vi.staff.bookings.logic.invalidTime;
+  if (target === "noShow") return now >= start ? null : vi.staff.bookings.logic.noShowAfterStart;
   const end = staffBookingEnd(booking);
-  if (end === null) return "Thiếu thời lượng snapshot hợp lệ của booking; chưa thể hoàn thành lịch.";
-  return now >= end ? null : "Chỉ được hoàn thành từ giờ kết thúc dự kiến trở đi.";
+  if (end === null) return vi.staff.bookings.logic.missingDuration;
+  return now >= end ? null : vi.staff.bookings.logic.completeAfterEnd;
 }
 
 export function staffBookingActions(booking: StaffBooking, context: StaffViewContext, now: number) {
@@ -102,5 +103,5 @@ export function formatStaffMockTime(now: number) {
 export function formatStaffPrice(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0
     ? new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value)
-    : "Chưa có giá snapshot trong booking";
+    : vi.staff.bookings.logic.missingPrice;
 }

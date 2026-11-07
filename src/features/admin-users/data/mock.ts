@@ -1,28 +1,29 @@
+import { vi, formatMessage } from "../../../lib/locale";
 import type { AdminCollectionDefinition, AdminRecord } from "../../admin-workspace/types";
 
 // Read-only Figma fixtures. Local IDs and view models are not an API contract.
 export const records: readonly AdminRecord[] = [
   {
     "id": "user-1",
-    "title": "Tài khoản · Hà Linh",
+    "title": formatMessage(vi.admin.users.recordTitle, { userName: "Hà Linh" }),
     "cells": [
       "Hà Linh",
       "halinh@example.com",
-      "Khách hàng",
+      vi.admin.labels.customer,
       "20/09/2026",
-      "Hoạt động"
+      vi.admin.labels.active
     ],
     "status": {
-      "label": "Hoạt động",
+      "label": vi.admin.labels.active,
       "tone": "success"
     },
     "tags": [
       "customer"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Họ tên",
+        "label": vi.admin.labels.fullName,
         "value": "Hà Linh"
       },
       {
@@ -30,43 +31,43 @@ export const records: readonly AdminRecord[] = [
         "value": "halinh@example.com"
       },
       {
-        "label": "Vai trò",
-        "value": "Khách hàng"
+        "label": vi.admin.labels.role,
+        "value": vi.admin.labels.customer
       },
       {
-        "label": "Ngày tạo",
+        "label": vi.admin.labels.createdDate,
         "value": "20/09/2026"
       },
       {
-        "label": "Trạng thái",
-        "value": "Hoạt động"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.active
       }
     ],
     "pendingActions": [
-      "Tạm khóa"
+      vi.admin.actions.suspend
     ]
   },
   {
     "id": "user-2",
-    "title": "Tài khoản · Dane Nguyen",
+    "title": formatMessage(vi.admin.users.recordTitle, { userName: "Dane Nguyen" }),
     "cells": [
       "Dane Nguyen",
       "dane@example.com",
-      "Chủ cơ sở",
+      vi.admin.labels.providerOwner,
       "18/09/2026",
-      "Hoạt động"
+      vi.admin.labels.active
     ],
     "status": {
-      "label": "Hoạt động",
+      "label": vi.admin.labels.active,
       "tone": "success"
     },
     "tags": [
       "owner"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Họ tên",
+        "label": vi.admin.labels.fullName,
         "value": "Dane Nguyen"
       },
       {
@@ -74,47 +75,47 @@ export const records: readonly AdminRecord[] = [
         "value": "dane@example.com"
       },
       {
-        "label": "Vai trò",
-        "value": "Chủ cơ sở"
+        "label": vi.admin.labels.role,
+        "value": vi.admin.labels.providerOwner
       },
       {
-        "label": "Ngày tạo",
+        "label": vi.admin.labels.createdDate,
         "value": "18/09/2026"
       },
       {
-        "label": "Trạng thái",
-        "value": "Hoạt động"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.active
       },
       {
-        "label": "Cơ sở liên kết",
+        "label": vi.admin.labels.linkedFacility,
         "value": "PawCare Studio"
       }
     ],
     "pendingActions": [
-      "Tạm khóa"
+      vi.admin.actions.suspend
     ]
   },
   {
     "id": "user-3",
-    "title": "Tài khoản · Quang Minh",
+    "title": formatMessage(vi.admin.users.recordTitle, { userName: "Quang Minh" }),
     "cells": [
       "Quang Minh",
       "quang@example.com",
-      "Khách hàng",
+      vi.admin.labels.customer,
       "17/09/2026",
-      "Hoạt động"
+      vi.admin.labels.active
     ],
     "status": {
-      "label": "Hoạt động",
+      "label": vi.admin.labels.active,
       "tone": "success"
     },
     "tags": [
       "customer"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Họ tên",
+        "label": vi.admin.labels.fullName,
         "value": "Quang Minh"
       },
       {
@@ -122,43 +123,43 @@ export const records: readonly AdminRecord[] = [
         "value": "quang@example.com"
       },
       {
-        "label": "Vai trò",
-        "value": "Khách hàng"
+        "label": vi.admin.labels.role,
+        "value": vi.admin.labels.customer
       },
       {
-        "label": "Ngày tạo",
+        "label": vi.admin.labels.createdDate,
         "value": "17/09/2026"
       },
       {
-        "label": "Trạng thái",
-        "value": "Hoạt động"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.active
       }
     ],
     "pendingActions": [
-      "Tạm khóa"
+      vi.admin.actions.suspend
     ]
   },
   {
     "id": "user-4",
-    "title": "Tài khoản · Ngọc Mai",
+    "title": formatMessage(vi.admin.users.recordTitle, { userName: "Ngọc Mai" }),
     "cells": [
       "Ngọc Mai",
       "ngocmai@example.com",
-      "Nhân viên",
+      vi.admin.labels.staff,
       "16/09/2026",
-      "Hoạt động"
+      vi.admin.labels.active
     ],
     "status": {
-      "label": "Hoạt động",
+      "label": vi.admin.labels.active,
       "tone": "success"
     },
     "tags": [
       "staff"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Họ tên",
+        "label": vi.admin.labels.fullName,
         "value": "Ngọc Mai"
       },
       {
@@ -166,47 +167,47 @@ export const records: readonly AdminRecord[] = [
         "value": "ngocmai@example.com"
       },
       {
-        "label": "Vai trò",
-        "value": "Nhân viên"
+        "label": vi.admin.labels.role,
+        "value": vi.admin.labels.staff
       },
       {
-        "label": "Ngày tạo",
+        "label": vi.admin.labels.createdDate,
         "value": "16/09/2026"
       },
       {
-        "label": "Trạng thái",
-        "value": "Hoạt động"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.active
       },
       {
-        "label": "Quyền Staff",
-        "value": "Chờ xác nhận ở FE-014; không suy ra quyền từ tài khoản mẫu."
+        "label": vi.admin.labels.staffPermissions,
+        "value": vi.admin.users.pendingStaffPermissions
       }
     ],
     "pendingActions": [
-      "Tạm khóa"
+      vi.admin.actions.suspend
     ]
   },
   {
     "id": "user-5",
-    "title": "Tài khoản · Ngọc Anh",
+    "title": formatMessage(vi.admin.users.recordTitle, { userName: "Ngọc Anh" }),
     "cells": [
       "Ngọc Anh",
       "ngoc@example.com",
-      "Khách hàng",
+      vi.admin.labels.customer,
       "12/09/2026",
-      "Tạm khóa"
+      vi.admin.labels.suspended
     ],
     "status": {
-      "label": "Tạm khóa",
+      "label": vi.admin.labels.suspended,
       "tone": "danger"
     },
     "tags": [
       "customer"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Họ tên",
+        "label": vi.admin.labels.fullName,
         "value": "Ngọc Anh"
       },
       {
@@ -214,43 +215,43 @@ export const records: readonly AdminRecord[] = [
         "value": "ngoc@example.com"
       },
       {
-        "label": "Vai trò",
-        "value": "Khách hàng"
+        "label": vi.admin.labels.role,
+        "value": vi.admin.labels.customer
       },
       {
-        "label": "Ngày tạo",
+        "label": vi.admin.labels.createdDate,
         "value": "12/09/2026"
       },
       {
-        "label": "Trạng thái",
-        "value": "Tạm khóa"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.suspended
       }
     ],
     "pendingActions": [
-      "Mở khóa"
+      vi.admin.actions.reactivate
     ]
   },
   {
     "id": "user-6",
-    "title": "Tài khoản · Lan Phương",
+    "title": formatMessage(vi.admin.users.recordTitle, { userName: "Lan Phương" }),
     "cells": [
       "Lan Phương",
       "lan@example.com",
-      "Chủ cơ sở",
+      vi.admin.labels.providerOwner,
       "10/09/2026",
-      "Hoạt động"
+      vi.admin.labels.active
     ],
     "status": {
-      "label": "Hoạt động",
+      "label": vi.admin.labels.active,
       "tone": "success"
     },
     "tags": [
       "owner"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Họ tên",
+        "label": vi.admin.labels.fullName,
         "value": "Lan Phương"
       },
       {
@@ -258,60 +259,60 @@ export const records: readonly AdminRecord[] = [
         "value": "lan@example.com"
       },
       {
-        "label": "Vai trò",
-        "value": "Chủ cơ sở"
+        "label": vi.admin.labels.role,
+        "value": vi.admin.labels.providerOwner
       },
       {
-        "label": "Ngày tạo",
+        "label": vi.admin.labels.createdDate,
         "value": "10/09/2026"
       },
       {
-        "label": "Trạng thái",
-        "value": "Hoạt động"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.active
       }
     ],
     "pendingActions": [
-      "Tạm khóa"
+      vi.admin.actions.suspend
     ]
   }
 ];
 
 export const definition: AdminCollectionDefinition = {
-  "title": "Người dùng",
-  "description": "Quản lý tài khoản và vai trò ở cấp nền tảng",
-  "listTitle": "Danh sách người dùng",
-  "listDescription": "Vai trò và thông tin liên kết trong bản ghi mẫu",
+  "title": vi.admin.users.title,
+  "description": vi.admin.users.description,
+  "listTitle": vi.admin.users.listTitle,
+  "listDescription": vi.admin.users.listDescription,
   "headers": [
-    "Họ tên",
+    vi.admin.labels.fullName,
     "Email",
-    "Vai trò",
-    "Ngày tạo",
-    "Trạng thái"
+    vi.admin.labels.role,
+    vi.admin.labels.createdDate,
+    vi.admin.labels.status
   ],
   "filters": [
     {
       "value": "all",
-      "label": "Tất cả"
+      "label": vi.admin.labels.all
     },
     {
       "value": "customer",
-      "label": "Khách hàng"
+      "label": vi.admin.labels.customer
     },
     {
       "value": "owner",
-      "label": "Chủ cơ sở"
+      "label": vi.admin.labels.providerOwner
     },
     {
       "value": "staff",
-      "label": "Nhân viên"
+      "label": vi.admin.labels.staff
     }
   ],
   "metricLabels": [
-    "Tài khoản hoạt động",
-    "Khách hàng",
-    "Chủ cơ sở / nhân viên"
+    vi.admin.labels.activeAccounts,
+    vi.admin.labels.customer,
+    vi.admin.labels.ownersAndStaff
   ],
-  "searchLabel": "Tên hoặc email",
-  "introAction": "Quyền truy cập",
-  "introNotes": ["Proposal Table 6: Customer xem dữ liệu của mình; Owner và Staff được phân công chỉ truy cập dữ liệu của cơ sở liên quan.", "Quyền thao tác cụ thể của Staff sẽ được chốt trong FE-014. UI này không thay đổi vai trò hoặc trạng thái tài khoản."]
+  "searchLabel": vi.admin.users.searchLabel,
+  "introAction": vi.admin.users.introAction,
+  "introNotes": [vi.admin.users.accessRule, vi.admin.users.staffScopeRule]
 };

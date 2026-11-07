@@ -1,5 +1,7 @@
 "use client";
 
+import { vi } from "@/lib/locale";
+
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -8,13 +10,13 @@ import { Bell, Menu } from "lucide-react";
 import UserAvatar from "@/components/ui/UserAvatar";
 
 const navItems = [
-  { label: "Tổng quan", href: "/dashboard" },
-  { label: "Lịch hẹn", href: "/dashboard/bookings" },
-  { label: "Lịch khả dụng", href: "/dashboard/availability" },
-  { label: "Dịch vụ", href: "/dashboard/services" },
-  { label: "Khách hàng", href: "/dashboard/customers" },
-  { label: "Thông báo", href: "/dashboard/notifications" },
-  { label: "Hồ sơ cơ sở", href: "/dashboard/profile" },
+  { label: vi.common.navigation.overview, href: "/dashboard" },
+  { label: vi.common.navigation.bookings, href: "/dashboard/bookings" },
+  { label: vi.common.navigation.availability, href: "/dashboard/availability" },
+  { label: vi.common.navigation.services, href: "/dashboard/services" },
+  { label: vi.common.navigation.customers, href: "/dashboard/customers" },
+  { label: vi.common.navigation.notifications, href: "/dashboard/notifications" },
+  { label: vi.common.navigation.providerProfile, href: "/dashboard/profile" },
 ];
 
 export default function Header({ provider = false }: { provider?: boolean }) {
@@ -81,13 +83,13 @@ export default function Header({ provider = false }: { provider?: boolean }) {
           <Link
             href="/dashboard/notifications"
             prefetch={provider ? false : undefined}
-            aria-label="Thông báo"
+            aria-label={vi.common.navigation.notifications}
             className="flex h-[44px] w-[44px] items-center justify-center rounded-full bg-[#E5C3FF] text-[#410075] shadow-[0_0_15px_rgba(0,0,0,0.1)]"
           >
             <Bell aria-hidden="true" focusable="false" size={20} strokeWidth={2} className={provider ? "text-[var(--color-stone)]" : undefined} />
           </Link>
 
-          <Link href="/dashboard/profile" prefetch={provider ? false : undefined} aria-label={provider ? "Hồ sơ cơ sở" : "Hồ sơ người dùng"}>
+          <Link href="/dashboard/profile" prefetch={provider ? false : undefined} aria-label={provider ? vi.common.navigation.providerProfile : vi.common.a11y.userProfile}>
             <UserAvatar size={44} />
           </Link>
           {provider && <>
@@ -102,8 +104,8 @@ export default function Header({ provider = false }: { provider?: boolean }) {
               onBlur={(event) => {
                 if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
               }}>
-              <summary aria-label="Mở điều hướng" title="Điều hướng" className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-[6px] bg-[var(--surface-primary)] text-[var(--accent-hover)] [&::-webkit-details-marker]:hidden"><Menu aria-hidden="true" focusable="false" size={20} strokeWidth={2} /></summary>
-              <nav aria-label="Điều hướng thu gọn" className="absolute right-0 top-full mt-2 max-h-[calc(100dvh-84px)] w-[220px] overflow-y-auto overscroll-contain rounded-[8px] bg-white p-2 shadow-lg">
+              <summary aria-label={vi.common.a11y.openNavigation} title={vi.common.a11y.navigation} className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-[6px] bg-[var(--surface-primary)] text-[var(--accent-hover)] [&::-webkit-details-marker]:hidden"><Menu aria-hidden="true" focusable="false" size={20} strokeWidth={2} /></summary>
+              <nav aria-label={vi.common.a11y.compactNavigation} className="absolute right-0 top-full mt-2 max-h-[calc(100dvh-84px)] w-[220px] overflow-y-auto overscroll-contain rounded-[8px] bg-white p-2 shadow-lg">
                 {navItems.map((item) => <Link key={item.href} href={item.href} prefetch={false}
                   aria-current={isActive(item.href) ? "page" : undefined}
                   onClick={() => {
@@ -114,8 +116,8 @@ export default function Header({ provider = false }: { provider?: boolean }) {
                   className={`block rounded-[6px] px-3 py-2 text-[14px] leading-5 hover:bg-[var(--surface-primary)]${isActive(item.href) ? " bg-[var(--surface-primary)] font-bold" : ""}`}>{item.label}</Link>)}
               </nav>
             </details>
-            <span tabIndex={0} title="Chưa hỗ trợ đổi ngôn ngữ" className="hidden min-[1440px]:block">
-              <button type="button" disabled aria-label="VI / EN: Chưa hỗ trợ đổi ngôn ngữ" className="flex h-9 w-[76px] cursor-not-allowed items-center justify-center rounded-[9px] bg-[var(--surface-primary)] text-[var(--accent-hover)]">
+            <span tabIndex={0} title={vi.common.language.unavailable} className="hidden min-[1440px]:block">
+              <button type="button" disabled aria-label={vi.common.language.switchUnavailable} className="flex h-9 w-[76px] cursor-not-allowed items-center justify-center rounded-[9px] bg-[var(--surface-primary)] text-[var(--accent-hover)]">
                 <span className="text-[12px] font-semibold leading-[18px]">VI / EN</span>
               </button>
             </span>

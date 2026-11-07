@@ -1,3 +1,4 @@
+import { vi, formatMessage } from "../../../lib/locale";
 import type { BookingRequest, DailyDashboardSample, DateRange, PrioritySummary } from "../types";
 
 // Dữ liệu mô phỏng; không đại diện cho API hoặc quy tắc nghiệp vụ chính thức.
@@ -6,9 +7,9 @@ export const initialReportingRange: DateRange = { start: "2026-09-01", end: "202
 export const sampleToday = "2026-09-30";
 // Snapshot vận hành độc lập với kỳ báo cáo: 3 dòng xem trước trong 6 yêu cầu chờ.
 export const prioritySummary: PrioritySummary = {
-  title: "Cần xử lý hôm nay",
-  waitingRequests: "06 yêu cầu chờ xác nhận",
-  todayAppointments: "04 lịch hẹn hôm nay",
+  title: vi.provider.dashboard.priority.title,
+  waitingRequests: formatMessage(vi.provider.dashboard.priority.waitingRequests, { count: "06" }),
+  todayAppointments: formatMessage(vi.provider.dashboard.priority.todayAppointments, { count: "04" }),
 };
 
 // Các ngày có dữ liệu mẫu. Ngoài các ngày này chưa có dữ liệu quan sát.

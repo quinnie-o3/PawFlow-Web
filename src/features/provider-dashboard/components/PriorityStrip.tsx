@@ -1,3 +1,4 @@
+import { vi, formatMessage } from "@/lib/locale";
 import type { PrioritySummary } from "../types";
 import { LinkIcon } from "./icons";
 import styles from "../dashboard.module.css";
@@ -17,7 +18,7 @@ export default function PriorityStrip({ priority }: PriorityStripProps) {
           <span>{priority.waitingRequests}</span>
           <span>{priority.todayAppointments}</span>
         </div>
-        <p className="mt-1 text-[11px] leading-4 text-white/80">Hôm nay: {formatDate(sampleToday)} · Dữ liệu mô phỏng</p>
+        <p className="mt-1 text-[11px] leading-4 text-white/80">{formatMessage(vi.provider.dashboard.priority.today, { date: formatDate(sampleToday) })}</p>
       </div>
 
       <button
@@ -29,8 +30,7 @@ export default function PriorityStrip({ priority }: PriorityStripProps) {
         }}
         className={`${styles.primaryAction} inline-flex h-[38px] w-fit shrink-0 items-center gap-2 rounded-[6px] bg-white px-4 text-[14px] font-bold leading-[18px] transition-colors hover:bg-[var(--surface-primary)]`}
       >
-        Xem yêu cầu
-        <LinkIcon className="h-4 w-4" />
+        {vi.provider.dashboard.priority.viewRequests}<LinkIcon className="h-4 w-4" />
       </button>
     </section>
   );

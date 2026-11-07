@@ -1,5 +1,7 @@
 "use client";
 
+import { vi } from "@/lib/locale";
+
 import { useState } from "react";
 import { saveAccessToken } from "../services/authToken";
 import { LoginCustomerError, loginCustomer, type LoginCustomerPayload } from "../services/loginCustomer";
@@ -16,7 +18,7 @@ export function useLoginCustomer() {
       const response = await loginCustomer(payload);
       saveAccessToken(response.accessToken);
     } catch (requestError) {
-      setError(requestError instanceof LoginCustomerError ? requestError.message : "Đã xảy ra lỗi khi đăng nhập.");
+      setError(requestError instanceof LoginCustomerError ? requestError.message : vi.auth.errors.loginUnexpected);
       throw requestError;
     } finally {
       setIsSubmitting(false);

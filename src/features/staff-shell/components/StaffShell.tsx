@@ -1,3 +1,4 @@
+import { vi } from "@/lib/locale";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import StaffHeader from "./StaffHeader";
@@ -6,7 +7,7 @@ import styles from "../staffShell.module.css";
 
 export default function StaffShell({ children }: { children: ReactNode }) {
   return <div className={styles.surface} lang="vi">
-    <a href="#staff-main" className={styles.skipLink}>Đến nội dung Staff</a>
+    <a href="#staff-main" className={styles.skipLink}>{vi.staff.shell.skipToContent}</a>
     <StaffHeader />
     <div className={styles.body}>
       <div className={styles.backdrops} aria-hidden="true">
@@ -18,7 +19,7 @@ export default function StaffShell({ children }: { children: ReactNode }) {
       </div>
       <div className={styles.workspace}>
         <StaffSidebar />
-        <main id="staff-main" tabIndex={-1} className={styles.main} aria-label="Nội dung Staff">{children}</main>
+        <main id="staff-main" tabIndex={-1} className={styles.main} aria-label={vi.staff.shell.contentLabel}>{children}</main>
       </div>
     </div>
   </div>;

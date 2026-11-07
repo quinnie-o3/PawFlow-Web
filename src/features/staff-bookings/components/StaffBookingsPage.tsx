@@ -1,5 +1,7 @@
 "use client";
 
+import { vi, formatMessage } from "@/lib/locale";
+
 import { useState } from "react";
 import { AlertCircle, LoaderCircle, ShieldCheck } from "lucide-react";
 import { mockStaffContext } from "../data/staffBookingsMock";
@@ -47,7 +49,7 @@ export default function StaffBookingsPage() {
   function applyClock() {
     const now = parseStaffMockTime(clockInput);
     if (!Number.isFinite(now)) {
-      setClockError("Nhập ngày giờ hợp lệ theo Asia/Ho_Chi_Minh (UTC+7).");
+      setClockError(vi.staff.bookings.page.invalidMockTime);
       return;
     }
     setClockError("");
@@ -60,20 +62,20 @@ export default function StaffBookingsPage() {
   }
 
   return <div className={styles.page}>
-    <div className={styles.staffTab}>NHÂN VIÊN · PAWCARE STUDIO</div>
-    <div className={styles.intro}><div><h1>Lịch hẹn</h1><p>Lịch của PawCare Studio trong phạm vi nhân viên được phân công.</p></div>
-      <button type="button" className={styles.permissionsButton} onClick={() => setShowPermissions(true)}><ShieldCheck size={18} aria-hidden="true" />Quyền Staff</button>
+    <div className={styles.staffTab}>{formatMessage(vi.staff.bookings.page.roleTab, { facility: "PAWCARE STUDIO" })}</div>
+    <div className={styles.intro}><div><h1>{vi.staff.bookings.page.title}</h1><p>{formatMessage(vi.staff.bookings.page.description, { facility: "PawCare Studio" })}</p></div>
+      <button type="button" className={styles.permissionsButton} onClick={() => setShowPermissions(true)}><ShieldCheck size={18} aria-hidden="true" />{vi.staff.bookings.page.permissions}</button>
     </div>
-    <p className={styles.mockNotice}>Dữ liệu mô phỏng trong phiên · Thời gian mô phỏng: {formatStaffBookingDate(new Date(state.now).toISOString())} · Asia/Ho_Chi_Minh (UTC+7). Tải lại hoặc rời trang sẽ mất thay đổi.</p>
+    <p className={styles.mockNotice}>{formatMessage(vi.staff.bookings.page.mockNotice, { time: formatStaffBookingDate(new Date(state.now).toISOString()) })}</p>
     {state.result && <p role={state.result.outcome === "error" ? "alert" : "status"}
       className={state.result.outcome === "error" ? styles.operationError : styles.operationSuccess}>{state.result.message}</p>}
     <StaffBookingsToolbar filters={filters} onChange={setFilters} />
     <section className={styles.listCard} aria-labelledby="staff-bookings-title" aria-busy={state.phase === "loading"}>
-      <div className={styles.listHeading}><h2 id="staff-bookings-title">Danh sách lịch hẹn</h2><p>Chọn một lịch để xem thông tin khách, thú cưng và trạng thái.</p></div>
-      {state.phase === "loading" ? <p role="status" className={styles.feedback}><LoaderCircle size={22} aria-hidden="true" />Đang tải lịch hẹn…</p> : state.phase === "error" ?
-        <div className={styles.error}><p role="alert"><AlertCircle size={20} aria-hidden="true" />Không thể tải danh sách lịch hẹn mô phỏng.</p><button type="button" className={styles.secondaryButton} onClick={retry}>Thử lại</button></div> :
+      <div className={styles.listHeading}><h2 id="staff-bookings-title">{vi.staff.bookings.page.listTitle}</h2><p>{vi.staff.bookings.page.listDescription}</p></div>
+      {state.phase === "loading" ? <p role="status" className={styles.feedback}><LoaderCircle size={22} aria-hidden="true" />{vi.staff.bookings.page.loading}</p> : state.phase === "error" ?
+        <div className={styles.error}><p role="alert"><AlertCircle size={20} aria-hidden="true" />{vi.staff.bookings.page.loadError}</p><button type="button" className={styles.secondaryButton} onClick={retry}>{vi.common.actions.retry}</button></div> :
         <StaffBookingsList bookings={visible} total={scoped.length} filtered={filtered} onOpen={openBooking} onClear={clearFilters} />}
-      <p className={styles.listNote}>Chờ xác nhận → Đã xác nhận / Từ chối. Đã xác nhận → Hoàn thành / Không đến theo điều kiện thời gian. Lịch kết thúc chỉ xem kết quả.</p>
+      <p className={styles.listNote}>{vi.staff.bookings.page.transitionRules}</p>
     </section>
     <StaffBookingAudit logs={state.logs} />
     <StaffMockTools clockInput={clockInput} clockError={clockError} simulateFailure={state.simulateFailure} disabled={processing}
