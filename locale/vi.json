@@ -1320,5 +1320,416 @@
       "ownerPaymentRule": "Ghi nhận thanh toán thuộc quyền chủ cơ sở.",
       "mockLimitation": "Đây là quy tắc UI/mock đã chốt, chưa xác nhận API/backend hỗ trợ đầy đủ hoặc đã bảo đảm phân quyền thật."
     }
+  },
+  "customer": {
+    "metadata": {
+      "account": {
+        "title": "Thông tin tài khoản | PawFlow"
+      },
+      "pets": {
+        "title": "Thú cưng của tôi | PawFlow"
+      }
+    },
+    "account": {
+      "page": {
+        "title": "Thông tin cá nhân",
+        "noPhone": "Chưa có số điện thoại",
+        "address": "Địa chỉ",
+        "unavailable": "Chưa hỗ trợ",
+        "securityTitle": "Bảo mật tài khoản",
+        "securityDescription": "Thông tin cá nhân và hồ sơ thú cưng gắn với tài khoản của bạn.",
+        "changePassword": "Đổi mật khẩu",
+        "passwordUnavailable": "Khôi phục mật khẩu chưa được hỗ trợ trong bản dùng thử.",
+        "mockTools": "Dữ liệu mô phỏng · Thử lỗi lưu",
+        "failNextSave": "Làm lần lưu hợp lệ tiếp theo thất bại; lần thử lại sẽ lưu bình thường.",
+        "email": "Email"
+      },
+      "editor": {
+        "title": "Chỉnh sửa thông tin cá nhân",
+        "description": "Cập nhật họ tên và số điện thoại cho tài khoản của bạn.",
+        "requiredName": "Họ và tên (bắt buộc)",
+        "nameHint": "Từ 2 đến 150 ký tự, không tính khoảng trắng đầu và cuối.",
+        "emailHint": "Email đăng nhập chỉ đọc.",
+        "phoneHint": "Không bắt buộc, tối đa 20 ký tự. Để trống sẽ giữ số đang lưu.",
+        "address": "Địa chỉ",
+        "addressUnavailable": "Chưa hỗ trợ cập nhật địa chỉ",
+        "saving": "Đang lưu…",
+        "retry": "Thử lưu lại",
+        "save": "Lưu thay đổi",
+        "pending": "Đang lưu bản mô phỏng, vui lòng chờ."
+      },
+      "feedback": {
+        "saveFailed": "Chưa lưu được thay đổi (lỗi mô phỏng). Bản nháp được giữ lại; vui lòng thử lại.",
+        "saved": "Đã lưu thay đổi trong phiên dùng thử.",
+        "unexpectedSaveError": "Chưa lưu được bản mô phỏng. Bản nháp được giữ lại; vui lòng thử lại."
+      },
+      "validation": {
+        "name": "Họ và tên cần từ 2 đến 150 ký tự sau khi bỏ khoảng trắng đầu và cuối.",
+        "phone": "Số điện thoại tối đa 20 ký tự.",
+        "unauthorized": "Tài khoản mô phỏng không có quyền sửa hồ sơ này."
+      }
+    },
+    "pets": {
+      "page": {
+        "inactiveCount": "{count} hồ sơ ngừng sử dụng vẫn được giữ trong bộ nhớ mô phỏng.",
+        "title": "Thú cưng của tôi",
+        "add": "+ Thêm thú cưng",
+        "loading": "Đang tải hồ sơ thú cưng…",
+        "loadError": "Chưa tải được danh sách (lỗi mô phỏng). Hồ sơ đã lưu không thay đổi.",
+        "retryLoad": "Thử tải lại",
+        "empty": "Chưa có thú cưng đang sử dụng.",
+        "addFirst": "Thêm hồ sơ đầu tiên",
+        "privacy": "Hồ sơ và ảnh được giữ trong phiên dùng thử này, chưa lưu lên máy chủ.",
+        "mockTools": "Dữ liệu mô phỏng · Thử tải và lưu thất bại",
+        "failLoad": "Lần tải tiếp theo thất bại",
+        "reload": "Tải lại danh sách",
+        "failMutation": "Lần thêm, sửa hoặc xóa hợp lệ tiếp theo thất bại; thử lại sẽ chạy bình thường"
+      },
+      "card": {
+        "unknownType": "Chưa có loài",
+        "detailsLabel": "Xem chi tiết {petName}",
+        "edit": "Sửa hồ sơ",
+        "editLabel": "Sửa hồ sơ {petName}",
+        "deleteLabel": "Xóa hồ sơ {petName}"
+      },
+      "deletion": {
+        "impact": "{petName} sẽ không còn trong danh sách để chọn cho lịch hẹn mới. Bản ghi và các lịch đã tạo được giữ lại.",
+        "description": "Xác nhận ngừng sử dụng hồ sơ thú cưng.",
+        "close": "Đóng xác nhận xóa",
+        "keep": "Giữ hồ sơ",
+        "pending": "Đang xóa…",
+        "retry": "Thử xóa lại",
+        "busy": "Đang ngừng sử dụng hồ sơ trong phiên mô phỏng.",
+        "confirm": "Xóa hồ sơ",
+        "title": "Xóa hồ sơ {petName}?"
+      },
+      "details": {
+        "description": "Thông tin thú cưng đang lưu trong phiên dùng thử.",
+        "close": "Đóng chi tiết",
+        "name": "Tên thú cưng",
+        "species": "Loài",
+        "unknownData": "Chưa có dữ liệu",
+        "breed": "Giống",
+        "unknownInfo": "Chưa có thông tin",
+        "birthDate": "Ngày sinh",
+        "noBirthDate": "Chưa có ngày sinh",
+        "age": "Tuổi",
+        "weight": "Cân nặng",
+        "healthNote": "Ghi chú sức khỏe",
+        "noNote": "Chưa có ghi chú",
+        "delete": "Xóa hồ sơ",
+        "edit": "Chỉnh sửa hồ sơ",
+        "title": "Hồ sơ {petName}"
+      },
+      "editor": {
+        "createTitle": "Thêm thú cưng",
+        "editTitle": "Chỉnh sửa hồ sơ thú cưng",
+        "createDescription": "Tạo hồ sơ riêng cho thú cưng của bạn.",
+        "editDescription": "Cập nhật thông tin phù hợp cho thú cưng của bạn.",
+        "requiredName": "Tên thú cưng (bắt buộc)",
+        "nameHint": "Từ 1 đến 100 ký tự sau khi bỏ khoảng trắng đầu và cuối.",
+        "requiredType": "Loài (bắt buộc)",
+        "selectType": "Chọn loài",
+        "inactiveType": " (ngừng dùng)",
+        "breed": "Giống",
+        "breedHint": "Không bắt buộc, tối đa 100 ký tự.",
+        "birthDate": "Ngày sinh",
+        "birthHint": "Không bắt buộc; không tự suy ra ngày sinh từ tuổi.",
+        "weight": "Cân nặng (kg)",
+        "weightHint": "Không bắt buộc. Ví dụ 5,5 hoặc 5.5; lớn hơn 0, tối đa 9999,99 và hai số thập phân.",
+        "healthNote": "Ghi chú sức khỏe",
+        "photo": "Ảnh thú cưng (không bắt buộc)",
+        "noPhoto": "Chưa chọn ảnh",
+        "photoHint": "Một ảnh JPEG, PNG hoặc WebP, tối đa 5 MiB. Ảnh mới chỉ áp dụng sau khi lưu hồ sơ thành công.",
+        "decoding": "Đang kiểm tra ảnh…",
+        "discardPhoto": "Bỏ lựa chọn ảnh mới",
+        "saving": "Đang lưu…",
+        "retry": "Thử lưu lại",
+        "create": "Tạo hồ sơ",
+        "save": "Lưu hồ sơ",
+        "pending": "Đang lưu bản mô phỏng, vui lòng chờ."
+      },
+      "feedback": {
+        "created": "Đã thêm hồ sơ thú cưng trong phiên dùng thử.",
+        "updated": "Đã cập nhật hồ sơ thú cưng trong phiên dùng thử.",
+        "mutationError": "Thao tác chưa thành công. Dữ liệu không đổi; vui lòng thử lại.",
+        "imageReadError": "Không đọc được ảnh.",
+        "saveError": "Không lưu được bản mô phỏng. Bản nháp vẫn được giữ; vui lòng thử lại.",
+        "deactivated": "Đã ngừng sử dụng hồ sơ {selectedPetName} cho lịch mới. Bản ghi được giữ trong phiên mô phỏng."
+      },
+      "image": {
+        "type": "Chỉ nhận ảnh JPEG, PNG hoặc WebP.",
+        "empty": "File ảnh trống. Vui lòng chọn ảnh khác.",
+        "size": "Mỗi ảnh tối đa 5 MiB.",
+        "signature": "Nội dung file không khớp định dạng ảnh đã chọn.",
+        "decode": "Không giải mã được ảnh. File có thể bị hỏng; vui lòng chọn ảnh khác."
+      },
+      "validation": {
+        "noBirthDate": "Chưa có ngày sinh",
+        "underOneMonth": "Dưới 1 tháng tuổi",
+        "name": "Tên thú cưng cần từ 1 đến 100 ký tự sau khi bỏ khoảng trắng đầu và cuối.",
+        "type": "Chọn một loài đang được hỗ trợ.",
+        "breed": "Giống tối đa 100 ký tự.",
+        "birthDate": "Chọn ngày sinh hợp lệ, không sau ngày hôm nay.",
+        "weight": "Cân nặng phải lớn hơn 0, tối đa 9999,99 kg và tối đa hai số thập phân.",
+        "unauthorized": "Vai trò mô phỏng không được quản lý hồ sơ thú cưng.",
+        "duplicate": "Mã hồ sơ đã tồn tại. Vui lòng mở lại biểu mẫu.",
+        "inactive": "Hồ sơ không còn trong danh sách đang sử dụng.",
+        "notOwner": "Tài khoản mô phỏng không sở hữu hồ sơ này.",
+        "stale": "Hồ sơ vừa thay đổi. Đóng biểu mẫu và mở lại để lấy dữ liệu mới.",
+        "invalid": "Kiểm tra lại thông tin thú cưng.",
+        "mockFailure": "Thao tác chưa thành công (lỗi mô phỏng). Dữ liệu đã lưu không đổi; vui lòng thử lại.",
+        "years": "{years} tuổi",
+        "months": "{months} tháng tuổi"
+      }
+    },
+    "shell": {
+      "dialog": {
+        "close": "Đóng chỉnh sửa"
+      },
+      "header": {
+        "home": "Trang chủ",
+        "services": "Dịch vụ",
+        "providers": "Cơ sở",
+        "booking": "Đặt lịch",
+        "contact": "Liên hệ",
+        "navigation": "Điều hướng chính",
+        "unavailable": "Chưa hỗ trợ",
+        "unavailableSuffix": " — Chưa hỗ trợ",
+        "account": "Tài khoản",
+        "calendarUnavailable": "Lịch hẹn chưa được hỗ trợ",
+        "calendarLabel": "Lịch hẹn — Chưa hỗ trợ",
+        "languageLabel": "VI / EN — Chưa hỗ trợ đổi ngôn ngữ",
+        "openMenu": "Mở điều hướng tài khoản",
+        "accountLabel": "Thông tin tài khoản của {fullName}"
+      },
+      "tabs": {
+        "label": "Tài khoản và thú cưng",
+        "account": "Thông tin tài khoản",
+        "pets": "Thú cưng của tôi"
+      },
+      "skip": "Đến nội dung chính",
+      "accountRegion": "Tài khoản khách hàng",
+      "mockNotice": "Dữ liệu mô phỏng. Thay đổi được giữ khi chuyển hai tab, khôi phục khi tải lại hoặc rời khu vực Tài khoản. Chưa lưu lên máy chủ và chưa xác thực quyền truy cập máy chủ.",
+      "sidebar": {
+        "role": "Khách hàng",
+        "you": "Bạn",
+        "label": "Điều hướng tài khoản",
+        "account": "Tài khoản",
+        "unavailable": "Chưa hỗ trợ",
+        "bookedServices": "Dịch vụ đã đặt",
+        "unavailableSuffix": " — Chưa hỗ trợ",
+        "notifications": "Thông báo"
+      }
+    }
+  },
+  "discovery": {
+    "metadata": {
+      "search": {
+        "title": "Khám phá cơ sở & dịch vụ | PawFlow",
+        "loading": "Đang mở trang khám phá…"
+      },
+      "detail": {
+        "title": "Chi tiết cơ sở & dịch vụ | PawFlow",
+        "loading": "Đang mở thông tin cơ sở…"
+      }
+    },
+    "catalog": {
+      "unknownPrice": "Chưa có giá",
+      "duration": "{value} phút",
+      "unknownDuration": "Chưa có thời lượng",
+      "noReviews": "Chưa có đánh giá",
+      "unknownReviews": "Chưa có dữ liệu đánh giá",
+      "rating": "{value} / 5 · {ratingCount} đánh giá",
+      "unknownDate": "Chưa có ngày",
+      "unknownSchedule": "Chưa biết lịch khả dụng",
+      "available": "Có khung giờ còn chỗ",
+      "unknownCapacity": "Chưa biết số chỗ",
+      "full": "Hết chỗ trong lịch công bố",
+      "closed": "Lịch đang đóng",
+      "noUpcoming": "Chưa có lịch sắp tới",
+      "noSchedule": "Chưa có lịch công bố",
+      "noPet": "Chưa có hồ sơ thú cưng mẫu. Bạn vẫn có thể xem toàn bộ thông tin công khai.",
+      "unknownSpecies": "Chưa có thông tin loại thú cưng được tiếp nhận trong dữ liệu mẫu.",
+      "eligible": "Loại thú cưng mẫu phù hợp theo dữ liệu mô phỏng.",
+      "ineligible": "Loại thú cưng mẫu chưa phù hợp với cơ sở này theo dữ liệu mô phỏng.",
+      "image": {
+        "failed": "Không tải được hình ảnh"
+      },
+      "errors": {
+        "load": "Không tải được dữ liệu mô phỏng.",
+        "retry": "Không tải được dữ liệu mô phỏng. Hãy thử lại."
+      }
+    },
+    "filters": {
+      "title": "Lọc cơ sở & dịch vụ",
+      "close": "Đóng bộ lọc",
+      "description": "Chỉ hiển thị cơ sở đã được duyệt và dịch vụ đang hoạt động. Có thể kết hợp hai bộ điều kiện.",
+      "nearby": "Quận 3 · Giá dưới 300.000 ₫ · Còn chỗ",
+      "rated": "Tắm & spa · Đánh giá từ 4,5",
+      "reset": "Đặt lại bộ lọc"
+    },
+    "search": {
+      "noPet": "Chưa có hồ sơ thú cưng mẫu · Bạn vẫn có thể khám phá cơ sở.",
+      "viewingPet": "Đang xem cho {value} · Hồ sơ mô phỏng",
+      "title": "Khám phá dịch vụ",
+      "waiting": "Đang chờ áp dụng từ khóa…",
+      "loading": "Đang tìm cơ sở…",
+      "results": "{total} cơ sở phù hợp · Trang {page}/{pages}",
+      "pagination": "Phân trang cơ sở",
+      "previous": "Trước",
+      "emptyTitle": "Chưa tìm thấy cơ sở phù hợp",
+      "emptyDescription": "Thử từ khóa khác hoặc đặt lại bộ lọc.",
+      "reset": "Đặt lại tìm kiếm",
+      "next": "Sau",
+      "pageLabel": "Trang {page}"
+    },
+    "toolbar": {
+      "allServices": "Tất cả dịch vụ",
+      "allAreas": "tất cả khu vực",
+      "maxPrice": "giá dưới {value} ₫",
+      "minRating": "đánh giá từ {value}",
+      "available": "còn chỗ",
+      "categories": "Loại dịch vụ",
+      "searchLabel": "Tìm cơ sở, dịch vụ, danh mục hoặc địa chỉ",
+      "searchPlaceholder": "Tìm cơ sở, dịch vụ hoặc khu vực…",
+      "filters": "Bộ lọc",
+      "sort": "Sắp xếp",
+      "fixture": "Mặc định",
+      "rating": "Đánh giá cao nhất",
+      "priceAscending": "Giá tăng dần",
+      "priceDescending": "Giá giảm dần"
+    },
+    "card": {
+      "imageLabel": "Dịch vụ tại {providerName}",
+      "missingImage": "Chưa có hình ảnh",
+      "matchedService": "Dịch vụ khớp điều kiện",
+      "approved": "Đã duyệt · dữ liệu mẫu",
+      "detailsLabel": "Xem {providerName}, dịch vụ {serviceName}",
+      "details": "Xem cơ sở"
+    },
+    "availability": {
+      "title": "Lịch khả dụng · {serviceName}",
+      "available": "Còn chỗ",
+      "past": "Đã qua",
+      "closed": "Đã đóng",
+      "full": "Hết chỗ",
+      "unknown": "Chưa biết số chỗ / thời gian",
+      "description": "Chỉ xem lịch mô phỏng · Giờ Việt Nam (UTC+7). Chưa chọn hoặc giữ chỗ; số chỗ có thể thay đổi khi đặt lịch.",
+      "loading": "Đang tải lịch mô phỏng…",
+      "retry": "Thử tải lại lịch",
+      "capacity": " · {remaining} chỗ"
+    },
+    "process": {
+      "title": "Quy trình đặt lịch qua PawFlow ",
+      "description": "Chọn dịch vụ và cơ sở, thêm hồ sơ thú cưng, sau đó kiểm tra thông tin trước khi gửi yêu cầu.",
+      "servicesTitle": "Dịch vụ rõ ràng",
+      "servicesDescription": "Xem mô tả, giá và thời lượng của từng dịch vụ. Cơ sở sẽ tư vấn cụ thể theo tình trạng thú cưng.",
+      "petsTitle": "Hồ sơ thú cưng",
+      "petsDescription": "Đăng nhập và khai báo thông tin cơ bản của thú cưng trước khi gửi yêu cầu để cơ sở chuẩn bị phù hợp.",
+      "confirmationTitle": "Xác nhận lịch hẹn",
+      "confirmationDescription": "Khi chức năng đặt lịch được hỗ trợ, yêu cầu được gửi đến cơ sở và chỉ trở thành lịch hẹn sau khi được xác nhận."
+    },
+    "detailIntro": {
+      "bath": "Tắm & vệ sinh",
+      "bathDescription": "Làm sạch dịu nhẹ, sấy khô và vệ sinh cơ bản.",
+      "groom": "Cắt tỉa lông",
+      "groomDescription": "Chăm sóc và tạo kiểu lông theo nhu cầu của từng bé.",
+      "boarding": "Trông giữ",
+      "boardingDescription": "Trao đổi với cơ sở để chọn ca trông giữ phù hợp.",
+      "more": "Xem thêm"
+    },
+    "detail": {
+      "hours": "Đã được duyệt · Giờ làm việc: {hours} · Liên hệ qua PawFlow",
+      "unknownHours": "chưa có dữ liệu",
+      "back": "Quay lại khám phá",
+      "loading": "Đang tải thông tin cơ sở…",
+      "unavailableTitle": "Cơ sở không khả dụng",
+      "unavailableDescription": "Cơ sở không tồn tại hoặc hiện chưa được công bố. Vui lòng chọn cơ sở khác.",
+      "backToResults": "Quay lại kết quả khám phá",
+      "servicesTitle": "Dịch vụ tại cơ sở ",
+      "servicesDescription": "Giá và thời lượng được hiển thị theo từng dịch vụ. Cơ sở xác nhận khả năng tiếp nhận trước khi thực hiện.",
+      "noServices": "Chưa có dịch vụ đang hoạt động để hiển thị.",
+      "noDescription": "Chưa có mô tả dịch vụ.",
+      "viewSchedule": "Xem lịch dịch vụ này",
+      "missingImage": "Chưa có hình ảnh dịch vụ",
+      "invalidServiceTitle": "Dịch vụ đã chọn không khả dụng",
+      "invalidServiceDescription": "Dịch vụ không tồn tại, đã ngừng hoạt động hoặc không thuộc cơ sở này. Chọn một dịch vụ đang hiển thị để xem lịch.",
+      "bookingRegion": "Thông tin trước khi đặt lịch",
+      "bookingTitle": "Trước khi đặt lịch",
+      "guestDescription": "Đăng nhập để sử dụng hồ sơ thú cưng của bạn. Nội dung cơ sở và dịch vụ vẫn xem được khi chưa đăng nhập.",
+      "mockBoundary": "Điều kiện tiếp nhận và lịch ở đây chỉ là mô phỏng, chưa xác thực điều kiện đặt với máy chủ.",
+      "login": "Đăng nhập",
+      "booking": "Đặt lịch",
+      "bookingUnavailable": "Chức năng đặt lịch chưa khả dụng. Hiện bạn có thể xem thông tin và lịch mẫu."
+    },
+    "mockTools": {
+      "title": "Công cụ dữ liệu mô phỏng",
+      "description": "Chỉ dùng dữ liệu mẫu trong bộ nhớ. Đổi vai trò ở đây không đăng nhập; tải lại hoặc rời khu vực sẽ khôi phục mẫu. Không lưu trên máy chủ.",
+      "persona": "Trạng thái xem",
+      "guest": "Khách vãng lai",
+      "customer": "Khách hàng mẫu",
+      "pet": "Hồ sơ thú cưng mẫu",
+      "noPet": "Chưa có hồ sơ",
+      "delay": "Độ trễ mô phỏng",
+      "clock": "Đồng hồ mẫu cố định: {clock} · giờ Việt Nam (UTC+7).",
+      "advance": "Tăng 1 giờ mẫu",
+      "reset": "Khôi phục giờ mẫu",
+      "searchFault": "Lỗi danh sách",
+      "detailFault": "Lỗi chi tiết",
+      "availabilityFault": "Lỗi lịch"
+    },
+    "footer": {
+      "description": "PawFlow giúp bạn tìm cơ sở, xem dịch vụ và tìm hiểu lịch chăm sóc thú cưng.",
+      "services": "Dịch vụ",
+      "bath": "Tắm & vệ sinh",
+      "groom": "Cắt tỉa lông",
+      "boarding": "Trông giữ",
+      "home": "Trang chủ",
+      "discover": "Khám phá",
+      "login": "Đăng nhập"
+    },
+    "header": {
+      "brand": "PawFlow · Khám phá cơ sở",
+      "home": "Trang chủ",
+      "services": "Dịch vụ",
+      "providers": "Cơ sở",
+      "bookingUnavailable": "Đặt lịch chưa khả dụng",
+      "booking": "Đặt lịch",
+      "petsUnavailable": "Hồ sơ thú cưng chưa được kết nối",
+      "pets": "Thú cưng",
+      "contactUnavailable": "Liên hệ chưa khả dụng",
+      "contact": "Liên hệ",
+      "skip": "Đến nội dung chính",
+      "navigation": "Điều hướng khám phá",
+      "notificationsDisconnected": "Thông báo chưa được kết nối",
+      "notificationsUnavailable": "Thông báo chưa khả dụng",
+      "login": "Đăng ký / Đăng nhập",
+      "customerLabel": "Khách hàng mô phỏng",
+      "customer": "Khách hàng mẫu"
+    },
+    "hero": {
+      "title": "Khám phá cơ sở",
+      "detailSubtitle": "Chăm sóc thú cưng",
+      "searchSubtitle": "và dịch vụ",
+      "detailDescription": "Xem dịch vụ, giá và lịch còn chỗ của cơ sở trước khi đặt lịch.",
+      "searchDescription": "Tìm nơi chăm sóc phù hợp, xem dịch vụ và cơ sở trước khi đặt lịch.",
+      "login": "Đăng nhập để đặt lịch",
+      "availability": "Xem lịch còn chỗ",
+      "chooseProvider": "Chọn cơ sở để đặt lịch",
+      "services": "Xem dịch vụ",
+      "approved": "Đã được duyệt "
+    },
+    "intro": {
+      "title": "Dịch vụ tốt cho từng người bạn nhỏ ",
+      "careTitle": "Chọn nơi chăm sóc phù hợp cho thú cưng",
+      "services": "Khám phá các dịch vụ theo nhu cầu: tắm, cắt tỉa, chăm sóc sức khỏe và trông giữ.",
+      "prices": "Xem giá và thời lượng của đúng dịch vụ bạn quan tâm.",
+      "schedule": "Tìm hiểu cơ sở và lịch được công bố trước khi đặt lịch.",
+      "needs": "Trao đổi nhu cầu riêng của thú cưng với cơ sở."
+    },
+    "notice": {
+      "summary": "Dữ liệu mô phỏng · {persona} · Đồng hồ mẫu: {clock} (UTC+7)."
+    }
   }
 }
