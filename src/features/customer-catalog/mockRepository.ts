@@ -29,4 +29,3 @@ export function createMockRepository(catalog: MockCatalog = createCatalogMock())
     async availability(providerId: string, options: MockRequestOptions) { await mockDelay(options); return catalog.providers.some(p => p.id === providerId && p.approval === "APPROVED") ? structuredClone(catalog.slots.filter(s => s.providerId === providerId)) : []; },
   };
 }
-export const mockRepository = createMockRepository();
