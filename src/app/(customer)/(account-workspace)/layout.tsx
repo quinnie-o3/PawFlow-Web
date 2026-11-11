@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { Assistant, Be_Vietnam_Pro } from "next/font/google";
-import CustomerWorkspaceProvider from "@/features/customer-workspace/CustomerWorkspaceProvider";
 import CustomerShell from "@/features/customer-shell/components/CustomerShell";
 
 const customerFont = Be_Vietnam_Pro({
@@ -12,6 +11,6 @@ const supportingFont = Assistant({
 
 export default function AccountLayout({ children }: { children: ReactNode }) {
   return <div className={customerFont.variable + " " + supportingFont.variable}>
-    <CustomerWorkspaceProvider><CustomerShell>{children}</CustomerShell></CustomerWorkspaceProvider>
+    <CustomerShell>{children}</CustomerShell>
   </div>;
 }

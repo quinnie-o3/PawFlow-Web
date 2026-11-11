@@ -3,8 +3,8 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 import styles from "../customerShell.module.css";
 
-export default function CustomerDialog({ title, description, busy, onClose, children, closeLabel = vi.customer.shell.dialog.close }: {
-  title: string; description: string; busy: boolean; onClose: () => void; children: ReactNode; closeLabel?: string;
+export default function CustomerDialog({ title, description, busy, onClose, children, closeLabel = vi.customer.shell.dialog.close, returnFocusId }: {
+  title: string; description: string; busy: boolean; onClose: () => void; children: ReactNode; closeLabel?: string; returnFocusId?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -19,11 +19,19 @@ export default function CustomerDialog({ title, description, busy, onClose, chil
     return () => {
       dialog?.close();
       document.body.style.overflow = overflow;
-      if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus();
+      const target = trigger instanceof HTMLElement && trigger.isConnected &&
+        trigger !== document.body && !trigger.matches(":disabled") ? trigger :
+        returnFocusId ? document.getElementById(returnFocusId) : null;
+      target?.focus({ preventScroll: true });
     };
-  }, []);
+  }, [returnFocusId]);
 
-  return <dialog ref={ref} className={styles.dialog} aria-labelledby={titleId} aria-describedby={descriptionId}
+  useEffect(() => {
+    // Disabling the focused submit button can send focus to body in Chromium.
+    if (busy) ref.current?.focus({ preventScroll: true });
+  }, [busy]);
+
+  return <dialog ref={ref} tabIndex={-1} className={styles.dialog} aria-labelledby={titleId} aria-describedby={descriptionId}
     onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}
     onClick={(event) => {
       if (busy || event.target !== event.currentTarget) return;
@@ -34,6 +42,10 @@ export default function CustomerDialog({ title, description, busy, onClose, chil
       if (event.key !== "Tab") return;
       const controls = event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]');
       const first = controls[0]; const last = controls[controls.length - 1];
+      if (!first) { event.preventDefault(); event.currentTarget.focus(); return; }
+      if (document.activeElement === event.currentTarget) {
+        event.preventDefault(); (event.shiftKey ? last : first).focus(); return;
+      }
       if (first && last && ((event.shiftKey && document.activeElement === first) || (!event.shiftKey && document.activeElement === last))) {
         event.preventDefault(); (event.shiftKey ? last : first).focus();
       }

@@ -11,17 +11,18 @@ import DiscoveryHero from "../../discovery-shell/components/DiscoveryHero";
 import MockNotice from "../../discovery-shell/components/MockNotice";
 import DesignAsset from "../../discovery-shell/components/DesignAsset";
 import { detailHref, safeReturnTo } from "../../customer-discovery/queryState";
-import { formatDuration, formatPrice, formatRating, mockEligibility, publicService } from "../../customer-catalog/catalogLogic";
+import { formatDuration, formatPrice, formatRating, publicService } from "../../customer-catalog/catalogLogic";
 import { useProviderDetail } from "../hooks/useProviderDetail";
 import AvailabilityPanel from "./AvailabilityPanel";
 import DetailIntro from "./DetailIntro";
 import BookingExplanation from "./BookingExplanation";
+import BookingPanel from "../../customer-booking/components/BookingPanel";
 import shell from "../../discovery-shell/shell.module.css";
 import styles from "../detail.module.css";
 
 export default function ProviderDetailPage({ providerId }: { providerId: string }) {
   const params = useSearchParams(); const returnTo = safeReturnTo(params.get("returnTo")); const requestedServiceId = params.get("serviceId");
-  const { detail, availability, retryDetail, retryAvailability } = useProviderDetail(providerId); const { persona, pet } = useCatalogWorkspace();
+  const { detail, availability, retryDetail, retryAvailability } = useProviderDetail(providerId); const { persona } = useCatalogWorkspace();
   if (detail.status !== "ready") return <div className={`${shell.container} ${styles.initialState}`}><Link href={returnTo}><ArrowLeft aria-hidden="true" size={18} />{vi.discovery.detail.back}</Link>{detail.status === "loading" ? <p role="status">{vi.discovery.detail.loading}</p> : <div role="alert" className={styles.feedback}><p>{detail.error}</p><button type="button" onClick={retryDetail}><RefreshCw size={18} aria-hidden="true" />{vi.common.actions.retry}</button></div>}</div>;
   if (!detail.data) return <div className={`${shell.container} ${styles.initialState}`}><h1>{vi.discovery.detail.unavailableTitle}</h1><p>{vi.discovery.detail.unavailableDescription}</p><Link href={returnTo}><ArrowLeft aria-hidden="true" size={18} />{vi.discovery.detail.back}</Link></div>;
   const { provider, services } = detail.data; const active = services.filter(service => publicService(provider, service));
@@ -40,6 +41,6 @@ export default function ProviderDetailPage({ providerId }: { providerId: string 
       </section>
       {requestedServiceId && !selected && <div role="alert" className={styles.feedback}><h2>{vi.discovery.detail.invalidServiceTitle}</h2><p>{vi.discovery.detail.invalidServiceDescription}</p></div>}
       {selected && <AvailabilityPanel service={selected} resource={availability} onRetry={retryAvailability} />}
-      <section className={styles.bookingBoundary} aria-label={vi.discovery.detail.bookingRegion}><Info aria-hidden="true" size={24} /><div><h2>{vi.discovery.detail.bookingTitle}</h2><p>{persona === "customer" ? mockEligibility(provider, pet) : vi.discovery.detail.guestDescription}</p><p>{vi.discovery.detail.mockBoundary}</p><div className={styles.bookingActions}>{persona === "guest" && <Link href="/login" prefetch={false} className={shell.primaryButton}>{vi.discovery.detail.login}</Link>}<button disabled type="button" aria-describedby="booking-unavailable">{vi.discovery.detail.booking}</button><p id="booking-unavailable">{vi.discovery.detail.bookingUnavailable}</p></div></div></section>
+      {persona === "customer" && selected ? <BookingPanel providerId={providerId} serviceId={selected.id} availabilityStatus={availability.status} /> : <section id="booking" className={styles.bookingBoundary} aria-label={vi.discovery.detail.bookingRegion}><Info aria-hidden="true" size={24} /><div><h2>{vi.discovery.detail.bookingTitle}</h2><p>{vi.discovery.detail.guestDescription}</p><Link href="/login" prefetch={false} className={shell.primaryButton}>{vi.discovery.detail.login}</Link></div></section>}
     </div><BookingExplanation /></>;
 }
