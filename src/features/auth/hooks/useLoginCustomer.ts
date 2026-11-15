@@ -1,5 +1,7 @@
 "use client";
 
+import { vi } from "@/lib/locale";
+
 import { useState } from "react";
 import { AuthApiError } from "../services/authApi";
 import { saveAccessToken } from "../services/authToken";
@@ -17,7 +19,7 @@ export function useLoginCustomer() {
       const response = await loginCustomer(payload);
       saveAccessToken(response.accessToken);
     } catch (requestError) {
-      setError(requestError instanceof AuthApiError ? requestError.message : "Đã xảy ra lỗi khi đăng nhập.");
+      setError(requestError instanceof AuthApiError ? requestError.message : vi.auth.errors.loginUnexpected);
       throw requestError;
     } finally {
       setIsSubmitting(false);

@@ -1,3 +1,4 @@
+import { vi } from "@/lib/locale";
 export default function Loading() {
-  return <p role="status">Đang tải giao diện Admin…</p>;
+  return <p role="status">{vi.admin.route.loading}</p>;
 }

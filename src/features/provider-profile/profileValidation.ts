@@ -1,3 +1,4 @@
+import { vi } from "../../lib/locale";
 import { profileFields } from "./profileLogic";
 import type { ProfileErrors, ProfileSection, ProfileValues } from "./types";
 
@@ -18,10 +19,10 @@ export function validateProfileValues(values: ProfileValues, section: ProfileSec
   const clean = normalizeProfileValues(values);
   const errors: ProfileErrors = {};
   const fields = profileFields(section);
-  if (fields.includes("name") && (clean.name.length < 2 || clean.name.length > profileFieldLimits.name)) errors.name = "Tên cơ sở phải có từ 2 đến 100 ký tự sau khi bỏ khoảng trắng đầu/cuối.";
-  if (fields.includes("description") && clean.description.length > profileFieldLimits.description) errors.description = "Mô tả tối đa 2.000 ký tự.";
-  if (fields.includes("area") && (!clean.area || clean.area.length > profileFieldLimits.area)) errors.area = "Khu vực bắt buộc và tối đa 200 ký tự.";
-  if (fields.includes("phone") && !/^(?:0|\+84)\d{9}$/.test(clean.phone)) errors.phone = "Nhập 0 hoặc +84 rồi 9 chữ số. Có thể dùng khoảng trắng và dấu gạch.";
-  if (fields.includes("email") && (!clean.email || clean.email.length > profileFieldLimits.email || !emailFormatValid)) errors.email = "Nhập email liên hệ hợp lệ, tối đa 254 ký tự.";
+  if (fields.includes("name") && (clean.name.length < 2 || clean.name.length > profileFieldLimits.name)) errors.name = vi.provider.profile.validation.name;
+  if (fields.includes("description") && clean.description.length > profileFieldLimits.description) errors.description = vi.provider.profile.validation.description;
+  if (fields.includes("area") && (!clean.area || clean.area.length > profileFieldLimits.area)) errors.area = vi.provider.profile.validation.area;
+  if (fields.includes("phone") && !/^(?:0|\+84)\d{9}$/.test(clean.phone)) errors.phone = vi.provider.profile.validation.phone;
+  if (fields.includes("email") && (!clean.email || clean.email.length > profileFieldLimits.email || !emailFormatValid)) errors.email = vi.provider.profile.validation.email;
   return errors;
 }

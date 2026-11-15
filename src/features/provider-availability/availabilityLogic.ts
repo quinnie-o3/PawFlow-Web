@@ -1,3 +1,4 @@
+import { vi, formatMessage } from "../../lib/locale";
 import type { AvailabilityCommand, AvailabilitySlot, AvailabilityState, SlotReservation, TimeRange, WeeklyDay } from "./types";
 
 export const availabilityTimeZone = "Asia/Ho_Chi_Minh";
@@ -18,22 +19,22 @@ export function formatAvailabilityDate(date: string, includeYear = true) {
   return `${part("day")}/${part("month")}${includeYear ? `/${part("year")}` : ""}`;
 }
 export function formatRanges(ranges: TimeRange[]) {
-  return ranges.length ? ranges.map((range) => `${range.start}–${range.end}`).join("  ·  ") : "Không nhận lịch";
+  return ranges.length ? ranges.map((range) => `${range.start}–${range.end}`).join("  ·  ") : vi.provider.availability.labels.noHours;
 }
 export function slotStart(slot: AvailabilitySlot) { return new Date(`${slot.date}T${slot.start}:00+07:00`).getTime(); }
 export function isHistorical(slot: AvailabilitySlot, now: string) { return slotStart(slot) <= new Date(now).getTime(); }
 export function dateError(date: string): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "Vui lòng chọn ngày hợp lệ.";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return vi.provider.availability.errors.invalidDate;
   const parsed = new Date(`${date}T00:00:00Z`);
-  return !Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date ? "Vui lòng chọn ngày hợp lệ." : null;
+  return !Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date ? vi.provider.availability.errors.invalidDate : null;
 }
 export function rangesError(ranges: TimeRange[]): string | null {
   for (const range of ranges) {
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(range.start) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(range.end)) return "Vui lòng nhập đủ giờ bắt đầu và kết thúc hợp lệ.";
-    if (range.start >= range.end) return "Giờ kết thúc phải sau giờ bắt đầu trong cùng ngày; chưa hỗ trợ khoảng qua đêm.";
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(range.start) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(range.end)) return vi.provider.availability.errors.invalidTimes;
+    if (range.start >= range.end) return vi.provider.availability.errors.endAfterStart;
   }
   const sorted = [...ranges].sort((a, b) => a.start.localeCompare(b.start));
-  return sorted.some((range, index) => index > 0 && range.start < sorted[index - 1].end) ? "Các khoảng giờ bị chồng lấn. Vui lòng kiểm tra lại." : null;
+  return sorted.some((range, index) => index > 0 && range.start < sorted[index - 1].end) ? vi.provider.availability.errors.overlappingRanges : null;
 }
 export function weeklyHours(state: AvailabilityState, date: string) {
   const version = [...state.schedules].filter((item) => item.effectiveFrom <= date).sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0];
@@ -47,15 +48,15 @@ export function effectiveHours(state: AvailabilityState, date: string): TimeRang
 }
 function fitsHours(slot: AvailabilitySlot, ranges: TimeRange[]) { return ranges.some((range) => range.start <= slot.start && range.end >= slot.end); }
 function conflictDescription(slot: AvailabilitySlot, state: AvailabilityState) {
-  return `${slot.id} · ${formatAvailabilityDate(slot.date)} ${slot.start}–${slot.end} · ${heldSeats(slot.id, state.reservations)} chỗ đang giữ`;
+  return formatMessage(vi.provider.availability.conflicts.slot, { slotId: slot.id, date: formatAvailabilityDate(slot.date), start: slot.start, end: slot.end, held: heldSeats(slot.id, state.reservations) });
 }
 function hoursConflicts(state: AvailabilityState, slots: AvailabilitySlot[]) {
   const conflicts = slots.filter((slot) => !fitsHours(slot, effectiveHours(state, slot.date)));
-  return conflicts.length ? `Slot nằm ngoài giờ hoạt động mới. Xử lý các slot này trước; booking được giữ nguyên:\n${conflicts.map((slot) => conflictDescription(slot, state)).join("\n")}` : null;
+  return conflicts.length ? formatMessage(vi.provider.availability.errors.hoursConflicts, { conflicts: conflicts.map((slot) => conflictDescription(slot, state)).join("\n") }) : null;
 }
 function daysError(days: WeeklyDay[]) {
-  if (days.length !== 7 || [1, 2, 3, 4, 5, 6, 7].some((weekday) => days.filter((day) => day.weekday === weekday).length !== 1)) return "Lịch tuần phải có đủ bảy ngày, không trùng ngày.";
-  for (const day of days) { const error = rangesError(day.ranges); if (error) return `${day.label}: ${error}`; }
+  if (days.length !== 7 || [1, 2, 3, 4, 5, 6, 7].some((weekday) => days.filter((day) => day.weekday === weekday).length !== 1)) return vi.provider.availability.errors.weeklyDays;
+  for (const day of days) { const error = rangesError(day.ranges); if (error) return formatMessage(vi.provider.availability.errors.dayRange, { day: day.label, error }); }
   return null;
 }
 export function canAcceptBooking(state: AvailabilityState, slot: AvailabilitySlot, now: string) {
@@ -68,47 +69,47 @@ export function availabilityCommandError(state: AvailabilityState, command: Avai
     const schedule = command.schedule;
     const error = dateError(schedule.effectiveFrom) ?? daysError(schedule.days);
     if (error) return error;
-    if (schedule.effectiveFrom < today) return "Ngày hiệu lực không được trước ngày hiện tại theo Asia/Ho_Chi_Minh.";
+    if (schedule.effectiveFrom < today) return vi.provider.availability.errors.effectiveDateInPast;
     const next = { ...state, schedules: [...state.schedules.filter((item) => item.effectiveFrom !== schedule.effectiveFrom), schedule] };
     return hoursConflicts(next, state.slots.filter((slot) => slot.date >= schedule.effectiveFrom));
   }
   if (command.type === "createException" || command.type === "updateException" || command.type === "deleteException") {
     const existing = command.type === "deleteException" ? state.exceptions.find((item) => item.id === command.exceptionId) : state.exceptions.find((item) => item.id === command.exception.id);
-    if (command.type !== "createException" && !existing) return "Ngoại lệ không còn tồn tại. Vui lòng kiểm tra lại.";
-    if (command.type === "createException" && existing) return "Ngoại lệ đã tồn tại. Vui lòng sửa mục hiện có.";
+    if (command.type !== "createException" && !existing) return vi.provider.availability.errors.exceptionNotFound;
+    if (command.type === "createException" && existing) return vi.provider.availability.errors.exceptionExists;
     const exception = command.type === "deleteException" ? existing! : command.exception;
     const error = dateError(exception.date) ?? rangesError(exception.ranges);
     if (error) return error;
-    if (exception.date < today || (existing && existing.date < today)) return "Ngoại lệ thuộc lịch sử; không được chỉnh sửa hoặc xóa.";
-    if (existing && existing.date !== exception.date) return "Không đổi ngày của cấu hình hiện có. Hãy tạo ngoại lệ cho ngày khác.";
-    if (state.exceptions.some((item) => item.date === exception.date && item.id !== exception.id)) return "Ngày này đã có ngoại lệ. Hãy chỉnh sửa cấu hình hiện có.";
+    if (exception.date < today || (existing && existing.date < today)) return vi.provider.availability.errors.historicalException;
+    if (existing && existing.date !== exception.date) return vi.provider.availability.errors.exceptionDateChanged;
+    if (state.exceptions.some((item) => item.date === exception.date && item.id !== exception.id)) return vi.provider.availability.errors.duplicateExceptionDate;
     const next = { ...state, exceptions: state.exceptions.filter((item) => item.id !== exception.id) };
     if (command.type !== "deleteException") next.exceptions = [...next.exceptions, exception];
     return hoursConflicts(next, state.slots.filter((slot) => slot.date === exception.date));
   }
   const slotId = "slot" in command ? command.slot.id : command.slotId;
   const existing = state.slots.find((item) => item.id === slotId);
-  if (command.type !== "createSlot" && !existing) return "Khung giờ không còn tồn tại. Vui lòng kiểm tra lại.";
-  if (command.type === "createSlot" && existing) return "Khung giờ đã tồn tại. Vui lòng kiểm tra lại.";
-  if (existing && isHistorical(existing, now)) return "Slot đã bắt đầu hoặc thuộc lịch sử; không được chỉnh sửa, đóng hoặc xóa.";
+  if (command.type !== "createSlot" && !existing) return vi.provider.availability.errors.slotNotFound;
+  if (command.type === "createSlot" && existing) return vi.provider.availability.errors.slotExists;
+  if (existing && isHistorical(existing, now)) return vi.provider.availability.errors.historicalSlot;
   const held = heldSeats(slotId, state.reservations);
   if (command.type === "closeSlot" || command.type === "deleteSlot") {
-    return held > 0 ? `Khung giờ đang giữ ${held} chỗ (Chờ xác nhận + Đã xác nhận). Không thể đóng hoặc xóa; booking được giữ nguyên.` : null;
+    return held > 0 ? formatMessage(vi.provider.availability.errors.heldCannotRemove, { held }) : null;
   }
   const slot = command.slot;
-  if (existing && held > 0 && ["serviceId", "date", "start", "end", "open"].some((key) => existing[key as keyof AvailabilitySlot] !== slot[key as keyof AvailabilitySlot])) return `Khung giờ đang giữ ${held} chỗ. Chỉ được sửa sức chứa; không đổi dịch vụ, ngày giờ hoặc trạng thái mở.`;
-  if (!Number.isSafeInteger(slot.capacity) || slot.capacity < 1) return "Sức chứa phải là số nguyên dương.";
-  if (slot.capacity < held) return `Khung giờ đang giữ ${held} chỗ (Chờ xác nhận + Đã xác nhận). Không thể giảm sức chứa dưới ${held}.`;
+  if (existing && held > 0 && ["serviceId", "date", "start", "end", "open"].some((key) => existing[key as keyof AvailabilitySlot] !== slot[key as keyof AvailabilitySlot])) return formatMessage(vi.provider.availability.errors.heldFieldsLocked, { held });
+  if (!Number.isSafeInteger(slot.capacity) || slot.capacity < 1) return vi.provider.availability.errors.invalidCapacity;
+  if (slot.capacity < held) return formatMessage(vi.provider.availability.errors.capacityBelowHeld, { held });
   const service = state.services.find((item) => item.id === slot.serviceId);
-  if (!service) return "Vui lòng chọn dịch vụ hợp lệ.";
+  if (!service) return vi.provider.availability.errors.invalidService;
   const error = dateError(slot.date) ?? rangesError([{ start: slot.start, end: slot.end }]);
   if (error) return error;
-  if (slot.date < today || isHistorical(slot, now)) return "Slot phải bắt đầu sau thời gian hiện tại theo Asia/Ho_Chi_Minh.";
+  if (slot.date < today || isHistorical(slot, now)) return vi.provider.availability.errors.slotInPast;
   const minutes = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3));
-  if (minutes(slot.end) - minutes(slot.start) !== service.durationMinutes) return `Độ dài slot phải bằng thời lượng dịch vụ: ${service.durationMinutes} phút.`;
-  if (!fitsHours(slot, effectiveHours(state, slot.date))) return "Slot phải nằm hoàn toàn trong một khoảng giờ hoạt động có hiệu lực; ngoại lệ ngày thay thế toàn bộ giờ tuần.";
+  if (minutes(slot.end) - minutes(slot.start) !== service.durationMinutes) return formatMessage(vi.provider.availability.errors.serviceDuration, { minutes: service.durationMinutes });
+  if (!fitsHours(slot, effectiveHours(state, slot.date))) return vi.provider.availability.errors.outsideHours;
   const overlaps = state.slots.filter((item) => item.id !== slot.id && item.serviceId === slot.serviceId && item.date === slot.date && slot.start < item.end && item.start < slot.end);
-  return overlaps.length ? `Slot cùng dịch vụ bị chồng lấn:\n${overlaps.map((item) => conflictDescription(item, state)).join("\n")}` : null;
+  return overlaps.length ? formatMessage(vi.provider.availability.errors.overlappingSlots, { conflicts: overlaps.map((item) => conflictDescription(item, state)).join("\n") }) : null;
 }
 export function upcomingSlots(state: AvailabilityState, now: string) {
   return state.slots.filter((slot) => !isHistorical(slot, now)).sort((a, b) => slotStart(a) - slotStart(b));
@@ -123,7 +124,7 @@ export function summarizeAvailability(state: AvailabilityState, now: string) {
   };
 }
 export function applyAvailabilityCommand(state: AvailabilityState, command: AvailabilityCommand, now: string, simulateFailure = false): AvailabilityState {
-  const error = availabilityCommandError(state, command, now) ?? (simulateFailure ? "Mô phỏng lỗi lưu: dữ liệu chưa thay đổi. Tắt mô phỏng lỗi và thử lại." : null);
+  const error = availabilityCommandError(state, command, now) ?? (simulateFailure ? vi.provider.availability.errors.simulatedFailure : null);
   if (error) return { ...state, feedback: { outcome: "error", message: error } };
   let next = state;
   switch (command.type) {
@@ -135,7 +136,7 @@ export function applyAvailabilityCommand(state: AvailabilityState, command: Avai
     case "createException": case "updateException": next = { ...state, exceptions: [...state.exceptions.filter((item) => item.id !== command.exception.id), { ...command.exception, ranges: command.exception.ranges.map((range) => ({ ...range })) }].sort((a, b) => a.date.localeCompare(b.date)) }; break;
     case "deleteException": next = { ...state, exceptions: state.exceptions.filter((item) => item.id !== command.exceptionId) }; break;
   }
-  const message = command.type === "saveWeekly" ? `Đã lưu giờ tuần từ ${formatAvailabilityDate(command.schedule.effectiveFrom)}. Giữ lịch sử và toàn bộ slot đã tạo.` : command.type === "deleteSlot" ? "Đã xóa slot mô phỏng. Booking được giữ nguyên." : command.type === "closeSlot" ? "Đã đóng slot mô phỏng. Booking được giữ nguyên." : command.type === "deleteException" ? "Đã xóa ngoại lệ; dùng lại giờ tuần có hiệu lực." : command.type === "createException" || command.type === "updateException" ? "Đã lưu ngoại lệ ngày, thay thế toàn bộ giờ tuần của ngày đó." : "Đã lưu slot mô phỏng trong phiên này.";
+  const message = command.type === "saveWeekly" ? formatMessage(vi.provider.availability.feedback.weeklySaved, { date: formatAvailabilityDate(command.schedule.effectiveFrom) }) : command.type === "deleteSlot" ? vi.provider.availability.feedback.slotDeleted : command.type === "closeSlot" ? vi.provider.availability.feedback.slotClosed : command.type === "deleteException" ? vi.provider.availability.feedback.exceptionDeleted : command.type === "createException" || command.type === "updateException" ? vi.provider.availability.feedback.exceptionSaved : vi.provider.availability.feedback.slotSaved;
   return { ...next, feedback: { outcome: "success", message } };
 }
 export type AvailabilityAction = { type: "command"; command: AvailabilityCommand; now: string; simulateFailure: boolean } | { type: "reset"; state: AvailabilityState } | { type: "clearFeedback" };

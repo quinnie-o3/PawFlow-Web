@@ -1,3 +1,4 @@
+import { vi } from "@/lib/locale";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import AdminHeader from "./AdminHeader";
@@ -7,7 +8,7 @@ import styles from "../adminShell.module.css";
 
 export default function AdminShell({ children }: { children: ReactNode }) {
   return <div className={styles.surface} lang="vi">
-    <a href="#admin-main" className={styles.skipLink}>Đến nội dung Admin</a>
+    <a href="#admin-main" className={styles.skipLink}>{vi.admin.shell.skipToContent}</a>
     <AdminHeader />
     <div className={styles.body}>
       <div className={styles.backdrops} aria-hidden="true">

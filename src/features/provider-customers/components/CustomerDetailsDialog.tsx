@@ -1,3 +1,4 @@
+import { vi, formatMessage } from "@/lib/locale";
 import DashboardDialog from "@/features/provider-dashboard/components/DashboardDialog";
 import type { CustomerRecord } from "../types";
 import CustomerBookingHistory from "./CustomerBookingHistory";
@@ -5,27 +6,27 @@ import CustomerGroupBadge from "./CustomerGroupBadge";
 import styles from "../customers.module.css";
 
 export default function CustomerDetailsDialog({ record, onClose }: { record: CustomerRecord; onClose: () => void }) {
-  return <DashboardDialog title={`Hồ sơ khách hàng · ${record.customer.name} (${record.customer.id})`} onClose={onClose}>
+  return <DashboardDialog title={formatMessage(vi.provider.customers.details.title, { customerName: record.customer.name, customerId: record.customer.id })} onClose={onClose}>
     <div className={styles.details}>
       <CustomerGroupBadge group={record.group} />
       <section className={styles.detailSection} aria-labelledby="customer-contact-title">
-        <h3 id="customer-contact-title">Thông tin liên hệ</h3>
-        <p className={styles.help}>Thông tin chỉ đọc của khách có booking tại cơ sở này.</p>
+        <h3 id="customer-contact-title">{vi.provider.customers.details.contact}</h3>
+        <p className={styles.help}>{vi.provider.customers.details.note}</p>
         <dl className={styles.contactFields}>
-          <div><dt>Mã khách hàng</dt><dd>{record.customer.id}</dd></div>
-          <div><dt>Họ tên</dt><dd>{record.customer.name}</dd></div>
-          <div><dt>Số điện thoại</dt><dd>{record.customer.phone || "Chưa có"}</dd></div>
-          <div><dt>Email</dt><dd>{record.customer.email || "Chưa có"}</dd></div>
+          <div><dt>{vi.provider.customers.labels.customerId}</dt><dd>{record.customer.id}</dd></div>
+          <div><dt>{vi.provider.customers.labels.name}</dt><dd>{record.customer.name}</dd></div>
+          <div><dt>{vi.provider.customers.labels.phone}</dt><dd>{record.customer.phone || vi.provider.customers.labels.unavailable}</dd></div>
+          <div><dt>Email</dt><dd>{record.customer.email || vi.provider.customers.labels.unavailable}</dd></div>
         </dl>
       </section>
       <section className={styles.detailSection} aria-labelledby="customer-pets-title">
-        <h3 id="customer-pets-title">Thú cưng từng có booking tại cơ sở</h3>
+        <h3 id="customer-pets-title">{vi.provider.customers.labels.petsAtFacility}</h3>
         <ul className={styles.pets}>{record.pets.map((pet) => <li key={pet.id}>
           <strong>{pet.name}</strong><span className={styles.customerId}>{pet.id}</span><p>{pet.species} · {pet.breed}</p>
         </li>)}</ul>
       </section>
       <CustomerBookingHistory record={record} />
-      <button className={styles.softButton} type="button" onClick={onClose}>Đóng hồ sơ</button>
+      <button className={styles.softButton} type="button" onClick={onClose}>{vi.provider.customers.details.close}</button>
     </div>
   </DashboardDialog>;
 }

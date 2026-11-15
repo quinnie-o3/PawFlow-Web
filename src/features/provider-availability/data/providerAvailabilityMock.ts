@@ -1,15 +1,16 @@
+import { vi } from "../../../lib/locale";
 import type { AvailabilitySlot, AvailabilityState, DateException, SlotReservation, WeeklyDay } from "../types";
 
 // Injected frozen clock; explicitly labelled in the UI. No dependency on host timezone.
 export const availabilityMockNow = "2026-10-15T10:00:00+07:00";
 export const mockWeeklyHours: WeeklyDay[] = [
-  { weekday: 1, label: "Thứ Hai", ranges: [{ start: "09:00", end: "12:00" }, { start: "13:30", end: "18:00" }] },
-  { weekday: 2, label: "Thứ Ba", ranges: [{ start: "09:00", end: "12:00" }, { start: "13:30", end: "18:00" }] },
-  { weekday: 3, label: "Thứ Tư", ranges: [{ start: "09:00", end: "12:00" }, { start: "13:30", end: "18:00" }] },
-  { weekday: 4, label: "Thứ Năm", ranges: [{ start: "09:00", end: "12:00" }, { start: "13:30", end: "18:00" }] },
-  { weekday: 5, label: "Thứ Sáu", ranges: [{ start: "09:00", end: "12:00" }, { start: "13:30", end: "18:00" }] },
-  { weekday: 6, label: "Thứ Bảy", ranges: [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "17:00" }] },
-  { weekday: 7, label: "Chủ Nhật", ranges: [] },
+  { weekday: 1, label: vi.provider.availability.weekdays.monday, ranges: [{ start: "09:00", end: "12:00" }, { start: "13:30", end: "18:00" }] },
+  { weekday: 2, label: vi.provider.availability.weekdays.tuesday, ranges: [{ start: "09:00", end: "12:00" }, { start: "13:30", end: "18:00" }] },
+  { weekday: 3, label: vi.provider.availability.weekdays.wednesday, ranges: [{ start: "09:00", end: "12:00" }, { start: "13:30", end: "18:00" }] },
+  { weekday: 4, label: vi.provider.availability.weekdays.thursday, ranges: [{ start: "09:00", end: "12:00" }, { start: "13:30", end: "18:00" }] },
+  { weekday: 5, label: vi.provider.availability.weekdays.friday, ranges: [{ start: "09:00", end: "12:00" }, { start: "13:30", end: "18:00" }] },
+  { weekday: 6, label: vi.provider.availability.weekdays.saturday, ranges: [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "17:00" }] },
+  { weekday: 7, label: vi.provider.availability.weekdays.sunday, ranges: [] },
 ];
 export const mockDateExceptions: DateException[] = [
   { id: "exception-1", date: "2026-10-02", ranges: [] },

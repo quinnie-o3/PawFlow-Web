@@ -1,299 +1,300 @@
+import { vi, formatMessage } from "../../../lib/locale";
 import type { AdminCollectionDefinition, AdminRecord } from "../../admin-workspace/types";
 
 // Read-only Figma fixtures. Local IDs and view models are not an API contract.
 export const records: readonly AdminRecord[] = [
   {
     "id": "KN-014",
-    "title": "Khiếu nại · KN-014",
+    "title": formatMessage(vi.admin.complaints.recordTitle, { complaintId: "KN-014" }),
     "cells": [
       "KN-014",
       "Lan Phương",
       "PawCare Studio",
       "PF-2079",
-      "Mới"
+      vi.admin.labels.new
     ],
     "status": {
-      "label": "Mới",
+      "label": vi.admin.labels.new,
       "tone": "info"
     },
     "tags": [
       "open"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Mã",
+        "label": vi.admin.labels.code,
         "value": "KN-014"
       },
       {
-        "label": "Người gửi",
+        "label": vi.admin.labels.sender,
         "value": "Lan Phương"
       },
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "PawCare Studio"
       },
       {
-        "label": "Mã lịch",
+        "label": vi.admin.labels.bookingId,
         "value": "PF-2079"
       },
       {
-        "label": "Trạng thái",
-        "value": "Mới"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.new
       },
       {
-        "label": "Thú cưng",
+        "label": vi.admin.labels.pet,
         "value": "Bon"
       },
       {
-        "label": "Nội dung",
+        "label": vi.admin.labels.content,
         "value": "Chờ dịch vụ lâu hơn giờ đã hẹn."
       },
       {
-        "label": "Ghi chú trong thiết kế",
+        "label": vi.admin.labels.designNotes,
         "value": "Liên hệ hai bên để xác minh."
       }
     ],
     "pendingActions": [
-      "Tiếp nhận",
-      "Thêm ghi chú"
+      vi.admin.actions.receiveComplaint,
+      vi.admin.actions.addNote
     ]
   },
   {
     "id": "KN-013",
-    "title": "Khiếu nại · KN-013",
+    "title": formatMessage(vi.admin.complaints.recordTitle, { complaintId: "KN-013" }),
     "cells": [
       "KN-013",
       "Quang Minh",
       "Happy Paws",
       "PF-2068",
-      "Đang xử lý"
+      vi.admin.labels.inProgress
     ],
     "status": {
-      "label": "Đang xử lý",
+      "label": vi.admin.labels.inProgress,
       "tone": "warning"
     },
     "tags": [
       "processing"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Mã",
+        "label": vi.admin.labels.code,
         "value": "KN-013"
       },
       {
-        "label": "Người gửi",
+        "label": vi.admin.labels.sender,
         "value": "Quang Minh"
       },
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "Happy Paws"
       },
       {
-        "label": "Mã lịch",
+        "label": vi.admin.labels.bookingId,
         "value": "PF-2068"
       },
       {
-        "label": "Trạng thái",
-        "value": "Đang xử lý"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.inProgress
       },
       {
-        "label": "Nội dung / kết luận chi tiết",
-        "value": "Chưa có trong fixture đã đối chiếu."
+        "label": vi.admin.labels.complaintConclusion,
+        "value": vi.admin.collection.fixtureValueUnavailable
       }
     ],
     "pendingActions": [
-      "Thêm ghi chú",
-      "Đánh dấu đã giải quyết"
+      vi.admin.actions.addNote,
+      vi.admin.actions.markResolved
     ]
   },
   {
     "id": "KN-012",
-    "title": "Khiếu nại · KN-012",
+    "title": formatMessage(vi.admin.complaints.recordTitle, { complaintId: "KN-012" }),
     "cells": [
       "KN-012",
       "Ngọc Anh",
       "Little Tails",
       "PF-2047",
-      "Mới"
+      vi.admin.labels.new
     ],
     "status": {
-      "label": "Mới",
+      "label": vi.admin.labels.new,
       "tone": "info"
     },
     "tags": [
       "open"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Mã",
+        "label": vi.admin.labels.code,
         "value": "KN-012"
       },
       {
-        "label": "Người gửi",
+        "label": vi.admin.labels.sender,
         "value": "Ngọc Anh"
       },
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "Little Tails"
       },
       {
-        "label": "Mã lịch",
+        "label": vi.admin.labels.bookingId,
         "value": "PF-2047"
       },
       {
-        "label": "Trạng thái",
-        "value": "Mới"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.new
       },
       {
-        "label": "Nội dung / kết luận chi tiết",
-        "value": "Chưa có trong fixture đã đối chiếu."
+        "label": vi.admin.labels.complaintConclusion,
+        "value": vi.admin.collection.fixtureValueUnavailable
       }
     ],
     "pendingActions": [
-      "Tiếp nhận",
-      "Thêm ghi chú"
+      vi.admin.actions.receiveComplaint,
+      vi.admin.actions.addNote
     ]
   },
   {
     "id": "KN-011",
-    "title": "Khiếu nại · KN-011",
+    "title": formatMessage(vi.admin.complaints.recordTitle, { complaintId: "KN-011" }),
     "cells": [
       "KN-011",
       "Mai Anh",
       "PawCare Studio",
       "PF-2051",
-      "Đã giải quyết"
+      vi.admin.labels.resolved
     ],
     "status": {
-      "label": "Đã giải quyết",
+      "label": vi.admin.labels.resolved,
       "tone": "success"
     },
     "tags": [
       "resolved"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Mã",
+        "label": vi.admin.labels.code,
         "value": "KN-011"
       },
       {
-        "label": "Người gửi",
+        "label": vi.admin.labels.sender,
         "value": "Mai Anh"
       },
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "PawCare Studio"
       },
       {
-        "label": "Mã lịch",
+        "label": vi.admin.labels.bookingId,
         "value": "PF-2051"
       },
       {
-        "label": "Trạng thái",
-        "value": "Đã giải quyết"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.resolved
       },
       {
-        "label": "Nội dung / kết luận chi tiết",
-        "value": "Chưa có trong fixture đã đối chiếu."
+        "label": vi.admin.labels.complaintConclusion,
+        "value": vi.admin.collection.fixtureValueUnavailable
       }
     ],
     "pendingActions": []
   },
   {
     "id": "KN-010",
-    "title": "Khiếu nại · KN-010",
+    "title": formatMessage(vi.admin.complaints.recordTitle, { complaintId: "KN-010" }),
     "cells": [
       "KN-010",
       "Đức Huy",
       "Miu House",
       "PF-2040",
-      "Đang xử lý"
+      vi.admin.labels.inProgress
     ],
     "status": {
-      "label": "Đang xử lý",
+      "label": vi.admin.labels.inProgress,
       "tone": "warning"
     },
     "tags": [
       "processing"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Mã",
+        "label": vi.admin.labels.code,
         "value": "KN-010"
       },
       {
-        "label": "Người gửi",
+        "label": vi.admin.labels.sender,
         "value": "Đức Huy"
       },
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "Miu House"
       },
       {
-        "label": "Mã lịch",
+        "label": vi.admin.labels.bookingId,
         "value": "PF-2040"
       },
       {
-        "label": "Trạng thái",
-        "value": "Đang xử lý"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.inProgress
       },
       {
-        "label": "Nội dung / kết luận chi tiết",
-        "value": "Chưa có trong fixture đã đối chiếu."
+        "label": vi.admin.labels.complaintConclusion,
+        "value": vi.admin.collection.fixtureValueUnavailable
       }
     ],
     "pendingActions": [
-      "Thêm ghi chú",
-      "Đánh dấu đã giải quyết"
+      vi.admin.actions.addNote,
+      vi.admin.actions.markResolved
     ]
   },
   {
     "id": "KN-009",
-    "title": "Khiếu nại · KN-009",
+    "title": formatMessage(vi.admin.complaints.recordTitle, { complaintId: "KN-009" }),
     "cells": [
       "KN-009",
       "Lan Phương",
       "PetNest Care",
       "PF-2036",
-      "Đã giải quyết"
+      vi.admin.labels.resolved
     ],
     "status": {
-      "label": "Đã giải quyết",
+      "label": vi.admin.labels.resolved,
       "tone": "success"
     },
     "tags": [
       "resolved"
     ],
-    "description": "Bản ghi mẫu từ thiết kế Figma. Chỉ hiển thị các thông tin đã có trong fixture.",
+    "description": vi.admin.collection.fixtureDescription,
     "details": [
       {
-        "label": "Mã",
+        "label": vi.admin.labels.code,
         "value": "KN-009"
       },
       {
-        "label": "Người gửi",
+        "label": vi.admin.labels.sender,
         "value": "Lan Phương"
       },
       {
-        "label": "Cơ sở",
+        "label": vi.admin.labels.facility,
         "value": "PetNest Care"
       },
       {
-        "label": "Mã lịch",
+        "label": vi.admin.labels.bookingId,
         "value": "PF-2036"
       },
       {
-        "label": "Trạng thái",
-        "value": "Đã giải quyết"
+        "label": vi.admin.labels.status,
+        "value": vi.admin.labels.resolved
       },
       {
-        "label": "Nội dung / kết luận chi tiết",
-        "value": "Chưa có trong fixture đã đối chiếu."
+        "label": vi.admin.labels.complaintConclusion,
+        "value": vi.admin.collection.fixtureValueUnavailable
       }
     ],
     "pendingActions": []
@@ -301,41 +302,41 @@ export const records: readonly AdminRecord[] = [
 ];
 
 export const definition: AdminCollectionDefinition = {
-  "title": "Khiếu nại",
-  "description": "Theo dõi phản ánh liên quan đến lịch hẹn và chất lượng dịch vụ",
-  "listTitle": "Danh sách khiếu nại",
-  "listDescription": "Liên kết phản ánh với lịch hẹn, khách hàng và cơ sở",
+  "title": vi.admin.complaints.title,
+  "description": vi.admin.complaints.description,
+  "listTitle": vi.admin.complaints.listTitle,
+  "listDescription": vi.admin.complaints.listDescription,
   "headers": [
-    "Mã",
-    "Người gửi",
-    "Cơ sở",
-    "Mã lịch",
-    "Trạng thái"
+    vi.admin.labels.code,
+    vi.admin.labels.sender,
+    vi.admin.labels.facility,
+    vi.admin.labels.bookingId,
+    vi.admin.labels.status
   ],
   "filters": [
     {
       "value": "all",
-      "label": "Tất cả"
+      "label": vi.admin.labels.all
     },
     {
       "value": "open",
-      "label": "Mới"
+      "label": vi.admin.labels.new
     },
     {
       "value": "processing",
-      "label": "Đang xử lý"
+      "label": vi.admin.labels.inProgress
     },
     {
       "value": "resolved",
-      "label": "Đã giải quyết"
+      "label": vi.admin.labels.resolved
     }
   ],
   "metricLabels": [
-    "Mới tiếp nhận",
-    "Đang xử lý",
-    "Đã giải quyết"
+    vi.admin.labels.newlyReceived,
+    vi.admin.labels.inProgress,
+    vi.admin.labels.resolved
   ],
-  "searchLabel": "Mã khiếu nại hoặc mã lịch",
-  "introAction": "Quy trình xử lý",
-  "introNotes": ["Proposal §7.3 và thiết kế: Admin xem phản ánh liên quan đến lịch hẹn hoặc chất lượng dịch vụ, với khách hàng và cơ sở liên quan.", "Chuyển trạng thái, ghi chú, kết luận và điều kiện mở lại chưa được người dùng xác nhận."]
+  "searchLabel": vi.admin.complaints.searchLabel,
+  "introAction": vi.admin.complaints.introAction,
+  "introNotes": [vi.admin.complaints.complaintScopeRule, vi.admin.complaints.pendingResolutionRule]
 };

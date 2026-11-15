@@ -1,3 +1,4 @@
+import { vi, formatMessage } from "../../../lib/locale";
 import type { DailyDashboardSample, DateRange, MetricCardData, OperationalAlert, WeeklyStatusPoint } from "../types";
 
 export function formatDate(date: string) {
@@ -40,8 +41,8 @@ export function summarizeDashboard(samples: DailyDashboardSample[], range: DateR
   const percentage = (numerator: number, denominator: number) =>
     (numerator / denominator * 100).toLocaleString("vi-VN", { maximumFractionDigits: 1 }) + "%";
   const metrics: MetricCardData[] = [
-    { id: "recognized-revenue", title: "Doanh thu ghi nhận", icon: "payment", value: hasData ? sum("paidCompletedRevenue").toLocaleString("vi-VN") + " ₫" : "N/A", description: "Lịch Completed có trạng thái thanh toán Paid" },
-    { id: "appointment-status", title: "Lịch hẹn theo trạng thái", icon: "calendar", value: hasData ? String(total) : "N/A", description: "Chưa có dữ liệu trong kỳ", breakdown: hasData ? [
+    { id: "recognized-revenue", title: vi.provider.dashboard.metrics.recognizedRevenue, icon: "payment", value: hasData ? sum("paidCompletedRevenue").toLocaleString("vi-VN") + " ₫" : "N/A", description: vi.provider.dashboard.metrics.revenueDescription },
+    { id: "appointment-status", title: vi.provider.dashboard.metrics.appointmentStatus, icon: "calendar", value: hasData ? String(total) : "N/A", description: vi.provider.dashboard.metrics.noData, breakdown: hasData ? [
       { label: "Completed", value: String(completed), tone: "success" },
       { label: "Cancelled", value: String(cancelled), tone: "danger" },
       { label: "No-show", value: String(noShow), tone: "warning" },
@@ -49,16 +50,16 @@ export function summarizeDashboard(samples: DailyDashboardSample[], range: DateR
       { label: "Confirmed", value: String(confirmed), tone: "info" },
       { label: "Rejected", value: String(rejected), tone: "danger" },
     ] : undefined },
-    { id: "cancellation-rate", title: "Tỷ lệ hủy", icon: "notification", value: resolved ? percentage(cancelled, resolved) : "N/A", description: hasData ? cancelled + " / " + resolved + " lịch đã giải quyết" : "Chưa có dữ liệu trong kỳ" },
-    { id: "popular-service", title: "Dịch vụ phổ biến", icon: "stack", value: popular?.[0] ?? "N/A", description: popular ? popular[1] + " lịch Completed trong kỳ" : "Chưa có lịch Completed trong kỳ" },
-    { id: "returning-customers", title: "Khách hàng quay lại", icon: "cards", value: hasData ? String(returning) : "N/A", description: "Có lịch Completed trước đó với cơ sở" },
-    { id: "average-rating", title: "Điểm đánh giá trung bình", icon: "chart", value: sum("reviewCount") ? (sum("reviewScoreTotal") / sum("reviewCount")).toLocaleString("vi-VN", { maximumFractionDigits: 1, minimumFractionDigits: 1 }) + " / 5" : "N/A", description: sum("reviewCount") + " đánh giá hiển thị trong kỳ" },
+    { id: "cancellation-rate", title: vi.provider.dashboard.metrics.cancellationRate, icon: "notification", value: resolved ? percentage(cancelled, resolved) : "N/A", description: hasData ? formatMessage(vi.provider.dashboard.metrics.resolvedDescription, { cancelled, resolved }) : vi.provider.dashboard.metrics.noData },
+    { id: "popular-service", title: vi.provider.dashboard.metrics.popularService, icon: "stack", value: popular?.[0] ?? "N/A", description: popular ? formatMessage(vi.provider.dashboard.metrics.completedDescription, { count: popular[1] }) : vi.provider.dashboard.metrics.noCompletedBookings },
+    { id: "returning-customers", title: vi.provider.dashboard.metrics.returningCustomers, icon: "cards", value: hasData ? String(returning) : "N/A", description: vi.provider.dashboard.metrics.returningDescription },
+    { id: "average-rating", title: vi.provider.dashboard.metrics.averageRating, icon: "chart", value: sum("reviewCount") ? (sum("reviewScoreTotal") / sum("reviewCount")).toLocaleString("vi-VN", { maximumFractionDigits: 1, minimumFractionDigits: 1 }) + " / 5" : "N/A", description: formatMessage(vi.provider.dashboard.metrics.ratingDescription, { count: sum("reviewCount") }) },
   ];
   // Group sample dates into consecutive 7-day buckets from the selected start date.
   const groups = new Map<number, WeeklyStatusPoint>();
   for (const sample of selected) {
     const week = Math.floor((Date.parse(sample.date) - Date.parse(range.start)) / 604800000);
-    const point = groups.get(week) ?? { week: "Tuần " + (week + 1), completed: 0, other: 0 };
+    const point = groups.get(week) ?? { week: formatMessage(vi.provider.dashboard.chart.week, { number: week + 1 }), completed: 0, other: 0 };
     point.completed += sample.completed;
     point.other += sample.cancelled + sample.noShow + sample.pending + sample.confirmed + sample.rejected;
     groups.set(week, point);
@@ -69,22 +70,22 @@ export function summarizeDashboard(samples: DailyDashboardSample[], range: DateR
   const groomingResolved = sum("groomingResolved");
   if (groomingResolved && groomingCancelled / groomingResolved > 0.25) {
     alerts.push({
-      id: "grooming-cancel-rate", title: "Tỷ lệ hủy Grooming vượt ngưỡng",
-      description: percentage(groomingCancelled, groomingResolved) + " trong kỳ; ngưỡng 25%. Xem lại lịch, giá hoặc phản hồi gần đây.",
-      period: formatRange(range), serviceScope: "Grooming · PawCare Studio", metric: "Tỷ lệ hủy Grooming",
+      id: "grooming-cancel-rate", title: vi.provider.dashboard.alerts.groomingCancellationTitle,
+      description: formatMessage(vi.provider.dashboard.alerts.groomingCancellationDescription, { percentage: percentage(groomingCancelled, groomingResolved) }),
+      period: formatRange(range), serviceScope: "Grooming · PawCare Studio", metric: vi.provider.dashboard.alerts.groomingCancellationMetric,
       numerator: groomingCancelled, denominator: groomingResolved, threshold: "25%",
-      condition: "Số lịch Grooming bị hủy / số lịch Grooming đã giải quyết > 25%.",
+      condition: vi.provider.dashboard.alerts.groomingCancellationCondition,
     });
   }
   const accepted = sum("accepted");
   const peak = sum("peakHourAccepted");
   if (accepted && peak / accepted > 0.4) {
     alerts.push({
-      id: "peak-demand", title: "Nhu cầu tập trung 17:00–20:00",
-      description: percentage(peak, accepted) + " lịch được chấp nhận; ngưỡng 40%. Xem lại sức chứa giờ cao điểm.",
-      period: formatRange(range), serviceScope: "Tất cả dịch vụ · PawCare Studio", metric: "Tỷ trọng lịch được chấp nhận 17:00–20:00",
+      id: "peak-demand", title: vi.provider.dashboard.alerts.peakDemandTitle,
+      description: formatMessage(vi.provider.dashboard.alerts.peakDemandDescription, { percentage: percentage(peak, accepted) }),
+      period: formatRange(range), serviceScope: vi.provider.dashboard.alerts.allServicesScope, metric: vi.provider.dashboard.alerts.peakDemandMetric,
       numerator: peak, denominator: accepted, threshold: "40%",
-      condition: "Số lịch được chấp nhận 17:00–20:00 / tổng lịch được chấp nhận > 40%.",
+      condition: vi.provider.dashboard.alerts.peakDemandCondition,
     });
   }
   return { metrics, chart, alerts, hasData };

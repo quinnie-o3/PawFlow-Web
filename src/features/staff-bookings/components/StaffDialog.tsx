@@ -1,5 +1,7 @@
 "use client";
 
+import { vi, formatMessage } from "@/lib/locale";
+
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 import styles from "../staffBookings.module.css";
@@ -36,9 +38,9 @@ export default function StaffDialog({ title, children, busy = false, onClose }: 
         (event.shiftKey ? last : first)?.focus();
       }
     }}>
-    <div className={styles.dialogHeading}><h2 id={titleId}>{title}</h2><button type="button" autoFocus disabled={busy} aria-label="Đóng chi tiết" onClick={onClose}><X size={20} aria-hidden="true" /></button></div>
-    <p className={styles.muted}>PawCare Studio · Dữ liệu mô phỏng trong phiên</p>
+    <div className={styles.dialogHeading}><h2 id={titleId}>{title}</h2><button type="button" autoFocus disabled={busy} aria-label={vi.staff.bookings.dialog.closeDetails} onClick={onClose}><X size={20} aria-hidden="true" /></button></div>
+    <p className={styles.muted}>{formatMessage(vi.staff.bookings.dialog.notice, { facility: "PawCare Studio" })}</p>
     {children}
-    <button type="button" className={styles.secondaryButton} disabled={busy} onClick={onClose}>Đóng</button>
+    <button type="button" className={styles.secondaryButton} disabled={busy} onClick={onClose}>{vi.common.actions.close}</button>
   </dialog>;
 }

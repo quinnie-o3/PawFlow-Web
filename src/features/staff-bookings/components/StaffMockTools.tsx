@@ -1,3 +1,4 @@
+import { vi } from "@/lib/locale";
 import type { StaffMockScenario } from "../types";
 import styles from "../staffBookings.module.css";
 
@@ -13,23 +14,22 @@ export default function StaffMockTools({ clockInput, clockError, simulateFailure
   onReset: () => void;
 }) {
   return <details className={styles.mockTools}>
-    <summary>Thử dữ liệu mô phỏng</summary>
-    <p>Đồng hồ cố định, không chạy theo giờ máy. Điều khiển bên dưới chỉ tác động tới phiên mẫu, không gọi API.</p>
+    <summary>{vi.staff.bookings.mockTools.title}</summary>
+    <p>{vi.staff.bookings.mockTools.description}</p>
     <form className={styles.clockForm} noValidate onSubmit={(event) => { event.preventDefault(); onApplyClock(); }}>
-      <label className={styles.field}>Ngày giờ mô phỏng (Asia/Ho_Chi_Minh · UTC+7)
-        <input type="datetime-local" value={clockInput} onChange={(event) => onClockInputChange(event.target.value)}
+      <label className={styles.field}>{vi.staff.bookings.mockTools.clockLabel}<input type="datetime-local" value={clockInput} onChange={(event) => onClockInputChange(event.target.value)}
           disabled={disabled} aria-invalid={!!clockError} aria-describedby={clockError ? "staff-clock-error" : undefined} />
       </label>
-      <button type="submit" className={styles.secondaryButton} disabled={disabled}>Áp dụng thời gian</button>
+      <button type="submit" className={styles.secondaryButton} disabled={disabled}>{vi.staff.bookings.mockTools.applyClock}</button>
     </form>
     {clockError && <p id="staff-clock-error" role="alert" className={styles.operationError}>{clockError}</p>}
     <label className={styles.check}><input type="checkbox" checked={simulateFailure} disabled={disabled}
-      onChange={(event) => onFailureChange(event.target.checked)} />Giả lập lỗi thao tác</label>
-    <p>“Danh sách rỗng” làm rỗng dữ liệu phiên. Lỗi tải / Thử lại giữ dữ liệu, đồng hồ và nhật ký. “Khôi phục mẫu” xóa thay đổi, nhật ký, lỗi, lựa chọn và bộ lọc; đưa đồng hồ về 21/10/2026 08:00.</p>
+      onChange={(event) => onFailureChange(event.target.checked)} />{vi.staff.bookings.mockTools.simulateOperationError}</label>
+    <p>{vi.staff.bookings.mockTools.resetDescription}</p>
     <div className={styles.mockButtons}>
-      <button type="button" disabled={disabled} onClick={() => onScenario("error")}>Giả lập lỗi tải</button>
-      <button type="button" disabled={disabled} onClick={() => onScenario("empty")}>Danh sách rỗng</button>
-      <button type="button" disabled={disabled} onClick={onReset}>Khôi phục mẫu</button>
+      <button type="button" disabled={disabled} onClick={() => onScenario("error")}>{vi.staff.bookings.mockTools.simulateLoadError}</button>
+      <button type="button" disabled={disabled} onClick={() => onScenario("empty")}>{vi.staff.bookings.mockTools.emptyList}</button>
+      <button type="button" disabled={disabled} onClick={onReset}>{vi.staff.bookings.mockTools.restoreFixtures}</button>
     </div>
   </details>;
 }

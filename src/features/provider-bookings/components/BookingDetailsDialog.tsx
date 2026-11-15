@@ -1,5 +1,7 @@
 "use client";
 
+import { vi, formatMessage } from "@/lib/locale";
+
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { actionLabels, bookingActions, formatBookingDate, scheduledEnd, statusLabels } from "../bookingLogic";
 import { mockNow, mockOwner } from "../data/providerBookingsMock";
@@ -59,11 +61,11 @@ export default function BookingDetailsDialog({ booking, logs, pending, feedback,
     event.preventDefault();
     if (!target || pending) return;
     if (target === "cancelled" && !reason.trim()) {
-      setValidation("Vui lòng nhập lý do hủy; không được chỉ có khoảng trắng.");
+      setValidation(vi.provider.bookings.errors.cancellationReason);
       return;
     }
     if (["completed", "noShow"].includes(target) && !attested) {
-      setValidation("Vui lòng xác nhận kết quả thực tế của lịch hẹn.");
+      setValidation(vi.provider.bookings.errors.attestation);
       return;
     }
     setValidation("");
@@ -85,20 +87,20 @@ export default function BookingDetailsDialog({ booking, logs, pending, feedback,
     onCancel={(event) => { event.preventDefault(); if (!pending) onClose(); }}
     onClick={(event) => { if (event.target === event.currentTarget && !pending) onClose(); }}>
     <div className={styles.dialogBody}>
-      <h2 id={titleId}>Chi tiết lịch #{booking.id}</h2>
-      <p className={styles.mockLabel}>Dữ liệu mô phỏng · PawCare Studio</p>
+      <h2 id={titleId}>{formatMessage(vi.provider.bookings.details.title, { bookingId: booking.id })}</h2>
+      <p className={styles.mockLabel}>{vi.provider.bookings.details.mockFacility}</p>
       <dl className={styles.detailFields}>
-        <dt>Khách hàng</dt><dd>{booking.customerName}</dd>
-        <dt>Thú cưng</dt><dd>{booking.petName} ({booking.petSpecies})</dd>
-        <dt>Dịch vụ</dt><dd>{booking.serviceName}</dd>
-        <dt>Ngày giờ</dt><dd>{formatBookingDate(booking.scheduledAt, true)}</dd>
-        <dt>Thời lượng</dt><dd>{booking.durationMinutes} phút</dd>
-        <dt>Kết thúc dự kiến</dt><dd>{formatBookingDate(new Date(scheduledEnd(booking)).toISOString(), true)}</dd>
-        <dt>Giá</dt><dd>{booking.price.toLocaleString("vi-VN")} ₫</dd>
-        <dt>Ghi chú</dt><dd>{booking.notes || "Không có ghi chú"}</dd>
-        <dt>Trạng thái</dt><dd><BookingStatusBadge status={booking.status} /></dd>
+        <dt>{vi.provider.bookings.labels.customer}</dt><dd>{booking.customerName}</dd>
+        <dt>{vi.provider.bookings.labels.pet}</dt><dd>{booking.petName} ({booking.petSpecies})</dd>
+        <dt>{vi.provider.bookings.labels.service}</dt><dd>{booking.serviceName}</dd>
+        <dt>{vi.provider.bookings.labels.dateTime}</dt><dd>{formatBookingDate(booking.scheduledAt, true)}</dd>
+        <dt>{vi.provider.bookings.labels.duration}</dt><dd>{formatMessage(vi.provider.bookings.details.duration, { count: booking.durationMinutes })}</dd>
+        <dt>{vi.provider.bookings.labels.expectedEnd}</dt><dd>{formatBookingDate(new Date(scheduledEnd(booking)).toISOString(), true)}</dd>
+        <dt>{vi.provider.bookings.labels.price}</dt><dd>{booking.price.toLocaleString("vi-VN")} ₫</dd>
+        <dt>{vi.provider.bookings.labels.notes}</dt><dd>{booking.notes || vi.provider.bookings.labels.noNotes}</dd>
+        <dt>{vi.provider.bookings.labels.status}</dt><dd><BookingStatusBadge status={booking.status} /></dd>
       </dl>
-      <p className={styles.mockLabel}>Thời gian mô phỏng: {formatBookingDate(mockNow, true)} (Asia/Ho_Chi_Minh)</p>
+      <p className={styles.mockLabel}>{formatMessage(vi.provider.bookings.details.clock, { time: formatBookingDate(mockNow, true) })}</p>
 
       {feedback && <p ref={feedbackRef} tabIndex={-1} className={feedback.outcome === "error" ? styles.error : styles.success} role={feedback.outcome === "error" ? "alert" : "status"}>{feedback.message}</p>}
 
@@ -107,19 +109,18 @@ export default function BookingDetailsDialog({ booking, logs, pending, feedback,
         <p>{booking.id} · {booking.customerName} · {booking.petName}</p>
         <p>{statusLabels[booking.status]} → {statusLabels[target]}</p>
         {target === "cancelled" && <label className={styles.fieldLabel}>
-          Lý do hủy (bắt buộc)
-          <textarea value={reason} onChange={(event) => setReason(event.target.value)} required disabled={pending} rows={3} />
+          {vi.provider.bookings.confirmation.cancellationReason}<textarea value={reason} onChange={(event) => setReason(event.target.value)} required disabled={pending} rows={3} />
         </label>}
         {(target === "completed" || target === "noShow") && <label className={styles.checkboxLabel}>
           <input type="checkbox" checked={attested} onChange={(event) => setAttested(event.target.checked)} disabled={pending} required />
-          {target === "completed" ? "Tôi xác nhận dịch vụ thực tế đã hoàn tất." : "Tôi xác nhận khách không đến lịch hẹn này."}
+          {target === "completed" ? vi.provider.bookings.confirmation.completedAttestation : vi.provider.bookings.confirmation.noShowAttestation}
         </label>}
         {validation && <p role="alert" className={styles.error}>{validation}</p>}
-        <button type="submit" className={styles.primaryButton} disabled={pending}>{pending ? "Đang cập nhật…" : "Xác nhận thao tác"}</button>
+        <button type="submit" className={styles.primaryButton} disabled={pending}>{pending ? vi.provider.bookings.confirmation.pending : vi.provider.bookings.confirmation.submit}</button>
         <button type="button" className={styles.softButton} disabled={pending} onClick={() => {
           setTarget(null);
           window.requestAnimationFrame(() => ref.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus());
-        }}>Quay lại chi tiết</button>
+        }}>{vi.provider.bookings.confirmation.back}</button>
       </form> : <div className={styles.actions}>
         {actions.map((action) => <div key={action.target}>
           <button type="button" className={styles.primaryButton} disabled={pending || !!action.disabledReason}
@@ -127,19 +128,19 @@ export default function BookingDetailsDialog({ booking, logs, pending, feedback,
             onClick={() => beginConfirmation(action.target)}>{action.label}</button>
           {action.disabledReason && <p id={`${titleId}-${action.target}`} className={styles.actionHint}>{action.disabledReason}</p>}
         </div>)}
-        {actions.length === 0 && <p className={styles.actionHint}>Lịch đã kết thúc; không thể chuyển trạng thái tiếp.</p>}
+        {actions.length === 0 && <p className={styles.actionHint}>{vi.provider.bookings.errors.finalStatus}</p>}
       </div>}
 
       {logs.length > 0 && <details className={styles.log}>
-        <summary>Nhật ký thao tác ({logs.length})</summary>
+        <summary>{formatMessage(vi.provider.bookings.logs.title, { count: logs.length })}</summary>
         <ol>{logs.map((entry) => <li key={entry.id}>
-          <p>{statusLabels[entry.previousStatus]} → {statusLabels[entry.nextStatus]} · {entry.outcome === "success" ? "Thành công" : "Thất bại"}</p>
+          <p>{statusLabels[entry.previousStatus]} → {statusLabels[entry.nextStatus]} · {entry.outcome === "success" ? vi.provider.bookings.logs.success : vi.provider.bookings.logs.failure}</p>
           <p>{entry.actor.name} (Provider Owner) · {formatBookingDate(entry.occurredAt, true)}</p>
-          <p>Lý do: {entry.reason || "Không có"}</p>
-          {entry.outcome === "error" && <p>{entry.message} Yêu cầu: {statusLabels[entry.requestedStatus]}.</p>}
+          <p>{formatMessage(vi.provider.bookings.logs.reason, { reason: entry.reason || vi.provider.bookings.logs.noReason })}</p>
+          {entry.outcome === "error" && <p>{formatMessage(vi.provider.bookings.logs.failedRequest, { message: entry.message, status: statusLabels[entry.requestedStatus] })}</p>}
         </li>)}</ol>
       </details>}
-      <button type="button" className={styles.softButton} disabled={pending} onClick={onClose} autoFocus>Đóng</button>
+      <button type="button" className={styles.softButton} disabled={pending} onClick={onClose} autoFocus>{vi.common.actions.close}</button>
     </div>
   </dialog>;
 }

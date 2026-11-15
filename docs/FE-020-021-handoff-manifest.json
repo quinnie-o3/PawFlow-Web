@@ -1,0 +1,786 @@
+{
+  "schemaVersion": 1,
+  "scope": "FE-020 + FE-021 UI/mock",
+  "qaDate": "2026-11-04",
+  "timezone": "Asia/Ho_Chi_Minh",
+  "branch": "FE-020-021",
+  "baseCommit": "b70d18b14c82cae036cd0d3f6c0bb69f47b421c5",
+  "headAtQa": "12febc0a23a2a1ea4a8ae012d9a64475bf82190a",
+  "productionBuildId": "wRIOPfof56VyS8uLXB-F-",
+  "counts": {
+    "source": 32,
+    "test": 3,
+    "asset": 43,
+    "documentation": 3,
+    "total": 81
+  },
+  "groupHashAlgorithm": "SHA-256 over UTF-8 sorted rows: relative path + NUL + lowercase per-file SHA-256 + LF; group hashes exclude docs/manifest",
+  "groupHashes": {
+    "source": "6d9c3e41bbfb6b66e5d9dc2924236cd4866fc96126e531bddb79be7bd866d1ff",
+    "asset": "96f7816f42bb8eeeb219929f5a66ef6f59caa5f85b725519415853c54be8d724",
+    "test": "22464c704eeb46780ee12c6bfe373846b7dfb1fc5fe67e39a8f8757c4b27e293",
+    "combined": "195bf65d872b24f1d193919c1d22a2c9f99a1c1f49a72fb1101f921d95e70192"
+  },
+  "selfHashExcluded": "docs/FE-020-021-handoff-manifest.json",
+  "qaSummary": {
+    "lint": "pass, rerun on final runtime source",
+    "typecheck": "pass, rerun on final runtime source",
+    "productionBuild": "pass, normal build on final runtime source",
+    "pureTests": {
+      "cases": 26,
+      "timezones": [
+        "Asia/Ho_Chi_Minh",
+        "UTC",
+        "America/New_York"
+      ],
+      "passedExecutions": 78,
+      "status": "reused for unchanged logic/repository/fixture/test files"
+    },
+    "chromium": "148.0.7778.96",
+    "browserGroups": 51,
+    "browserGroupsPassed": 51,
+    "scope": "Home labels preserved; prototype-backed Customer navigation fix for PR 18",
+    "publishedHeadReproductionCases": 9,
+    "navigationViewportChecks": 16,
+    "visibleAnchorActivations": 166,
+    "menuKeyboardGroups": 8,
+    "exploreQueryPreservationGroups": 4,
+    "viewports": [
+      [
+        1440,
+        1000
+      ],
+      [
+        1920,
+        1080
+      ],
+      [
+        768,
+        1024
+      ],
+      [
+        390,
+        844
+      ]
+    ],
+    "pageErrors": 0,
+    "horizontalOverflow": 0,
+    "apiRequestsInBehaviorCases": 0,
+    "mutationRequestsInBehaviorCases": 0,
+    "rootPlaceholderUntouched": true,
+    "prototypeReactionsRead": true,
+    "newFullVisualFigmaReadClaimed": false,
+    "retainedAssetsUnchanged": 43
+  },
+  "removedStep2Candidates": [
+    {
+      "path": "public/customer-discovery/eb7a6.svg",
+      "sha256": "cbe71c575dc0440460ba8322da434093d06185e9c5d878d7cae739100612f4cd",
+      "replacement": "Lucide Bell"
+    },
+    {
+      "path": "public/customer-discovery/7d228.svg",
+      "sha256": "72349441f4eabcfdf5479b580660bee27cb639e241602ce2769dddaf65ead80c",
+      "replacement": "Lucide CalendarDays"
+    },
+    {
+      "path": "public/customer-discovery/99262.svg",
+      "sha256": "6c56065e594248a1781a546fdd8a4706be1afda10df9abb0f2bfa31ec1cb2e86",
+      "replacement": "Lucide MapPin"
+    },
+    {
+      "path": "public/customer-discovery/c6893.svg",
+      "sha256": "b4c2f3edda9ed7356ce11774fc45d4b8189c5fc41a615041166b02676e6004fe",
+      "replacement": "Lucide Circle"
+    },
+    {
+      "path": "public/customer-discovery/e409a.svg",
+      "sha256": "37627fe6d6521772ae0deb968ae9cfcdabc104be0ba0c15b788787f15af2ba24",
+      "replacement": "Lucide Cat"
+    },
+    {
+      "path": "public/customer-discovery/1a1a8.svg",
+      "sha256": "d80619c3c5e709dd96c8e923b2ea67deb75fc4e4e94cb64e674d69fd50bcbda7",
+      "replacement": "Lucide Dog"
+    },
+    {
+      "path": "public/customer-provider-detail/4c696.svg",
+      "sha256": "5d49c21e12210a45ea4cde0e2094afbf0347a4619c1ed699963c159541942111",
+      "replacement": "Lucide Star"
+    },
+    {
+      "path": "public/customer-provider-detail/c56d6.svg",
+      "sha256": "bdb376fb526958be14ea1c621d40510268f52252ccd1227f52049ed74ce8bdd8",
+      "replacement": "Lucide HeartPulse"
+    },
+    {
+      "path": "public/customer-provider-detail/63884.svg",
+      "sha256": "a56ff3f99c7e544201093abdc41d37358c1b8587439cd86fdce457db75144b2f",
+      "replacement": "Lucide Bone"
+    },
+    {
+      "path": "public/customer-provider-detail/7c6d6.svg",
+      "sha256": "3cf2422c9e46f784f3ae26d4100c25384c3ac1e68c0357441e4313039024497a",
+      "replacement": "Lucide Headset"
+    },
+    {
+      "path": "public/customer-discovery/1b95f.svg",
+      "sha256": "29757d6893e52f7179d12b7f1ee72ed2ca86f3f14a601b4f1369e11c79141799",
+      "replacement": "Byte-identical logo 49717.svg"
+    },
+    {
+      "path": "public/customer-provider-detail/4f318.svg",
+      "sha256": "1ad99a8d8e22d4f76cdfc394298bfe8ade1ba1d9f84dddfc0bcea3cdeb8ae0db",
+      "replacement": "Byte-identical decorative paw customer-discovery/80c6c.svg"
+    },
+    {
+      "path": "public/customer-provider-detail/c0dfa.svg",
+      "sha256": "c44d91a64a6afabb1b8bd57117ac3110621a8c18f4571a6f3dab3acf140f88d1",
+      "replacement": "Byte-identical decorative arc 200d9.svg"
+    }
+  ],
+  "files": [
+    {
+      "path": "docs/FE-020-021-discovery-detail.md",
+      "kind": "documentation",
+      "bytes": 17673,
+      "sha256": "4608a74a4c912f4d0bef601a378d7a518c0099ed7a6a5850aec4d518a3f46f29"
+    },
+    {
+      "path": "docs/FE-020-021-handoff-manifest.json",
+      "kind": "documentation",
+      "bytes": null,
+      "sha256": null
+    },
+    {
+      "path": "docs/FE-020-021-qa.md",
+      "kind": "documentation",
+      "bytes": 29570,
+      "sha256": "9bb2ca8be125485cc407ac954d67d008ee08192c6be3f10c7fb9416f1259127b"
+    },
+    {
+      "path": "public/customer-discovery/1e174.png",
+      "kind": "asset",
+      "bytes": 1834483,
+      "sha256": "f4ee9df85465aac6ee57379e457c3ca72486a7c67f149578f3914a62eb83231d",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryIntro.tsx:10"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/1f5a0.png",
+      "kind": "asset",
+      "bytes": 104863,
+      "sha256": "b17b0f45bfc4e8d1e67df37a1f35d3dc51bb957870a17da50a8bad7025bd5018",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryIntro.tsx:8"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/2674f.svg",
+      "kind": "asset",
+      "bytes": 775,
+      "sha256": "b99dc037250bed0f73ddee04390eedf959095c74393d3efb8eb9bc071816d6cb",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryHero.tsx:12"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/2751b.svg",
+      "kind": "asset",
+      "bytes": 3114,
+      "sha256": "139c4fffa12556075572a33f17e2030abb07fa0a8b37a464b07e8d4b96525ac5",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryHero.tsx:20"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/49717.svg",
+      "kind": "asset",
+      "bytes": 15249,
+      "sha256": "29757d6893e52f7179d12b7f1ee72ed2ca86f3f14a601b4f1369e11c79141799",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryHeader.tsx:11"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/62a5e.png",
+      "kind": "asset",
+      "bytes": 20743862,
+      "sha256": "644562d15f4ab2a3dd226877d1f4a17697f96ca07429294a0684f5fdb86bcc44",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryHero.tsx:19"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/6f46b.png",
+      "kind": "asset",
+      "bytes": 200140,
+      "sha256": "44825d2db5f4bc0cd68a4139d794b75abf61355a87437dcd51678f956818eec7",
+      "references": [
+        "src/features/customer-catalog/data/catalogMock.ts:8",
+        "src/features/customer-catalog/data/catalogMock.ts:25"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/6fd9f.svg",
+      "kind": "asset",
+      "bytes": 1298,
+      "sha256": "32519855fd8e48fa135ce4030f7d268f79fe55c78ce080fd5447cd69c8c282e3",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryFooter.tsx:13"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/713a2.png",
+      "kind": "asset",
+      "bytes": 477139,
+      "sha256": "1376039395e7b0a80bf4b47f7a57205e5fd2355e3b9577942694200f0f984143",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryFooter.tsx:16"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/80645.svg",
+      "kind": "asset",
+      "bytes": 343,
+      "sha256": "50dc852e393fb571c53c40255e4c5b21332f7ba4aadd8e2e34589742956d135f",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryFooter.tsx:12"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/80c6c.svg",
+      "kind": "asset",
+      "bytes": 1324,
+      "sha256": "1ad99a8d8e22d4f76cdfc394298bfe8ade1ba1d9f84dddfc0bcea3cdeb8ae0db",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryHero.tsx:15"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/85793.png",
+      "kind": "asset",
+      "bytes": 292459,
+      "sha256": "ffaa1ea74030baf17869f900886dba5d43de4f4f072a1ea266dbbb9009fff52a",
+      "references": [
+        "src/features/customer-catalog/data/catalogMock.ts:10",
+        "src/features/customer-catalog/data/catalogMock.ts:31"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/8bac3.png",
+      "kind": "asset",
+      "bytes": 1992195,
+      "sha256": "04c206644412be0351bbf8bac8a0b3611dd2b894da7e44e507635508264638fb",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryIntro.tsx:7"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/945f3.svg",
+      "kind": "asset",
+      "bytes": 1458,
+      "sha256": "f8201cd7fbd7094ae04a86bd6fb3f8be0869a97034fe3fadd52736a1b2c07b73",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryFooter.tsx:16"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/9eea8.svg",
+      "kind": "asset",
+      "bytes": 10275,
+      "sha256": "f44901adb733c8d360f5933c715dd498393b0c28123c90b23f51b7c3d97d4716",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryHeader.tsx:11"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/a7c98.png",
+      "kind": "asset",
+      "bytes": 3888,
+      "sha256": "ecc97ea1568aaa13ef6bc99971a74b616838a011457e99ba7f83ae925eca7be2",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryFooter.tsx:16"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/c4ca0.svg",
+      "kind": "asset",
+      "bytes": 1310,
+      "sha256": "e1e86e09cce17028e6b173d13e1fd1a6805e1b7ea61c7c98741ce339cf8fa5b4",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryFooter.tsx:13"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/c6336.png",
+      "kind": "asset",
+      "bytes": 308473,
+      "sha256": "5f1ba8d4f2ceb71357b560253cbfe46e68eb01177f9a613c496642a9256b586d",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryFooter.tsx:16"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/ccdfd.png",
+      "kind": "asset",
+      "bytes": 83475,
+      "sha256": "38418f2eb284b146ff41b21012bb827c4cca348aae757339707e90db5b69838e",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryIntro.tsx:8"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/d63b9.png",
+      "kind": "asset",
+      "bytes": 403696,
+      "sha256": "c1c959356af6d041e10e333ebf5a187736d33f1ec43ee50e4be678fb552a4dc3",
+      "references": [
+        "src/features/customer-catalog/data/catalogMock.ts:9",
+        "src/features/customer-catalog/data/catalogMock.ts:29"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/dd019.png",
+      "kind": "asset",
+      "bytes": 119545,
+      "sha256": "bb47d7df2572e07c56bb6272d1692a2b7cc24f46d48acf8b5cf3c935c61f5ad0",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryIntro.tsx:8"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/e6e20.svg",
+      "kind": "asset",
+      "bytes": 1310,
+      "sha256": "dc5d46c9c7f219704ff667f613fd673f4c569181b5aa0b3a4f69a8f33af8ffda",
+      "references": [
+        "src/features/customer-provider-detail/components/BookingExplanation.tsx:7",
+        "src/features/customer-provider-detail/components/ProviderDetailPage.tsx:30",
+        "src/features/discovery-shell/components/DiscoveryIntro.tsx:7"
+      ]
+    },
+    {
+      "path": "public/customer-discovery/edaa7.png",
+      "kind": "asset",
+      "bytes": 283139,
+      "sha256": "82d3435c26e7b38ac4ee1c7ba6ce80f686ea6ebfe5035a550ff9068f72ef7f44",
+      "references": [
+        "src/features/customer-catalog/data/catalogMock.ts:11",
+        "src/features/customer-catalog/data/catalogMock.ts:33"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/0e0e2.svg",
+      "kind": "asset",
+      "bytes": 323,
+      "sha256": "fd089d82803b946db11700a463cd9976cf00e5cbb67988cc4f28a6e9e77834ee",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryHero.tsx:12"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/200d9.svg",
+      "kind": "asset",
+      "bytes": 602,
+      "sha256": "c44d91a64a6afabb1b8bd57117ac3110621a8c18f4571a6f3dab3acf140f88d1",
+      "references": [
+        "src/features/customer-provider-detail/components/ProviderDetailPage.tsx:36"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/326a8.svg",
+      "kind": "asset",
+      "bytes": 1821,
+      "sha256": "efac12b503bdef73f8c0516a463ab33c18830af7824c57917d782231f39edbfe",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryHero.tsx:20"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/33416.svg",
+      "kind": "asset",
+      "bytes": 1223,
+      "sha256": "f477d7be2fb1200bdb814ddbf038ec95d006269744883d7b1dd315f101279a77",
+      "references": [
+        "src/features/customer-provider-detail/components/BookingExplanation.tsx:7"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/363b1.png",
+      "kind": "asset",
+      "bytes": 475295,
+      "sha256": "e71c819c6d01699c76eadcc670a5a5c9b8c08586074d2cf5279fb06ae87b9136",
+      "references": [
+        "src/features/customer-provider-detail/components/BookingExplanation.tsx:7"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/3b295.svg",
+      "kind": "asset",
+      "bytes": 1286,
+      "sha256": "bcc52b0c6eb1f564926417d3004394172820ced31067af9d62ea639d7293476d",
+      "references": [
+        "src/features/customer-provider-detail/components/BookingExplanation.tsx:7"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/40476.png",
+      "kind": "asset",
+      "bytes": 195140,
+      "sha256": "b2e2719848545ae9108ffd689efe7ae9e3f33ff5579b63972b489ec2e4e5262c",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryHero.tsx:19"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/4528f.svg",
+      "kind": "asset",
+      "bytes": 502,
+      "sha256": "fcf0e814702b734b087373c113e0f8fa6843a7d3b6966abbc0b6222db2d38768",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryHero.tsx:13"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/4b389.png",
+      "kind": "asset",
+      "bytes": 170865,
+      "sha256": "0af292af2b8ed33a80047e9a4b4d7dfb8c75f2e5632af723b1cbcc406baa5e3f",
+      "references": [
+        "src/features/customer-provider-detail/components/DetailIntro.tsx:10"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/593f2.png",
+      "kind": "asset",
+      "bytes": 1065592,
+      "sha256": "164800cc00374116574cddc8a0f40fd940b1b9408c768c5d4f0c42303c9d9ac3",
+      "references": [
+        "src/features/customer-provider-detail/components/DetailIntro.tsx:9"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/70c6a.svg",
+      "kind": "asset",
+      "bytes": 292,
+      "sha256": "3632859044bca10c3a4be3789ed95ee4b8c929180439fb25f4377aa3d61e0a3d",
+      "references": [
+        "src/features/customer-provider-detail/detail.module.css:7"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/710f9.svg",
+      "kind": "asset",
+      "bytes": 324,
+      "sha256": "40dfd96785c2e9f9367b9e744d79b010cd8fc09e6839a465e6739388ab7067cd",
+      "references": [
+        "src/features/discovery-shell/shell.module.css:14"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/8042a.svg",
+      "kind": "asset",
+      "bytes": 272,
+      "sha256": "f48d743d39662a092127fa087340a0473eb98ed4f50af29df5071155d4a15b84",
+      "references": [
+        "src/features/customer-provider-detail/detail.module.css:7"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/82079.svg",
+      "kind": "asset",
+      "bytes": 535,
+      "sha256": "bcec6d65fa9e0eccb464dcf0c46b1359bd377e54c70bd78f8fd0433da8cca2b9",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryHero.tsx:13"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/b87b9.png",
+      "kind": "asset",
+      "bytes": 388948,
+      "sha256": "a798dee4c4dcca04653e9c3f2239dd1e91225056bc64c4dd891b0d80ccff9f99",
+      "references": [
+        "src/features/customer-catalog/data/catalogMock.ts:26"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/cdcc4.png",
+      "kind": "asset",
+      "bytes": 614999,
+      "sha256": "4ffacf97bdb2e53ed851f4024da0129ab4e18d8f5dc6bf0e2906ad552df1b29f",
+      "references": [
+        "src/features/discovery-shell/components/DiscoveryHero.tsx:22"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/d25d4.svg",
+      "kind": "asset",
+      "bytes": 252,
+      "sha256": "006db4ff2846d5bd0ed24e837f136a8cfe318faeeedca942a43694346cd0407e",
+      "references": [
+        "src/features/customer-provider-detail/detail.module.css:7"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/d988c.svg",
+      "kind": "asset",
+      "bytes": 302,
+      "sha256": "74051290e810c89752e4db3b8493a7715bdc06e3d4d1271e37df4c1ffaff4092",
+      "references": [
+        "src/features/customer-provider-detail/detail.module.css:7"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/e0fcc.png",
+      "kind": "asset",
+      "bytes": 686976,
+      "sha256": "04ab82cc4285e57e49339464672bd46e8f66d0747c3c87791d7772bab676d6ef",
+      "references": [
+        "src/features/customer-provider-detail/components/DetailIntro.tsx:8"
+      ]
+    },
+    {
+      "path": "public/customer-provider-detail/fe546.svg",
+      "kind": "asset",
+      "bytes": 1303,
+      "sha256": "6d1aeb90b3f02750d80dd3f486441d7e7a84929f40cc03862718183201d420cb",
+      "references": [
+        "src/features/customer-provider-detail/components/BookingExplanation.tsx:7"
+      ]
+    },
+    {
+      "path": "src/app/(discovery)/discover/page.tsx",
+      "kind": "source",
+      "bytes": 394,
+      "sha256": "fb58ae8e55de8260092f5ca5b979cc44341552b6b081d0f8830689204fc5e4a4"
+    },
+    {
+      "path": "src/app/(discovery)/layout.tsx",
+      "kind": "source",
+      "bytes": 1005,
+      "sha256": "43881fa07e1f8b2de4cee3e23cda2178659dd87e13ac6ebba1ef37027b55e727"
+    },
+    {
+      "path": "src/app/(discovery)/providers/[providerId]/page.tsx",
+      "kind": "source",
+      "bytes": 540,
+      "sha256": "ce3a4ebafdc59ae52353e93d9a97f400f6f0706f1a9931d0fe8c04cf97f75519"
+    },
+    {
+      "path": "src/features/customer-catalog/catalogLogic.test.ts",
+      "kind": "test",
+      "bytes": 4825,
+      "sha256": "89bc3a3b66cf87c3a5061fc514295643e157526cc82710ce714de48e3c3aceed"
+    },
+    {
+      "path": "src/features/customer-catalog/catalogLogic.ts",
+      "kind": "source",
+      "bytes": 4886,
+      "sha256": "f250c88a5267c888289b35ef36e6ae8563f73adca3ad2ab21018533b0a7a7dc7"
+    },
+    {
+      "path": "src/features/customer-catalog/components/CatalogImage.tsx",
+      "kind": "source",
+      "bytes": 1084,
+      "sha256": "a5de92a4f6f3649fb2510eef0fb8964f4af4ba39b4014fe0397f2361bdfceaa0"
+    },
+    {
+      "path": "src/features/customer-catalog/data/catalogMock.ts",
+      "kind": "source",
+      "bytes": 5874,
+      "sha256": "9638742da4cc0410c5d2165320844278bf586764cf4077ca9b380c9b0ebea069"
+    },
+    {
+      "path": "src/features/customer-catalog/hooks/useMockResource.ts",
+      "kind": "source",
+      "bytes": 1126,
+      "sha256": "b12452cc20a44d7d98b17cea4e83523a8222f6bd932ec839aaf4bf6b3e8cf10c"
+    },
+    {
+      "path": "src/features/customer-catalog/mockRepository.test.ts",
+      "kind": "test",
+      "bytes": 2654,
+      "sha256": "ed24d20fe2cb129b106780512e19ed1326a2813cb9e9cd5e6390fc3ec2f62b4b"
+    },
+    {
+      "path": "src/features/customer-catalog/mockRepository.ts",
+      "kind": "source",
+      "bytes": 2208,
+      "sha256": "bc298c89e32e374e9a63333fc312c123f0bd371efd3c9475f67a98456d742b97"
+    },
+    {
+      "path": "src/features/customer-catalog/types.ts",
+      "kind": "source",
+      "bytes": 1775,
+      "sha256": "3065177d61c0ec3e6958a9c2bcdae67d124f14913b8acdc975011b6f09fd492b"
+    },
+    {
+      "path": "src/features/customer-discovery/components/DiscoveryFiltersDialog.tsx",
+      "kind": "source",
+      "bytes": 3001,
+      "sha256": "05ae5476a33029d6e5b7f49d65f8ec5750e35da6c7bf8965e8b2b06eaaa72241"
+    },
+    {
+      "path": "src/features/customer-discovery/components/DiscoveryPage.tsx",
+      "kind": "source",
+      "bytes": 3749,
+      "sha256": "21f107e7b9bc37a6c92fdc5ac250a13d9ec95d62660f3243e6f8be230561166c"
+    },
+    {
+      "path": "src/features/customer-discovery/components/DiscoveryToolbar.tsx",
+      "kind": "source",
+      "bytes": 2403,
+      "sha256": "81256680d9cca56453c0d09da728ffe1afd621b8844eb3ee790899497435165a"
+    },
+    {
+      "path": "src/features/customer-discovery/components/ProviderCard.tsx",
+      "kind": "source",
+      "bytes": 1731,
+      "sha256": "bd215ed55f40089b83a55fb57234efd435ac2a0daa07e6ab3d620744fd9cd0c6"
+    },
+    {
+      "path": "src/features/customer-discovery/discovery.module.css",
+      "kind": "source",
+      "bytes": 6107,
+      "sha256": "6030aab81cbcbf0b700e51cd2f66c17da9e43f1a7bd8c34b16c5fb567a0b3108"
+    },
+    {
+      "path": "src/features/customer-discovery/hooks/useDiscovery.ts",
+      "kind": "source",
+      "bytes": 3223,
+      "sha256": "a7a79baf5241f5c476e673f037e01449f813db2a9b40bdf1bf61442fb9eb4ba0"
+    },
+    {
+      "path": "src/features/customer-discovery/queryState.ts",
+      "kind": "source",
+      "bytes": 3745,
+      "sha256": "64634c7e5a644db52b1a841e54e0303530f72747bf07e660e65113ea267b6052"
+    },
+    {
+      "path": "src/features/customer-discovery/searchLogic.test.ts",
+      "kind": "test",
+      "bytes": 6198,
+      "sha256": "1bc60574277ddaa5758679cd2cc52226d99d4b5ed2c46a16c306bddf83687a42"
+    },
+    {
+      "path": "src/features/customer-discovery/searchLogic.ts",
+      "kind": "source",
+      "bytes": 2819,
+      "sha256": "831f1cfcff313938b3b3a59b33a8a807f45cfddd46c92ea890a8ad1dbb2a781b"
+    },
+    {
+      "path": "src/features/customer-provider-detail/components/AvailabilityPanel.tsx",
+      "kind": "source",
+      "bytes": 2440,
+      "sha256": "7328506631744ce5ff07f89d13163a761e648d89b58073006a5b4489dda4b4a0"
+    },
+    {
+      "path": "src/features/customer-provider-detail/components/BookingExplanation.tsx",
+      "kind": "source",
+      "bytes": 1780,
+      "sha256": "03e0b5d1253c04608d3fe10916547992cdd8d4a10f673607884f6935ef1175e2"
+    },
+    {
+      "path": "src/features/customer-provider-detail/components/DetailIntro.tsx",
+      "kind": "source",
+      "bytes": 899,
+      "sha256": "efce5f6d746f49aa2dd5c58fffbe2b04a89ee888995e6695cfe9e4913aae5447"
+    },
+    {
+      "path": "src/features/customer-provider-detail/components/ProviderDetailPage.tsx",
+      "kind": "source",
+      "bytes": 6013,
+      "sha256": "ae58487ddaf216520795b0c6dfe60774ac9a4e27aa6ea25954cf1f540bd744fd"
+    },
+    {
+      "path": "src/features/customer-provider-detail/detail.module.css",
+      "kind": "source",
+      "bytes": 9763,
+      "sha256": "8f809c6a3ae9831fe1a5287ab24ca20b35087a3d88a1a277793e4394c6f52069"
+    },
+    {
+      "path": "src/features/customer-provider-detail/hooks/useProviderDetail.ts",
+      "kind": "source",
+      "bytes": 1427,
+      "sha256": "5bd2e8d077d96303ed9e800378e084a63ec12a18a19fdb8b660b2579b4598af1"
+    },
+    {
+      "path": "src/features/discovery-shell/CatalogWorkspace.tsx",
+      "kind": "source",
+      "bytes": 3501,
+      "sha256": "bcfd30e58a3861478085d92138d31921ecaa361fc2795a8a200da9e137964dc3"
+    },
+    {
+      "path": "src/features/discovery-shell/components/DesignAsset.tsx",
+      "kind": "source",
+      "bytes": 633,
+      "sha256": "5b055475dfe42ee2ccbfdb8a99acc35d215607b0618ca68a02e7a8530ec36f91"
+    },
+    {
+      "path": "src/features/discovery-shell/components/DiscoveryFooter.tsx",
+      "kind": "source",
+      "bytes": 1709,
+      "sha256": "d80771687ef3274b909483ff38f316f7a06add9f96162ea69d8d3ebde38a0407"
+    },
+    {
+      "path": "src/features/discovery-shell/components/DiscoveryHeader.tsx",
+      "kind": "source",
+      "bytes": 2880,
+      "sha256": "3bcbba9fe3bc0983585708cd14828cc10564faca1771986356a726a0abff2b04"
+    },
+    {
+      "path": "src/features/discovery-shell/components/DiscoveryHero.tsx",
+      "kind": "source",
+      "bytes": 2512,
+      "sha256": "02e7fad3dc08a47d69fea8f289b078b438272df8e52aee5791ba79c47a40444d"
+    },
+    {
+      "path": "src/features/discovery-shell/components/DiscoveryIntro.tsx",
+      "kind": "source",
+      "bytes": 1352,
+      "sha256": "b771d71abfd28ef004621f7282b52a46bcdaa0e131788fb5bc5072a21cdfbe38"
+    },
+    {
+      "path": "src/features/discovery-shell/components/MockNotice.tsx",
+      "kind": "source",
+      "bytes": 659,
+      "sha256": "bbe838d8007cad2b3d7cf672d3eb1120a7b64bf78a907f9d438afd10b086dc7a"
+    },
+    {
+      "path": "src/features/discovery-shell/designAssets.ts",
+      "kind": "source",
+      "bytes": 3797,
+      "sha256": "e2ec3e59842aae7ec08a026682bf6f365b8c26ec87fb899a0dca6bf35fa362d0"
+    },
+    {
+      "path": "src/features/discovery-shell/shell.module.css",
+      "kind": "source",
+      "bytes": 12793,
+      "sha256": "33908b8f12141a9e859f21a96544e1c793e8535671e73e80d51729266aa79d88"
+    }
+  ],
+  "qaSourceContext": {
+    "kind": "working tree validated before supplemental commit",
+    "parentCommit": "12febc0a23a2a1ea4a8ae012d9a64475bf82190a",
+    "pullRequest": 18,
+    "runtimeFiles": [
+      "src/features/discovery-shell/components/DiscoveryHeader.tsx",
+      "src/features/discovery-shell/components/DiscoveryFooter.tsx"
+    ],
+    "labelsPreserved": true,
+    "rootRedirectAdded": false
+  },
+  "initialStep3Snapshot": {
+    "productionBuildId": "YTlToMQsnXZuNrXDyP6BH",
+    "groupHashes": {
+      "source": "dfcd99e02af89548126728a5adc9b0c0aa7a90b97f189514432cd746a7f4449d",
+      "asset": "96f7816f42bb8eeeb219929f5a66ef6f59caa5f85b725519415853c54be8d724",
+      "test": "22464c704eeb46780ee12c6bfe373846b7dfb1fc5fe67e39a8f8757c4b27e293",
+      "combined": "dca7d6122bebebbb804f57150807fbafde5fef74a888f4645e546b1b15795568"
+    },
+    "status": "historical; Home destination gap superseded"
+  }
+}

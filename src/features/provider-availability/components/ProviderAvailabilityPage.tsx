@@ -1,5 +1,7 @@
 "use client";
 
+import { vi, formatMessage } from "@/lib/locale";
+
 import { useReducer, useState } from "react";
 import Link from "next/link";
 import { availabilityCommandError, availabilityReducer, formatAvailabilityDate, formatRanges, localDate, upcomingSlots, weeklyHours } from "../availabilityLogic";
@@ -48,10 +50,10 @@ export default function ProviderAvailabilityPage() {
   }
 
   return <div className={styles.page}>
-    <div className={styles.providerTab}>DÀNH CHO PROVIDER</div>
+    <div className={styles.providerTab}>{vi.provider.availability.page.providerTab}</div>
     <div className={styles.intro}>
-      <div><h1 id="availability-title" tabIndex={-1}>Lịch khả dụng</h1><p>Thiết lập khung giờ để khách có thể đặt lịch phù hợp</p></div>
-      <button type="button" className={styles.blockButton} onClick={() => createException(true)}>Chặn ngày</button>
+      <div><h1 id="availability-title" tabIndex={-1}>{vi.provider.availability.page.title}</h1><p>{vi.provider.availability.page.description}</p></div>
+      <button type="button" className={styles.blockButton} onClick={() => createException(true)}>{vi.provider.availability.exception.blockDay}</button>
     </div>
     <AvailabilitySummary state={state} />
     {state.feedback && !dialog && <p role={state.feedback.outcome === "error" ? "alert" : "status"} className={state.feedback.outcome === "error" ? styles.error : styles.success}>{state.feedback.message}</p>}
@@ -61,33 +63,33 @@ export default function ProviderAvailabilityPage() {
     </div>
     <div className={styles.rulesGrid}>
       <section className={styles.card} aria-labelledby="booking-rules-title">
-        <h2 id="booking-rules-title">Quy tắc nhận lịch</h2>
-        <p>Thời lượng mỗi lượt: theo từng dịch vụ</p><p>Số chỗ trong cùng khung: theo năng lực cơ sở</p><p>Ngày đóng: không tạo slot mới để khách chọn</p>
-        <button type="button" className={styles.textButton} onClick={() => openDialog({ type: "weekly", schedule: activeSchedule })}>Chỉnh sửa giờ mở cửa</button>
-        <nav className={styles.slotActions} aria-label="Thông tin liên quan đến lịch khả dụng">
-          <Link href="/dashboard/services" prefetch={false} className={styles.textButton}>Xem dịch vụ</Link>
-          <Link href="/dashboard/profile" prefetch={false} className={styles.textButton}>Hồ sơ cơ sở</Link>
+        <h2 id="booking-rules-title">{vi.provider.availability.rules.title}</h2>
+        <p>{vi.provider.availability.rules.duration}</p><p>{vi.provider.availability.rules.capacity}</p><p>{vi.provider.availability.rules.closedDays}</p>
+        <button type="button" className={styles.textButton} onClick={() => openDialog({ type: "weekly", schedule: activeSchedule })}>{vi.provider.availability.weekly.edit}</button>
+        <nav className={styles.slotActions} aria-label={vi.provider.availability.rules.relatedNavigation}>
+          <Link href="/dashboard/services" prefetch={false} className={styles.textButton}>{vi.provider.availability.rules.viewServices}</Link>
+          <Link href="/dashboard/profile" prefetch={false} className={styles.textButton}>{vi.provider.availability.rules.providerProfile}</Link>
         </nav>
       </section>
       <UpcomingSlots slots={upcomingSlots(state, now)} reservations={state.reservations} onSelect={selectSlot} onShowAll={() => openDialog({ type: "slots" })} />
     </div>
-    <div className={styles.slotActions}><button type="button" className={styles.outlineButton} onClick={createSlot}>Tạo slot thủ công</button><button type="button" className={styles.outlineButton} onClick={() => openDialog({ type: "slots" })}>Quản lý slot ({state.slots.length})</button></div>
+    <div className={styles.slotActions}><button type="button" className={styles.outlineButton} onClick={createSlot}>{vi.provider.availability.slot.create}</button><button type="button" className={styles.outlineButton} onClick={() => openDialog({ type: "slots" })}>{formatMessage(vi.provider.availability.page.manageSlots, { count: state.slots.length })}</button></div>
     <details className={styles.history}>
-      <summary>Lịch sử giờ tuần ({state.schedules.length}) · đang áp dụng từ {formatAvailabilityDate(activeSchedule.effectiveFrom)}</summary>
+      <summary>{formatMessage(vi.provider.availability.page.weeklyHistory, { count: state.schedules.length, date: formatAvailabilityDate(activeSchedule.effectiveFrom) })}</summary>
       {state.schedules.map((schedule) => <details key={schedule.effectiveFrom}>
-        <summary>Từ {formatAvailabilityDate(schedule.effectiveFrom)}{schedule.effectiveFrom > today ? " · sắp có hiệu lực" : ""}</summary>
+        <summary>{schedule.effectiveFrom > today ? formatMessage(vi.provider.availability.page.scheduleStartUpcoming, { date: formatAvailabilityDate(schedule.effectiveFrom) }) : formatMessage(vi.provider.availability.page.scheduleStart, { date: formatAvailabilityDate(schedule.effectiveFrom) })}</summary>
         <ul>{schedule.days.map((day) => <li key={day.weekday}>{day.label}: {formatRanges(day.ranges)}</li>)}</ul>
-        {schedule.effectiveFrom >= today && <button type="button" className={styles.textButton} onClick={() => openDialog({ type: "weekly", schedule })}>Sửa cấu hình từ {formatAvailabilityDate(schedule.effectiveFrom)}</button>}
+        {schedule.effectiveFrom >= today && <button type="button" className={styles.textButton} onClick={() => openDialog({ type: "weekly", schedule })}>{formatMessage(vi.provider.availability.page.editSchedule, { date: formatAvailabilityDate(schedule.effectiveFrom) })}</button>}
       </details>)}
     </details>
     <div className={styles.mockNote}>
-      <p>Dữ liệu mô phỏng · Provider Owner · Đồng hồ cố định: 15/10/2026 10:00 (Asia/Ho_Chi_Minh).</p>
-      <p>Chỉ lưu trong phiên mở trang; tải lại hoặc rời trang sẽ mất thay đổi. Booking độc lập với FE-007, chưa đồng bộ API. Mỗi booking giữ một chỗ; chưa hỗ trợ nguồn lực dùng chung.</p>
+      <p>{vi.provider.availability.mock.clockNote}</p>
+      <p>{vi.provider.availability.mock.persistenceNote}</p>
     </div>
     <details className={styles.mockTools}>
-      <summary>Dữ liệu mô phỏng và trạng thái rỗng</summary>
-      <p>Khôi phục mẫu hoặc thử không có slot/ngoại lệ sẽ thay thế dữ liệu phiên hiện tại.</p>
-      <div className={styles.slotActions}><button type="button" className={styles.softButton} onClick={() => dispatch({ type: "reset", state: createAvailabilityMock(true) })}>Thử dữ liệu rỗng</button><button type="button" className={styles.softButton} onClick={() => dispatch({ type: "reset", state: createAvailabilityMock() })}>Khôi phục mẫu</button></div>
+      <summary>{vi.provider.availability.mock.title}</summary>
+      <p>{vi.provider.availability.mock.resetNote}</p>
+      <div className={styles.slotActions}><button type="button" className={styles.softButton} onClick={() => dispatch({ type: "reset", state: createAvailabilityMock(true) })}>{vi.provider.availability.mock.empty}</button><button type="button" className={styles.softButton} onClick={() => dispatch({ type: "reset", state: createAvailabilityMock() })}>{vi.provider.availability.mock.restore}</button></div>
     </details>
 
     {dialog?.type === "weekly" && <WeeklyHoursDialog state={state} initial={dialog.schedule} now={now} onSubmit={submit} onClose={closeDialog} />}

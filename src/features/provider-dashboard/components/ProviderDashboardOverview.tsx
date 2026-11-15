@@ -1,5 +1,7 @@
 "use client";
 
+import { vi } from "@/lib/locale";
+
 import { useState } from "react";
 import { bookingRequests, dailySamples, initialReportingRange, prioritySummary, providerName } from "../data/providerDashboardMock";
 import { formatRange, summarizeDashboard } from "../data/dashboardAnalytics";
@@ -17,8 +19,7 @@ export default function ProviderDashboardOverview() {
   return (
     <div className="mx-auto flex w-full flex-col gap-2.5">
       <div className={`${styles.providerTab} flex min-h-[54px] items-center justify-center rounded-[5px] border-b-2 px-6 py-3 text-center text-[18px] font-semibold leading-[22px] text-[#f2e2ff]`}>
-        DÀNH CHO PROVIDER
-      </div>
+        {vi.provider.dashboard.page.providerTab}</div>
       <div className="flex flex-col gap-6">
         <OverviewIntro summary={{ providerName, reportingPeriod: formatRange(range) }} range={range} onApply={setRange} />
         <PriorityStrip priority={prioritySummary} />

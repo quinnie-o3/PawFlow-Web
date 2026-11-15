@@ -1,5 +1,7 @@
 "use client";
 
+import { vi, formatMessage } from "@/lib/locale";
+
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
@@ -24,20 +26,20 @@ export default function StaffHeader() {
   }
 
   return <header className={styles.header}>
-    <Link href="/staff/bookings" prefetch={false} className={styles.logo} aria-label="PawFlow Staff — Lịch hẹn">
+    <Link href="/staff/bookings" prefetch={false} className={styles.logo} aria-label={vi.staff.shell.header.homeLabel}>
       <Image src="/logo.png" width={60} height={60} alt="" />
       <Image src="/name.png" width={317} height={82} alt="PawFlow" />
     </Link>
     <div className={styles.desktopNavigation}><StaffNavigation label="Menu Staff" compact /></div>
     <div className={styles.headerActions}>
-      <span className={styles.identity}>Ngọc Mai · Nhân viên</span>
+      <span className={styles.identity}>{formatMessage(vi.staff.shell.staffIdentity, { name: "Ngọc Mai" })}</span>
       <Image src="/staff/ngoc-mai.png" width={44} height={44} alt="" className={styles.avatar} />
-      <span className={styles.language} title="Chưa hỗ trợ đổi ngôn ngữ">VI / EN</span>
+      <span className={styles.language} title={vi.staff.shell.header.languageUnavailable}>VI / EN</span>
       <details ref={menu} className={styles.mobileMenu}
         onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false; }}
         onKeyDown={(event) => { if (event.key === "Escape" && menu.current?.open) { event.preventDefault(); closeMenu(); } }}>
-        <summary aria-label="Mở menu Staff"><Menu size={22} aria-hidden="true" /></summary>
-        <div className={styles.menuPanel}><p>Ngọc Mai · PawCare Studio</p><StaffNavigation label="Menu Staff thu gọn" onNavigate={closeMenu} /></div>
+        <summary aria-label={vi.staff.shell.header.openMenu}><Menu size={22} aria-hidden="true" /></summary>
+        <div className={styles.menuPanel}><p>Ngọc Mai · PawCare Studio</p><StaffNavigation label={vi.staff.shell.header.compactMenu} onNavigate={closeMenu} /></div>
       </details>
     </div>
   </header>;

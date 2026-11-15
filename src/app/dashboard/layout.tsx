@@ -1,3 +1,4 @@
+import { vi } from "@/lib/locale";
 import type { ReactNode } from "react";
 import Image from "next/image";
 import { Be_Vietnam_Pro } from "next/font/google";
@@ -24,7 +25,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <Image aria-hidden="true" alt="" src="/dashboard/dots-lower-center.svg" width={168} height={36} className="pointer-events-none absolute bottom-[-6px] left-1/2 z-[-1] hidden -translate-x-1/2 xl:block" />
         <div className="mx-auto flex min-h-0 min-w-0 w-full items-stretch gap-5 rounded-[35px] bg-[#f6f8fa] p-5">
           <div className="hidden min-h-0 w-[285px] min-w-0 shrink-0 lg:flex"><Sidebar provider /></div>
-          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain" aria-label="Nội dung dashboard">{children}</main>
+          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain" aria-label={vi.common.a11y.dashboardContent}>{children}</main>
         </div>
       </div>
     </div>

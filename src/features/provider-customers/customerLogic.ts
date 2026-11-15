@@ -1,13 +1,18 @@
+import { vi } from "../../lib/locale";
 import { matchesSearch, normalizeSearch } from "../../lib/search";
 import type { CustomerFilters, CustomerGroup, CustomerRecord, CustomersMockData, CustomersReport, ReportingRange } from "./types";
 
 export const customersTimeZone = "Asia/Ho_Chi_Minh";
 export const customerGroupLabels: Record<CustomerGroup, string> = {
-  returning: "Quay lại",
-  new: "Mới",
-  outsidePeriod: "Không có lịch hoàn thành trong kỳ",
-  noCompleted: "Chưa có lịch hoàn thành",
+  returning: vi.provider.customers.groups.returning,
+  new: vi.provider.customers.groups.new,
+  outsidePeriod: vi.provider.customers.groups.outsidePeriod,
+  noCompleted: vi.provider.customers.groups.noCompleted,
 };
+
+export function normalizeCustomerSearch(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "d").toLocaleLowerCase("vi-VN").trim();
+}
 
 function validDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -16,8 +21,8 @@ function validDate(value: string) {
 }
 
 export function validateReportingRange(range: ReportingRange): string | null {
-  if (!validDate(range.start) || !validDate(range.end)) return "Nhập đầy đủ ngày bắt đầu và ngày kết thúc hợp lệ.";
-  if (range.start > range.end) return "Ngày kết thúc phải bằng hoặc sau ngày bắt đầu.";
+  if (!validDate(range.start) || !validDate(range.end)) return vi.provider.customers.period.invalidDates;
+  if (range.start > range.end) return vi.provider.customers.period.endBeforeStart;
   return null;
 }
 
