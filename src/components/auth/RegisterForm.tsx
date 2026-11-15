@@ -1,6 +1,6 @@
 "use client";
 
-import { vi, formatMessage, formatMessageParts } from "@/lib/locale";
+import { vi, formatMessageParts } from "@/lib/locale";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -66,13 +66,16 @@ export default function RegisterForm() {
       </div>
 
       <div className="space-y-2">
-        <TurnstileField turnstile={turnstile} />
         <div aria-label={vi.auth.register.stepLabel} className="flex justify-center gap-2">
+        <TurnstileField turnstile={turnstile} />
+        <div aria-label="Bước 1 trên 2" className="flex justify-center gap-2">
           <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[var(--accent)]" />
           <span aria-hidden="true" className="h-2 w-2 rounded-full border border-[var(--border)] bg-[var(--surface)]" />
         </div>
+        <button type="submit" disabled={isSubmitting} className="h-11 w-full rounded-[5px] bg-[var(--accent-hover)] px-[30px] py-[10px] text-[16px] font-semibold leading-[22px] text-[var(--text-on-primary)] transition-colors hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-70">
+          {isSubmitting ? vi.auth.register.submitting : vi.auth.register.continue}
         <button type="submit" disabled={!turnstile.canSubmit || isBusy} aria-disabled={!turnstile.canSubmit || isBusy} className="h-11 w-full rounded-[5px] bg-[var(--accent-hover)] px-[30px] py-[10px] text-[16px] font-semibold leading-[22px] text-[var(--text-on-primary)] transition-colors hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-70">
-          {isBusy ? vi.auth.register.submitting : turnstile.cooldownSeconds > 0 ? formatMessage(vi.auth.turnstile.retryIn, { seconds: turnstile.cooldownSeconds }) : vi.auth.register.continue}
+          {isBusy ? "Đang đăng ký..." : turnstile.cooldownSeconds > 0 ? `Thử lại sau ${turnstile.cooldownSeconds} giây` : "Tiếp tục"}
         </button>
         <p aria-live="polite" className="min-h-[18px] text-center text-[12px] leading-[18px] text-red-600">{validationError ?? error}</p>
         <p className="text-center text-[16px] leading-[22px] text-[var(--text-secondary)]">{formatMessageParts(vi.auth.register.loginPrompt, { loginLink: <Link key="login" href="/login" className="hover:text-[var(--accent-hover)] hover:underline">{vi.auth.login.submit}</Link> })}</p>
