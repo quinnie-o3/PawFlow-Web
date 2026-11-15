@@ -23,5 +23,6 @@ export function usePetsWorkspace() {
 
   const retainDraftImage = useCallback((url: string) => images.retainDraft(url), [images]);
   const releaseDraftImage = useCallback((url: string) => images.releaseDraft(url), [images]);
-  return { petState: state, mutatePet, retainDraftImage, releaseDraftImage };
+  const getPetState = useCallback(() => current.current, []);
+  return { petState: state, getPetState, mutatePet, retainDraftImage, releaseDraftImage };
 }

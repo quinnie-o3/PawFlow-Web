@@ -25,7 +25,7 @@ export default function CustomerHeader() {
     <div className={styles.headerInner}>
       <div className={styles.brand} aria-label="PawFlow"><CustomerAsset name="logo" /><CustomerAsset name="wordmark" /></div>
       <nav aria-label={vi.customer.shell.header.navigation} className={styles.topNav}>
-        {outsideItems.slice(0, 4).map((label) => <span key={label} title={vi.customer.shell.header.unavailable}><button type="button" disabled>{label}<span className={styles.srOnly}> {vi.customer.shell.header.unavailableSuffix}</span></button></span>)}
+        {outsideItems.slice(0, 4).map((label, i) => <Link key={label} href={i === 3 ? "/bookings" : "/discover"} prefetch={false}>{label}</Link>)}
         <Link href="/account" prefetch={false} className={styles.topActive}>{vi.customer.shell.header.account}</Link>
         <span title={vi.customer.shell.header.unavailable}><button type="button" disabled>{vi.customer.shell.header.contact}<span className={styles.srOnly}> {vi.customer.shell.header.unavailableSuffix}</span></button></span>
       </nav>

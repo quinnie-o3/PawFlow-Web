@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { mockRepository } from "../../customer-catalog/mockRepository";
 import { useMockResource } from "../../customer-catalog/hooks/useMockResource";
 import { useCatalogWorkspace } from "../../discovery-shell/CatalogWorkspace";
 import { changeCriteria, cleanSearch, defaultQuery, discoveryHref, parseDiscoveryQuery, serializeQuery } from "../queryState";
@@ -15,7 +14,7 @@ export function useDiscovery() {
   const [draft, setDraft] = useState<{ base: string; value: string } | null>(null);
   const searchInput = draft?.base === raw ? draft.value : query.q;
   const [retry, setRetry] = useState(0);
-  const { now, delayMs, faults, clearFault } = useCatalogWorkspace(); const fail = faults.search;
+  const { now, delayMs, faults, clearFault, repository: mockRepository } = useCatalogWorkspace(); const fail = faults.search;
   const navigate = useCallback((next: DiscoveryQuery, method: "push" | "replace") => {
     const href = discoveryHref(next) + (window.location.hash === "#results" ? "#results" : "");
     if (window.location.pathname + window.location.search + window.location.hash !== href) window.history[method === "push" ? "pushState" : "replaceState"](null, "", href);
@@ -32,7 +31,7 @@ export function useDiscovery() {
     return () => window.clearTimeout(timer);
   }, [draft, raw, query, navigate]);
   const key = JSON.stringify([canonical, now, delayMs, fail, retry]);
-  const loader = useCallback((signal: AbortSignal) => mockRepository.search(query, now, { signal, delayMs, fail }), [query, now, delayMs, fail]);
+  const loader = useCallback((signal: AbortSignal) => mockRepository.search(query, now, { signal, delayMs, fail }), [query, now, delayMs, fail, mockRepository]);
   const resource = useMockResource(key, loader);
   useEffect(() => { if (resource.status === "ready" && resource.data.page !== query.page) navigate({ ...query, page: resource.data.page }, "replace"); }, [resource, query, navigate]);
   function apply(patch: Partial<DiscoveryQuery>) { setDraft(null); navigate(changeCriteria(query, { ...patch, q: cleanSearch(searchInput) }), "push"); }

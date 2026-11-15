@@ -13,7 +13,7 @@ type CustomerWorkspace = {
 
 const WorkspaceContext = createContext<CustomerWorkspace | null>(null);
 
-/** One in-memory workspace per /account layout mount, shared by both routes. */
+/** One in-memory Customer workspace across account, discovery and booking routes. */
 export default function CustomerWorkspaceProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState(createCustomerAccountMock);
   const petsWorkspace = usePetsWorkspace();
@@ -27,6 +27,6 @@ export default function CustomerWorkspaceProvider({ children }: { children: Reac
 
 export function useCustomerWorkspace() {
   const workspace = useContext(WorkspaceContext);
-  if (!workspace) throw new Error("Customer workspace must be mounted inside /account.");
+  if (!workspace) throw new Error("Customer workspace is missing.");
   return workspace;
 }
