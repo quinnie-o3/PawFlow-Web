@@ -1,4 +1,5 @@
 import { vi, formatMessage } from "../../lib/locale";
+import { matchesSearch, normalizeSearch } from "../../lib/search";
 import type { Booking, BookingActor, BookingCommand, BookingFilters, BookingStatus, MockBookingsState } from "./types";
 
 export const bookingTimeZone = "Asia/Ho_Chi_Minh";

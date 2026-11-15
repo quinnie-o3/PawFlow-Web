@@ -81,14 +81,15 @@ export default function Header({ provider = false }: { provider?: boolean }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-[14px]">
-          <Link
-            href="/dashboard/notifications"
-            prefetch={provider ? false : undefined}
-            aria-label={vi.common.navigation.notifications}
-            className="flex h-[44px] w-[44px] items-center justify-center rounded-full bg-[#E5C3FF] text-[#410075] shadow-[0_0_15px_rgba(0,0,0,0.1)]"
-          >
-            <Bell aria-hidden="true" focusable="false" size={20} strokeWidth={2} className={provider ? "text-[var(--color-stone)]" : undefined} />
-          </Link>
+          {provider ? <NotificationDropdown /> : (
+            <Link
+              href="/dashboard/notifications"
+              aria-label={vi.common.navigation.notifications}
+              className="flex h-[44px] w-[44px] items-center justify-center rounded-full bg-[#E5C3FF] text-[#410075] shadow-[0_0_15px_rgba(0,0,0,0.1)]"
+            >
+              <Bell aria-hidden="true" focusable="false" size={20} strokeWidth={2} />
+            </Link>
+          )}
 
           <Link href="/dashboard/profile" prefetch={provider ? false : undefined} aria-label={provider ? vi.common.navigation.providerProfile : vi.common.a11y.userProfile}>
             <UserAvatar size={44} />

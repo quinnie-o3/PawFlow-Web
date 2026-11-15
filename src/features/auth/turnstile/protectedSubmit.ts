@@ -1,3 +1,5 @@
+import { vi } from "../../../lib/locale";
+
 export type SubmitBlockReason = "in-flight" | "missing-token" | "cooling-down";
 
 export class SubmitBlockedError extends Error {
@@ -7,14 +9,14 @@ export class SubmitBlockedError extends Error {
   }
 }
 
-/** Vietnamese explanation for a blocked submission, or null when nothing needs to be shown. */
+/** Locale explanation for a blocked submission, or null when nothing needs to be shown. */
 export function describeSubmitBlock(error: unknown): string | null {
   if (!(error instanceof SubmitBlockedError)) return null;
   switch (error.reason) {
     case "missing-token":
-      return "Vui lòng hoàn tất bước xác minh chống bot trước khi gửi.";
+      return vi.auth.turnstile.blocked.missingToken;
     case "cooling-down":
-      return "Vui lòng chờ hết thời gian chờ trước khi thử lại.";
+      return vi.auth.turnstile.blocked.coolingDown;
     case "in-flight":
       return null;
   }

@@ -1,3 +1,4 @@
+import { vi } from "../../../lib/locale";
 import { postAuthJson, type PostAuthJsonOptions } from "./authApi";
 
 /**
@@ -26,8 +27,7 @@ export type ResetPasswordPayload = {
  * Generic, account-agnostic confirmation. The backend returns an identical 202 body for every
  * address; the UI must show this same text whatever the e-mail, so accounts cannot be enumerated.
  */
-export const FORGOT_PASSWORD_GENERIC_MESSAGE =
-  "Nếu email này thuộc một tài khoản đang hoạt động, chúng tôi đã gửi liên kết đặt lại mật khẩu. Vui lòng kiểm tra hộp thư.";
+export const FORGOT_PASSWORD_GENERIC_MESSAGE = vi.auth.forgotPassword.genericSent;
 
 export async function requestPasswordReset(payload: ForgotPasswordPayload, options: PostAuthJsonOptions = {}): Promise<{ message: string }> {
   await postAuthJson("forgotPassword", { email: payload.email, turnstileToken: payload.turnstileToken }, options);

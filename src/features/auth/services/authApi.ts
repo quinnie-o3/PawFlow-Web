@@ -7,6 +7,8 @@
  * "solve the challenge again", neither of which a refresh token can fix.
  */
 
+import { formatMessage, vi } from "../../../lib/locale";
+
 export type AuthFlow = "login" | "register" | "forgotPassword" | "resetPassword";
 
 export const AUTH_ENDPOINTS: Record<AuthFlow, string> = {
@@ -113,56 +115,55 @@ export function parseRetryAfterSeconds(header: string | null | undefined, bodyVa
 }
 
 const FLOW_FALLBACK: Record<AuthFlow, string> = {
-  login: "Không thể đăng nhập. Vui lòng thử lại.",
-  register: "Không thể đăng ký tài khoản. Vui lòng thử lại.",
-  forgotPassword: "Không thể gửi yêu cầu đặt lại mật khẩu. Vui lòng thử lại.",
-  resetPassword: "Không thể đặt lại mật khẩu. Vui lòng thử lại.",
+  login: vi.auth.errors.loginFailed,
+  register: vi.auth.errors.registerFailed,
+  forgotPassword: vi.auth.errors.forgotPasswordFailed,
+  resetPassword: vi.auth.errors.resetPasswordFailed,
 };
 
 const CONFIG_MESSAGE: Record<AuthFlow, string> = {
-  login: "Chưa cấu hình địa chỉ API đăng nhập.",
-  register: "Chưa cấu hình địa chỉ API đăng ký.",
-  forgotPassword: "Chưa cấu hình địa chỉ API khôi phục mật khẩu.",
-  resetPassword: "Chưa cấu hình địa chỉ API đặt lại mật khẩu.",
+  login: vi.auth.errors.loginApiMissing,
+  register: vi.auth.errors.registerApiMissing,
+  forgotPassword: vi.auth.errors.forgotPasswordApiMissing,
+  resetPassword: vi.auth.errors.resetPasswordApiMissing,
 };
 
 function waitText(seconds: number | null) {
-  return seconds ? `sau ${seconds} giây` : "sau ít phút";
+  return seconds ? formatMessage(vi.auth.errors.waitSeconds, { seconds }) : vi.auth.errors.waitUnknown;
 }
 
-/** Vietnamese, user-facing message. Branches on HTTP status and the stable `code`, never on English text. */
+/** User-facing message from the locale. Branches on HTTP status and the stable `code`, never on English text. */
 export function describeAuthError(error: AuthApiError, flow: AuthFlow): string {
+  const errors = vi.auth.errors;
   switch (error.code) {
     case "TURNSTILE_REQUIRED":
-      return "Vui lòng hoàn tất bước xác minh chống bot rồi gửi lại.";
+      return errors.turnstileRequired;
     case "TURNSTILE_INVALID":
-      return "Xác minh chống bot không hợp lệ. Vui lòng xác minh lại rồi gửi lại.";
+      return errors.turnstileInvalid;
     case "TURNSTILE_EXPIRED":
-      return "Phiên xác minh đã hết hạn hoặc đã được sử dụng. Vui lòng xác minh lại rồi gửi lại.";
+      return errors.turnstileExpired;
     case "TURNSTILE_UNAVAILABLE":
-      return `Dịch vụ xác minh chống bot tạm thời gián đoạn. Vui lòng thử lại ${waitText(error.retryAfterSeconds)}.`;
+      return formatMessage(errors.turnstileUnavailable, { wait: waitText(error.retryAfterSeconds) });
     case "RATE_LIMITED":
-      return `Bạn đã thử quá nhiều lần. Vui lòng thử lại ${waitText(error.retryAfterSeconds)}.`;
+      return formatMessage(errors.rateLimited, { wait: waitText(error.retryAfterSeconds) });
     case "RATE_LIMIT_UNAVAILABLE":
-      return `Hệ thống đang tạm thời bận. Vui lòng thử lại ${waitText(error.retryAfterSeconds)}.`;
+      return formatMessage(errors.rateLimitUnavailable, { wait: waitText(error.retryAfterSeconds) });
   }
 
   if (error.kind === "config") return CONFIG_MESSAGE[flow];
-  if (error.kind === "network") return "Không thể kết nối tới máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.";
+  if (error.kind === "network") return errors.network;
   if (error.kind === "invalid-response") return error.message;
 
   const status = error.status ?? 0;
   if (status === 400) {
-    if (flow === "resetPassword") {
-      return "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn, hoặc mật khẩu mới chưa đạt yêu cầu.";
-    }
-    return error.serverMessage ? `Thông tin chưa hợp lệ: ${error.serverMessage}` : "Thông tin chưa hợp lệ. Vui lòng kiểm tra lại.";
+    if (flow === "resetPassword") return errors.resetLinkInvalid;
+    return error.serverMessage ? formatMessage(errors.validationWithDetail, { detail: error.serverMessage }) : errors.validation;
   }
-  if (status === 401 && flow === "login") return "Email hoặc mật khẩu không đúng, hoặc tài khoản không ở trạng thái hoạt động.";
-  if (status === 409 && flow === "register") return "Email này đã được sử dụng cho một tài khoản khác.";
-  if (status === 403) return "Yêu cầu bị từ chối. Vui lòng tải lại trang và thử lại.";
-  if (status === 429) return `Bạn đã thử quá nhiều lần. Vui lòng thử lại ${waitText(error.retryAfterSeconds)}.`;
-  if (status >= 500) return "Máy chủ đang gặp sự cố. Vui lòng thử lại sau.";
+  if (status === 401 && flow === "login") return errors.invalidCredentials;
+  if (status === 409 && flow === "register") return errors.emailTaken;
+  if (status === 403) return errors.forbidden;
+  if (status === 429) return formatMessage(errors.rateLimited, { wait: waitText(error.retryAfterSeconds) });
+  if (status >= 500) return errors.server;
   return FLOW_FALLBACK[flow];
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { vi, formatMessageParts } from "@/lib/locale";
+import { vi, formatMessage, formatMessageParts } from "@/lib/locale";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -60,11 +60,14 @@ export default function LoginForm() {
             {vi.auth.login.remember}</label>
           <button type="button" className="ml-auto text-right text-[#001aff] hover:underline">{vi.auth.login.forgotPassword}</button>
         </div>
+        <div className="mt-2.5">
+          <TurnstileField turnstile={turnstile} />
+        </div>
       </div>
 
       <div className="w-full text-center">
-        <button type="submit" disabled={isSubmitting} className="h-11 w-full rounded-[5px] bg-[var(--accent-hover)] px-[30px] py-[10px] text-[15px] font-semibold leading-[22px] text-[var(--text-on-primary)] transition-colors hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-70">
-          {isSubmitting ? vi.auth.login.submitting : vi.auth.login.submit}
+        <button type="submit" disabled={!turnstile.canSubmit || isBusy} aria-disabled={!turnstile.canSubmit || isBusy} className="h-11 w-full rounded-[5px] bg-[var(--accent-hover)] px-[30px] py-[10px] text-[15px] font-semibold leading-[22px] text-[var(--text-on-primary)] transition-colors hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-70">
+          {isBusy ? vi.auth.login.submitting : turnstile.cooldownSeconds > 0 ? formatMessage(vi.auth.turnstile.retryIn, { seconds: turnstile.cooldownSeconds }) : vi.auth.login.submit}
         </button>
         <p aria-live="polite" className="min-h-[18px] text-center text-[12px] leading-[18px] text-red-600">{error}</p>
         <p className="mt-2.5 text-[16px] leading-[22px] text-[var(--text-secondary)]">{formatMessageParts(vi.auth.login.registerPrompt, { registerLink: <Link key="register" href="/register" className="hover:text-[var(--accent-hover)] hover:underline">{vi.auth.login.registerNow}</Link> })}</p>

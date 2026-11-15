@@ -1,3 +1,4 @@
+import { vi } from "../../../lib/locale";
 import { isUsableTurnstileToken } from "./turnstileConfig";
 
 /**
@@ -53,24 +54,9 @@ export function turnstileTokenReducer(state: TurnstileTokenState, event: Turnsti
   }
 }
 
-/** Vietnamese status text for the live region under the widget. */
+/** Status text (from the locale) for the live region under the widget. */
 export function turnstileStatusMessage(status: TurnstileStatus): string {
-  switch (status) {
-    case "loading":
-      return "Đang tải bước xác minh chống bot...";
-    case "pending":
-      return "Vui lòng hoàn tất bước xác minh để tiếp tục.";
-    case "verified":
-      return "Đã xác minh. Bạn có thể gửi biểu mẫu.";
-    case "expired":
-      return "Phiên xác minh đã hết hạn. Vui lòng xác minh lại.";
-    case "timeout":
-      return "Bước xác minh đã quá thời gian. Vui lòng thử lại.";
-    case "error":
-      return "Không thể hoàn tất bước xác minh. Vui lòng thử lại.";
-    case "unavailable":
-      return "Không thể tải bước xác minh chống bot. Vui lòng kiểm tra kết nối hoặc tải lại trang.";
-  }
+  return vi.auth.turnstile.status[status];
 }
 
 export function turnstileNeedsRetry(status: TurnstileStatus): boolean {

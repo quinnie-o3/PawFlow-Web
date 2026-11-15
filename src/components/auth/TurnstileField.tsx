@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { vi } from "@/lib/locale";
 import type { TurnstileProtectedSubmit } from "@/features/auth/hooks/useTurnstileProtectedSubmit";
 import { turnstileNeedsRetry, turnstileStatusMessage } from "@/features/auth/turnstile/turnstileTokenState";
 import TurnstileWidget from "./TurnstileWidget";
@@ -16,7 +17,7 @@ export default function TurnstileField({ turnstile }: TurnstileFieldProps) {
   const isProblem = turnstileNeedsRetry(status);
 
   return (
-    <div className="flex w-full flex-col gap-1" role="group" aria-label="Xác minh chống bot" aria-describedby={statusId}>
+    <div className="flex w-full flex-col gap-1" role="group" aria-label={vi.auth.turnstile.groupLabel} aria-describedby={statusId}>
       <TurnstileWidget {...turnstile.widgetProps} />
       <div className="flex min-h-[18px] items-center gap-2 text-[12px] leading-[18px]">
         <p id={statusId} role={isProblem ? "alert" : "status"} aria-live={isProblem ? "assertive" : "polite"} className={isProblem ? "text-red-600" : "text-[var(--text-secondary)]"}>
@@ -24,7 +25,7 @@ export default function TurnstileField({ turnstile }: TurnstileFieldProps) {
         </p>
         {isProblem ? (
           <button type="button" onClick={turnstile.retryChallenge} className="ml-auto shrink-0 font-semibold text-[var(--accent-hover)] hover:underline focus-visible:underline">
-            Thử lại
+            {vi.auth.turnstile.retry}
           </button>
         ) : null}
       </div>

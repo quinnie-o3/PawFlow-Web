@@ -120,7 +120,7 @@ Chạy (theo quy ước repo: biên dịch bằng `tsc` rồi `node --test`):
 ```bash
 test_output="$(mktemp -d)"
 ./node_modules/.bin/tsc src/features/auth/turnstile/turnstile.test.ts src/features/auth/services/authApi.test.ts \
-  --outDir "$test_output" --module commonjs --target es2020 --moduleResolution node --esModuleInterop --skipLibCheck --lib es2022,dom --types node
+  --outDir "$test_output" --module commonjs --target es2020 --moduleResolution node --esModuleInterop --resolveJsonModule --skipLibCheck --lib es2022,dom --types node
 node --test $(find "$test_output" -name "*.test.js")
 ```
 

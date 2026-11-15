@@ -1,4 +1,5 @@
 import { vi } from "../../lib/locale";
+import { matchesSearch, normalizeSearch } from "../../lib/search";
 import type { StaffBooking, StaffBookingFilters, StaffBookingStatus, StaffBookingTarget, StaffViewContext } from "./types";
 
 export const staffBookingTimeZone = "Asia/Ho_Chi_Minh";

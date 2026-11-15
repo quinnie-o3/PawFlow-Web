@@ -10,10 +10,6 @@ export function formatDuration(duration: ServiceDuration) {
   return duration.unit === "day" ? vi.provider.services.duration.oneDay : formatMessage(vi.provider.services.duration.minutes, { count: duration.value });
 }
 
-function normalize(value: string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().trim();
-}
-
 export function filterServices(services: ProviderService[], filters: ServiceFilters) {
   const query = normalizeSearch(filters.query);
   return services.filter((service) =>
