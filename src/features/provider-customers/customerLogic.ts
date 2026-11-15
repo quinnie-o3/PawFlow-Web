@@ -1,4 +1,5 @@
 import { vi } from "../../lib/locale";
+import { matchesSearch, normalizeSearch } from "../../lib/search";
 import type { CustomerFilters, CustomerGroup, CustomerRecord, CustomersMockData, CustomersReport, ReportingRange } from "./types";
 
 export const customersTimeZone = "Asia/Ho_Chi_Minh";
@@ -102,7 +103,7 @@ export function summarizeCustomers(records: CustomerRecord[], range: ReportingRa
 }
 
 export function filterCustomers(records: CustomerRecord[], filters: CustomerFilters) {
-  const query = normalizeCustomerSearch(filters.query);
+  const query = normalizeSearch(filters.query);
   return records.filter((record) => (filters.group === "all" || record.group === filters.group) &&
-    normalizeCustomerSearch([record.customer.id, record.customer.name, ...record.pets.map((pet) => pet.name)].join(" ")).includes(query));
+    matchesSearch(query, [record.customer.id, record.customer.name, ...record.pets.map((pet) => pet.name)]));
 }

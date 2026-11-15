@@ -2,7 +2,8 @@
 
 import { useEffect, useReducer, useState } from "react";
 import { createNotificationsMockData, notificationsMockNow, notificationsMockScope } from "./data/providerNotificationsMock";
-import { createNotificationsState, notificationsReducer, selectNotifications } from "./notificationLogic";
+import { createNotificationsState, mergeReadState, notificationsReducer, selectNotifications } from "./notificationLogic";
+import { getNotificationsSnapshot, resetNotificationsStore, subscribeNotifications, syncNotificationReads } from "./notificationsStore";
 import type { NotificationCommand, NotificationFilter } from "./types";
 
 export function useNotificationsMock() {
@@ -12,7 +13,7 @@ export function useNotificationsMock() {
   useEffect(() => {
     if (!state.loadRequest) return;
     const request = state.loadRequest;
-    const timer = window.setTimeout(() => dispatch({ type: "loaded", source: createNotificationsMockData(request.empty, request.longContent), scope: notificationsMockScope }), 350);
+    const timer = window.setTimeout(() => dispatch({ type: "loaded", source: mergeReadState(createNotificationsMockData(request.empty, request.longContent), getNotificationsSnapshot()), scope: notificationsMockScope }), 350);
     return () => window.clearTimeout(timer);
   }, [state.loadRequest]);
   useEffect(() => {
@@ -20,6 +21,11 @@ export function useNotificationsMock() {
     const timer = window.setTimeout(() => dispatch({ type: "resolve", scope: notificationsMockScope, now: notificationsMockNow }), 350);
     return () => window.clearTimeout(timer);
   }, [state.pending]);
+  // Keep read state in sync with the Header notification dropdown.
+  useEffect(() => subscribeNotifications(() => dispatch({ type: "syncRead", source: getNotificationsSnapshot() })), []);
+  useEffect(() => {
+    if (state.loadStatus === "ready") syncNotificationReads(state.notifications);
+  }, [state.loadStatus, state.notifications]);
 
   function submit(command: NotificationCommand) {
     if (state.pending || state.loadStatus !== "ready") return;
@@ -27,6 +33,7 @@ export function useNotificationsMock() {
     setFailNextUpdate(false);
   }
   function load(options: { empty?: boolean; longContent?: boolean; simulateFailure?: boolean } = {}) {
+    if (!options.empty && !options.longContent && !options.simulateFailure) resetNotificationsStore();
     dispatch({ type: "load", ...options });
     setFilter("all");
     setFailNextUpdate(false);

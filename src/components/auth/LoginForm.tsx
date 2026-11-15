@@ -1,30 +1,41 @@
 "use client";
 
-import { vi, formatMessageParts } from "@/lib/locale";
+import { vi, formatMessage, formatMessageParts } from "@/lib/locale";
 
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useLoginCustomer } from "@/features/auth/hooks/useLoginCustomer";
+import { useTurnstileProtectedSubmit } from "@/features/auth/hooks/useTurnstileProtectedSubmit";
+import { describeSubmitBlock } from "@/features/auth/turnstile/protectedSubmit";
+import { TURNSTILE_ACTIONS } from "@/features/auth/turnstile/turnstileConfig";
 import AuthInput from "./AuthInput";
+import TurnstileField from "./TurnstileField";
 
 export default function LoginForm() {
   const router = useRouter();
-  const { error, isSubmitting, submitLogin } = useLoginCustomer();
+  const { error, setError, isSubmitting, submitLogin } = useLoginCustomer();
+  const turnstile = useTurnstileProtectedSubmit(TURNSTILE_ACTIONS.login);
+  const isBusy = isSubmitting || turnstile.isSubmitting;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
 
     try {
-      await submitLogin({
-        email: String(formData.get("email") ?? ""),
-        password: String(formData.get("password") ?? ""),
-      });
+      await turnstile.submit((turnstileToken) =>
+        submitLogin({
+          email: String(formData.get("email") ?? ""),
+          password: String(formData.get("password") ?? ""),
+          turnstileToken,
+        }),
+      );
       router.push("/dashboard");
-    } catch {
-      // The hook exposes the request error to the accessible form error message below.
+    } catch (submitError) {
+      // Request errors are exposed by the hook; blocked submissions (no token, cooldown) are explained here.
+      const blocked = describeSubmitBlock(submitError);
+      if (blocked) setError(blocked);
     }
   }
 
@@ -49,11 +60,14 @@ export default function LoginForm() {
             {vi.auth.login.remember}</label>
           <button type="button" className="ml-auto text-right text-[#001aff] hover:underline">{vi.auth.login.forgotPassword}</button>
         </div>
+        <div className="mt-2.5">
+          <TurnstileField turnstile={turnstile} />
+        </div>
       </div>
 
       <div className="w-full text-center">
-        <button type="submit" disabled={isSubmitting} className="h-11 w-full rounded-[5px] bg-[var(--accent-hover)] px-[30px] py-[10px] text-[15px] font-semibold leading-[22px] text-[var(--text-on-primary)] transition-colors hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-70">
-          {isSubmitting ? vi.auth.login.submitting : vi.auth.login.submit}
+        <button type="submit" disabled={!turnstile.canSubmit || isBusy} aria-disabled={!turnstile.canSubmit || isBusy} className="h-11 w-full rounded-[5px] bg-[var(--accent-hover)] px-[30px] py-[10px] text-[15px] font-semibold leading-[22px] text-[var(--text-on-primary)] transition-colors hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-70">
+          {isBusy ? vi.auth.login.submitting : turnstile.cooldownSeconds > 0 ? formatMessage(vi.auth.turnstile.retryIn, { seconds: turnstile.cooldownSeconds }) : vi.auth.login.submit}
         </button>
         <p aria-live="polite" className="min-h-[18px] text-center text-[12px] leading-[18px] text-red-600">{error}</p>
         <p className="mt-2.5 text-[16px] leading-[22px] text-[var(--text-secondary)]">{formatMessageParts(vi.auth.login.registerPrompt, { registerLink: <Link key="register" href="/register" className="hover:text-[var(--accent-hover)] hover:underline">{vi.auth.login.registerNow}</Link> })}</p>

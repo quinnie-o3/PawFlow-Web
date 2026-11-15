@@ -1,17 +1,23 @@
 "use client";
 
-import { vi, formatMessageParts } from "@/lib/locale";
+import { vi, formatMessage, formatMessageParts } from "@/lib/locale";
 
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useRegisterCustomer } from "@/features/auth/hooks/useRegisterCustomer";
+import { useTurnstileProtectedSubmit } from "@/features/auth/hooks/useTurnstileProtectedSubmit";
+import { describeSubmitBlock } from "@/features/auth/turnstile/protectedSubmit";
+import { TURNSTILE_ACTIONS } from "@/features/auth/turnstile/turnstileConfig";
 import AuthInput from "./AuthInput";
+import TurnstileField from "./TurnstileField";
 
 export default function RegisterForm() {
   const router = useRouter();
-  const { error, isSubmitting, submitRegistration } = useRegisterCustomer();
+  const { error, setError, isSubmitting, submitRegistration } = useRegisterCustomer();
+  const turnstile = useTurnstileProtectedSubmit(TURNSTILE_ACTIONS.register);
+  const isBusy = isSubmitting || turnstile.isSubmitting;
   const [validationError, setValidationError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -27,15 +33,20 @@ export default function RegisterForm() {
     }
 
     try {
-      await submitRegistration({
-        fullName: String(formData.get("fullName") ?? ""),
-        email: String(formData.get("email") ?? ""),
-        phone: String(formData.get("phone") ?? ""),
-        password,
-      });
+      await turnstile.submit((turnstileToken) =>
+        submitRegistration({
+          fullName: String(formData.get("fullName") ?? ""),
+          email: String(formData.get("email") ?? ""),
+          phone: String(formData.get("phone") ?? ""),
+          password,
+          turnstileToken,
+        }),
+      );
       router.push("/register/verify-email");
-    } catch {
-      // The hook exposes the request error to the accessible form error message below.
+    } catch (submitError) {
+      // Request errors are exposed by the hook; blocked submissions (no token, cooldown) are explained here.
+      const blocked = describeSubmitBlock(submitError);
+      if (blocked) setError(blocked);
     }
   }
 
@@ -55,12 +66,13 @@ export default function RegisterForm() {
       </div>
 
       <div className="space-y-2">
+        <TurnstileField turnstile={turnstile} />
         <div aria-label={vi.auth.register.stepLabel} className="flex justify-center gap-2">
           <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[var(--accent)]" />
           <span aria-hidden="true" className="h-2 w-2 rounded-full border border-[var(--border)] bg-[var(--surface)]" />
         </div>
-        <button type="submit" disabled={isSubmitting} className="h-11 w-full rounded-[5px] bg-[var(--accent-hover)] px-[30px] py-[10px] text-[16px] font-semibold leading-[22px] text-[var(--text-on-primary)] transition-colors hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-70">
-          {isSubmitting ? vi.auth.register.submitting : vi.auth.register.continue}
+        <button type="submit" disabled={!turnstile.canSubmit || isBusy} aria-disabled={!turnstile.canSubmit || isBusy} className="h-11 w-full rounded-[5px] bg-[var(--accent-hover)] px-[30px] py-[10px] text-[16px] font-semibold leading-[22px] text-[var(--text-on-primary)] transition-colors hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-70">
+          {isBusy ? vi.auth.register.submitting : turnstile.cooldownSeconds > 0 ? formatMessage(vi.auth.turnstile.retryIn, { seconds: turnstile.cooldownSeconds }) : vi.auth.register.continue}
         </button>
         <p aria-live="polite" className="min-h-[18px] text-center text-[12px] leading-[18px] text-red-600">{validationError ?? error}</p>
         <p className="text-center text-[16px] leading-[22px] text-[var(--text-secondary)]">{formatMessageParts(vi.auth.register.loginPrompt, { loginLink: <Link key="login" href="/login" className="hover:text-[var(--accent-hover)] hover:underline">{vi.auth.login.submit}</Link> })}</p>

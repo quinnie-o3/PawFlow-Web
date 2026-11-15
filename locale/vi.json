@@ -882,7 +882,48 @@
       "loginFailed": "Không thể đăng nhập. Vui lòng thử lại.",
       "accessTokenMissing": "API đăng nhập không trả về accessToken.",
       "registerApiMissing": "Chưa cấu hình địa chỉ API đăng ký.",
-      "registerFailed": "Không thể đăng ký tài khoản. Vui lòng thử lại."
+      "registerFailed": "Không thể đăng ký tài khoản. Vui lòng thử lại.",
+      "forgotPasswordApiMissing": "Chưa cấu hình địa chỉ API khôi phục mật khẩu.",
+      "resetPasswordApiMissing": "Chưa cấu hình địa chỉ API đặt lại mật khẩu.",
+      "forgotPasswordFailed": "Không thể gửi yêu cầu đặt lại mật khẩu. Vui lòng thử lại.",
+      "resetPasswordFailed": "Không thể đặt lại mật khẩu. Vui lòng thử lại.",
+      "turnstileRequired": "Vui lòng hoàn tất bước xác minh chống bot rồi gửi lại.",
+      "turnstileInvalid": "Xác minh chống bot không hợp lệ. Vui lòng xác minh lại rồi gửi lại.",
+      "turnstileExpired": "Phiên xác minh đã hết hạn hoặc đã được sử dụng. Vui lòng xác minh lại rồi gửi lại.",
+      "turnstileUnavailable": "Dịch vụ xác minh chống bot tạm thời gián đoạn. Vui lòng thử lại {wait}.",
+      "rateLimited": "Bạn đã thử quá nhiều lần. Vui lòng thử lại {wait}.",
+      "rateLimitUnavailable": "Hệ thống đang tạm thời bận. Vui lòng thử lại {wait}.",
+      "waitSeconds": "sau {seconds} giây",
+      "waitUnknown": "sau ít phút",
+      "network": "Không thể kết nối tới máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.",
+      "validationWithDetail": "Thông tin chưa hợp lệ: {detail}",
+      "validation": "Thông tin chưa hợp lệ. Vui lòng kiểm tra lại.",
+      "resetLinkInvalid": "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn, hoặc mật khẩu mới chưa đạt yêu cầu.",
+      "invalidCredentials": "Email hoặc mật khẩu không đúng, hoặc tài khoản không ở trạng thái hoạt động.",
+      "emailTaken": "Email này đã được sử dụng cho một tài khoản khác.",
+      "forbidden": "Yêu cầu bị từ chối. Vui lòng tải lại trang và thử lại.",
+      "server": "Máy chủ đang gặp sự cố. Vui lòng thử lại sau."
+    },
+    "forgotPassword": {
+      "genericSent": "Nếu email này thuộc một tài khoản đang hoạt động, chúng tôi đã gửi liên kết đặt lại mật khẩu. Vui lòng kiểm tra hộp thư."
+    },
+    "turnstile": {
+      "groupLabel": "Xác minh chống bot",
+      "retry": "Thử lại",
+      "retryIn": "Thử lại sau {seconds} giây",
+      "status": {
+        "loading": "Đang tải bước xác minh chống bot...",
+        "pending": "Vui lòng hoàn tất bước xác minh để tiếp tục.",
+        "verified": "Đã xác minh. Bạn có thể gửi biểu mẫu.",
+        "expired": "Phiên xác minh đã hết hạn. Vui lòng xác minh lại.",
+        "timeout": "Bước xác minh đã quá thời gian. Vui lòng thử lại.",
+        "error": "Không thể hoàn tất bước xác minh. Vui lòng thử lại.",
+        "unavailable": "Không thể tải bước xác minh chống bot. Vui lòng kiểm tra kết nối hoặc tải lại trang."
+      },
+      "blocked": {
+        "missingToken": "Vui lòng hoàn tất bước xác minh chống bot trước khi gửi.",
+        "coolingDown": "Vui lòng chờ hết thời gian chờ trước khi thử lại."
+      }
     }
   },
   "admin": {

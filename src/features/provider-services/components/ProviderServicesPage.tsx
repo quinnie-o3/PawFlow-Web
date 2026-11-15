@@ -3,6 +3,7 @@
 import { vi, formatMessage } from "@/lib/locale";
 
 import { useState } from "react";
+import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 import { filterServices } from "../serviceLogic";
 import { useServicesMock } from "../useServicesMock";
 import type { ServiceFilters } from "../types";
@@ -18,6 +19,7 @@ export default function ProviderServicesPage() {
   const { state, submit, reset, clearFeedback } = useServicesMock();
   const [filters, setFilters] = useState<ServiceFilters>({ query: "", status: "all" });
   const [dialog, setDialog] = useState<{ type: "create" } | { type: "edit"; id: string } | null>(null);
+  const query = useDebouncedSearch(filters.query);
   const selected = dialog?.type === "edit" ? state.services.find((service) => service.id === dialog.id) : undefined;
 
   function openCreate() { clearFeedback(); setDialog({ type: "create" }); }
@@ -36,7 +38,7 @@ export default function ProviderServicesPage() {
     <ServicesSummary services={state.services} />
     <ServicesToolbar filters={filters} onChange={setFilters} />
     {!dialog && <ServicesFeedback feedback={state.feedback} focus={false} />}
-    <ServicesList services={filterServices(state.services, filters)} total={state.services.length}
+    <ServicesList services={filterServices(state.services, { ...filters, query })} total={state.services.length}
       onSelect={(id) => { clearFeedback(); setDialog({ type: "edit", id }); }} onCreate={openCreate} onClearFilters={() => setFilters({ query: "", status: "all" })} />
     <ServicesGuidance />
     <p className={styles.mockNote}>{vi.provider.services.page.mockNote}</p>

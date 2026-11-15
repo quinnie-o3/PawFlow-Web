@@ -14,6 +14,24 @@ export function selectNotifications(source: readonly ProviderNotification[], sco
   };
 }
 
+/** Copies read state from `source` onto unread items of `target`; returns `target` itself when nothing changes. */
+export function mergeReadState(target: ProviderNotification[], source: readonly ProviderNotification[]): ProviderNotification[] {
+  const readAt = new Map(source.flatMap((item) => item.readAt ? [[item.id, item.readAt] as const] : []));
+  let changed = false;
+  const merged = target.map((item) => {
+    const value = item.readAt === null ? readAt.get(item.id) : undefined;
+    if (!value) return item;
+    changed = true;
+    return { ...item, readAt: value };
+  });
+  return changed ? merged : target;
+}
+
+export function selectRecentNotifications(items: readonly ProviderNotification[], limit = 5) {
+  const recent = [...items].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  return { items: recent.slice(0, limit), hasMore: recent.length > limit };
+}
+
 export function formatNotificationDateTime(value: string) {
   return new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(value));
 }
@@ -48,6 +66,10 @@ export function notificationsReducer(state: NotificationsState, action: Notifica
         ? formatMessage(vi.provider.notifications.feedback.allRead, { count: scoped.unreadCount })
         : command.type === "open" ? target?.readAt === null ? vi.provider.notifications.feedback.openedAndRead : vi.provider.notifications.feedback.opened : vi.provider.notifications.feedback.read;
       return { ...state, notifications, pending: null, failedCommand: null, selectedId: command.type === "open" ? command.id : state.selectedId, feedback: { outcome: "success", message } };
+    }
+    case "syncRead": {
+      const notifications = mergeReadState(state.notifications, action.source);
+      return notifications === state.notifications ? state : { ...state, notifications };
     }
     case "close":
       return { ...state, selectedId: null };

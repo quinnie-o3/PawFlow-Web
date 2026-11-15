@@ -2,6 +2,7 @@
 
 import { vi, formatMessage } from "@/lib/locale";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { LoaderCircle } from "lucide-react";
 import { notificationsMockFacility, notificationsMockOwner } from "../data/providerNotificationsMock";
@@ -14,10 +15,13 @@ import NotificationsMockTools from "./NotificationsMockTools";
 import NotificationsToolbar from "./NotificationsToolbar";
 import styles from "../notifications.module.css";
 
-export default function ProviderNotificationsPage() {
+/** `openId` comes from /dashboard/notifications/details/[id] and opens that notification once data is ready. */
+export default function ProviderNotificationsPage({ openId }: { openId?: string }) {
+  const router = useRouter();
   const notifications = useNotificationsMock();
   const { state } = notifications;
   const trigger = useRef<HTMLElement | null>(null);
+  const openRequested = useRef(false);
   const busy = state.loadStatus === "loading" || !!state.pending;
   useEffect(() => {
     if (state.pending || !state.feedback || state.selectedId) return;
@@ -27,12 +31,22 @@ export default function ProviderNotificationsPage() {
     return () => window.cancelAnimationFrame(frame);
   }, [state.pending, state.feedback, state.selectedId]);
 
+  useEffect(() => {
+    if (!openId || openRequested.current || state.loadStatus !== "ready" || state.pending) return;
+    openRequested.current = true;
+    notifications.submit({ type: "open", id: openId });
+  }, [openId, state.loadStatus, state.pending, notifications]);
+
   function submit(command: NotificationCommand) {
     trigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     notifications.submit(command);
   }
   function closeDialog() {
     notifications.close();
+    if (openId) {
+      router.replace("/dashboard/notifications", { scroll: false });
+      return;
+    }
     window.requestAnimationFrame(() => {
       const target = trigger.current;
       if (target?.isConnected && !target.matches(":disabled")) target.focus();

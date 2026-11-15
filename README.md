@@ -256,29 +256,3 @@ Then access:
 ```text
 http://localhost:3001
 ```
-
----
-
-## 10. Quick start
-
-For someone cloning the project for the first time:
-
-```bash
-git clone <FRONTEND_REPOSITORY_URL>
-cd pet-care-web
-npm install
-```
-
-Create `.env.local`:
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:3000/api
-```
-
-Then run:
-
-```bash
-npm run dev
-```
-
-Open the URL shown in the terminal.

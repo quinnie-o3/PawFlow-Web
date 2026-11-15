@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 import { createCustomersMockData, customersMockFacility, customersMockNow } from "./data/providerCustomersMock";
 import { buildCustomerRecords, currentMockMonth, filterCustomers, summarizeCustomers } from "./customerLogic";
 import type { CustomerFilters, ReportingRange } from "./types";
@@ -13,7 +14,8 @@ export function useCustomersMock() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const records = useMemo(() => buildCustomerRecords(data, customersMockFacility.id, range, customersMockNow), [data, range]);
   const report = useMemo(() => summarizeCustomers(records, range), [records, range]);
-  const visibleRecords = useMemo(() => filterCustomers(records, filters), [records, filters]);
+  const query = useDebouncedSearch(filters.query);
+  const visibleRecords = useMemo(() => filterCustomers(records, { group: filters.group, query }), [records, filters.group, query]);
   const selected = records.find((record) => record.customer.id === selectedId) ?? records[0];
 
   function openCustomer(id: string) {

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { createNotificationsMockData, notificationsMockNow, notificationsMockScope } from "./data/providerNotificationsMock";
-import { createNotificationsState, formatNotificationDateTime, notificationsReducer, selectNotifications } from "./notificationLogic";
+import { createNotificationsState, formatNotificationDateTime, mergeReadState, notificationsReducer, selectNotifications, selectRecentNotifications } from "./notificationLogic";
 import type { NotificationCommand, NotificationScope, NotificationsState, ProviderNotification } from "./types";
 
 function loaded(source = createNotificationsMockData()) {
@@ -224,4 +224,30 @@ test("Fresh fixtures reset read state and preserve full long content and booking
   const detail = state.notifications.find((item) => item.id === state.selectedId) as ProviderNotification;
   assert.ok(detail.body.length > 2000);
   assert.ok(detail.body.endsWith("Kết thúc nội dung dài mô phỏng."));
+});
+
+test("Header dropdown shows the 5 most recent scoped notifications and flags that more exist", () => {
+  const scoped = selectNotifications(createNotificationsMockData(), notificationsMockScope, "all").all;
+  const recent = selectRecentNotifications(scoped);
+  assert.equal(scoped.length, 7);
+  assert.deepEqual(recent.items.map((item) => item.id), ["NOT-001", "NOT-002", "NOT-004", "NOT-003", "NOT-005"]);
+  assert.equal(recent.hasMore, true);
+  assert.equal(selectRecentNotifications(scoped.slice(0, 5)).hasMore, false);
+});
+
+test("Read state merges one way, by id, and keeps identity when nothing changes", () => {
+  const source = createNotificationsMockData();
+  const read = source.map((item) => ({ ...item, readAt: item.readAt ?? notificationsMockNow }));
+  const merged = mergeReadState(source, read);
+  assert.ok(merged.every((item) => item.readAt !== null));
+  assert.equal(mergeReadState(merged, source), merged, "already-read items are never marked unread again");
+  assert.equal(mergeReadState(source, source), source);
+});
+
+test("syncRead applies dropdown reads to page state without touching other fields", () => {
+  const state = loaded();
+  const synced = notificationsReducer(state, { type: "syncRead", source: state.notifications.map((item) => ({ ...item, readAt: notificationsMockNow })) });
+  assert.equal(unread(synced), 0);
+  assert.equal(synced.loadStatus, "ready");
+  assert.equal(notificationsReducer(synced, { type: "syncRead", source: state.notifications }), synced);
 });
