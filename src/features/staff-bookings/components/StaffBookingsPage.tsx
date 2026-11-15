@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AlertCircle, LoaderCircle, ShieldCheck } from "lucide-react";
+import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 import { mockStaffContext } from "../data/staffBookingsMock";
 import { filterStaffBookings, findStaffBooking, formatStaffBookingDate, formatStaffMockTime, parseStaffMockTime, scopeStaffBookings } from "../staffBookingLogic";
 import { useStaffBookingsMock } from "../hooks/useStaffBookingsMock";
@@ -24,7 +25,8 @@ export default function StaffBookingsPage() {
   const [clockError, setClockError] = useState("");
   const processing = state.pendingCommand !== null;
   const scoped = scopeStaffBookings(state.bookings, mockStaffContext);
-  const visible = filterStaffBookings(state.bookings, mockStaffContext, filters);
+  const query = useDebouncedSearch(filters.query);
+  const visible = filterStaffBookings(state.bookings, mockStaffContext, { ...filters, query });
   const selected = selectedId ? findStaffBooking(state.bookings, mockStaffContext, selectedId) : undefined;
   const filtered = filters.query.trim() !== "" || filters.status !== "all";
 

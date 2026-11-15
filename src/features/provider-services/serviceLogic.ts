@@ -1,3 +1,4 @@
+import { matchesSearch, normalizeSearch } from "../../lib/search";
 import type { ProviderService, ServiceCommand, ServiceDraft, ServiceDuration, ServiceFilters, ServicesState } from "./types";
 
 export function formatPrice(price: number) {
@@ -8,15 +9,11 @@ export function formatDuration(duration: ServiceDuration) {
   return duration.unit === "day" ? "1 ngày" : `${duration.value} phút`;
 }
 
-function normalize(value: string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().trim();
-}
-
 export function filterServices(services: ProviderService[], filters: ServiceFilters) {
-  const query = normalize(filters.query);
+  const query = normalizeSearch(filters.query);
   return services.filter((service) =>
     (filters.status === "all" || service.active === (filters.status === "visible")) &&
-    normalize(`${service.name} ${service.category} ${service.description}`).includes(query));
+    matchesSearch(query, [service.name, service.category, service.description]));
 }
 
 export function serviceToDraft(service?: ProviderService): ServiceDraft {

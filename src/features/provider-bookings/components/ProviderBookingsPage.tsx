@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Search } from "lucide-react";
+import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 import { filterBookings, formatBookingDate, statusLabels, statusOrder, summarizeBookings } from "../bookingLogic";
 import { mockBookings, mockNow } from "../data/providerBookingsMock";
 import { useBookingsMock } from "../useBookingsMock";
@@ -22,7 +23,8 @@ export default function ProviderBookingsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [simulateFailure, setSimulateFailure] = useState(false);
   const [feedbackOffset, setFeedbackOffset] = useState(0);
-  const visible = filterBookings(state.bookings, filters);
+  const query = useDebouncedSearch(filters.query);
+  const visible = filterBookings(state.bookings, { ...filters, query });
   const selected = state.bookings.find((booking) => booking.id === selectedId);
   const summary = summarizeBookings(state.bookings);
   const feedback = state.logs.length > feedbackOffset ? state.feedback : null;

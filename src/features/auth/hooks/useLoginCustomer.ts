@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { AuthApiError } from "../services/authApi";
 import { saveAccessToken } from "../services/authToken";
-import { LoginCustomerError, loginCustomer, type LoginCustomerPayload } from "../services/loginCustomer";
+import { loginCustomer, type LoginCustomerPayload } from "../services/loginCustomer";
 
 export function useLoginCustomer() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -16,12 +17,12 @@ export function useLoginCustomer() {
       const response = await loginCustomer(payload);
       saveAccessToken(response.accessToken);
     } catch (requestError) {
-      setError(requestError instanceof LoginCustomerError ? requestError.message : "Đã xảy ra lỗi khi đăng nhập.");
+      setError(requestError instanceof AuthApiError ? requestError.message : "Đã xảy ra lỗi khi đăng nhập.");
       throw requestError;
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  return { error, isSubmitting, submitLogin };
+  return { error, setError, isSubmitting, submitLogin };
 }

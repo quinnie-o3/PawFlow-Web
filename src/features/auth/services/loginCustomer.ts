@@ -1,6 +1,11 @@
+import { AuthApiError, postAuthJson, type PostAuthJsonOptions } from "./authApi";
+
+/** Body of `POST /auth/login` (backend `LoginDto`). */
 export type LoginCustomerPayload = {
   email: string;
   password: string;
+  /** Fresh, single-use token from a Turnstile widget rendered with action `login`. */
+  turnstileToken: string;
 };
 
 export type LoginCustomerResponse = {
@@ -13,32 +18,22 @@ type LoginCustomerResponseBody = {
   message?: unknown;
 };
 
-export class LoginCustomerError extends Error {
+/** Kept for existing callers; every auth failure is an AuthApiError. */
+export class LoginCustomerError extends AuthApiError {
   constructor(message: string) {
-    super(message);
+    super(message, { kind: "invalid-response" });
     this.name = "LoginCustomerError";
   }
 }
 
-export async function loginCustomer(payload: LoginCustomerPayload): Promise<LoginCustomerResponse> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+export async function loginCustomer(payload: LoginCustomerPayload, options: PostAuthJsonOptions = {}): Promise<LoginCustomerResponse> {
+  const { body: rawBody } = await postAuthJson(
+    "login",
+    { email: payload.email, password: payload.password, turnstileToken: payload.turnstileToken },
+    { credentials: "include", ...options },
+  );
 
-  if (!apiUrl) {
-    throw new LoginCustomerError("Chưa cấu hình địa chỉ API đăng nhập.");
-  }
-
-  const response = await fetch(`${apiUrl.replace(/\/$/, "")}/auth/login`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  const body = await response.json().catch(() => null) as LoginCustomerResponseBody | null;
-
-  if (!response.ok) {
-    throw new LoginCustomerError(typeof body?.message === "string" ? body.message : "Không thể đăng nhập. Vui lòng thử lại.");
-  }
+  const body = rawBody as LoginCustomerResponseBody | null;
 
   if (!body || typeof body.accessToken !== "string" || !body.accessToken) {
     throw new LoginCustomerError("API đăng nhập không trả về accessToken.");

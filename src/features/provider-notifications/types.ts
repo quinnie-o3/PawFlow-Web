@@ -29,4 +29,5 @@ export type NotificationsAction =
   | { type: "loaded"; source: readonly ProviderNotification[]; scope: NotificationScope }
   | { type: "submit"; command: NotificationCommand; simulateFailure: boolean }
   | { type: "resolve"; scope: NotificationScope; now: string }
+  | { type: "syncRead"; source: readonly ProviderNotification[] }
   | { type: "close" };

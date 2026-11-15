@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { ArrowRight, Search, SlidersHorizontal } from "lucide-react";
+import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 import { defaultAdminFilters, filterAdminRecords, invalidAdminDateRange } from "../adminLogic";
 import { useAdminMock } from "../hooks/useAdminMock";
 import type { AdminCollectionDefinition, AdminFilters, AdminRecord } from "../types";
@@ -15,7 +16,8 @@ export default function AdminCollection({ definition, fixture }: { definition: A
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [info, setInfo] = useState(false);
   const mock = useAdminMock(fixture);
-  const visible = filterAdminRecords(mock.records, filters);
+  const query = useDebouncedSearch(filters.query);
+  const visible = filterAdminRecords(mock.records, { ...filters, query });
   const selected = mock.records.find((record) => record.id === selectedId);
   const invalidRange = invalidAdminDateRange(filters);
 

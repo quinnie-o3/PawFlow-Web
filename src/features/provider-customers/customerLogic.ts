@@ -1,3 +1,4 @@
+import { matchesSearch, normalizeSearch } from "../../lib/search";
 import type { CustomerFilters, CustomerGroup, CustomerRecord, CustomersMockData, CustomersReport, ReportingRange } from "./types";
 
 export const customersTimeZone = "Asia/Ho_Chi_Minh";
@@ -7,10 +8,6 @@ export const customerGroupLabels: Record<CustomerGroup, string> = {
   outsidePeriod: "Không có lịch hoàn thành trong kỳ",
   noCompleted: "Chưa có lịch hoàn thành",
 };
-
-export function normalizeCustomerSearch(value: string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "d").toLocaleLowerCase("vi-VN").trim();
-}
 
 function validDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -101,7 +98,7 @@ export function summarizeCustomers(records: CustomerRecord[], range: ReportingRa
 }
 
 export function filterCustomers(records: CustomerRecord[], filters: CustomerFilters) {
-  const query = normalizeCustomerSearch(filters.query);
+  const query = normalizeSearch(filters.query);
   return records.filter((record) => (filters.group === "all" || record.group === filters.group) &&
-    normalizeCustomerSearch([record.customer.id, record.customer.name, ...record.pets.map((pet) => pet.name)].join(" ")).includes(query));
+    matchesSearch(query, [record.customer.id, record.customer.name, ...record.pets.map((pet) => pet.name)]));
 }

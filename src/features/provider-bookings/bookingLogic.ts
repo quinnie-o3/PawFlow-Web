@@ -1,3 +1,4 @@
+import { matchesSearch, normalizeSearch } from "../../lib/search";
 import type { Booking, BookingActor, BookingCommand, BookingFilters, BookingStatus, MockBookingsState } from "./types";
 
 export const bookingTimeZone = "Asia/Ho_Chi_Minh";
@@ -21,15 +22,11 @@ export function formatBookingDate(value: string, includeYear = false) {
   return `${date} · ${part("hour")}:${part("minute")}`;
 }
 
-function normalizeSearch(value: string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "d").toLowerCase().trim();
-}
-
 export function filterBookings(bookings: Booking[], filters: BookingFilters) {
   const query = normalizeSearch(filters.query);
   return bookings.filter((booking) =>
     (filters.status === "all" || booking.status === filters.status) &&
-    normalizeSearch(`${booking.id} ${booking.customerName} ${booking.petName}`).includes(query));
+    matchesSearch(query, [booking.id, booking.customerName, booking.petName]));
 }
 
 export function summarizeBookings(bookings: Booking[]) {

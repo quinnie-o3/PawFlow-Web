@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { defaultAdminFilters, filterAdminRecords, invalidAdminDateRange, normalizeAdminSearch } from "./adminLogic";
+import { defaultAdminFilters, filterAdminRecords, invalidAdminDateRange } from "./adminLogic";
+import { normalizeSearch } from "../../lib/search";
 import { records as users } from "../admin-users/data/mock";
 import { records as providers } from "../admin-providers/data/mock";
 import { records as categories } from "../admin-categories/data/mock";
@@ -10,7 +11,7 @@ test("Vietnamese names can be found with accents, without accents, mixed case an
   for (const query of ["Hà Linh", "ha linh", "  HA   LINH "]) {
     assert.equal(filterAdminRecords(users, { ...defaultAdminFilters, query })[0]?.cells[0], "Hà Linh");
   }
-  assert.equal(normalizeAdminSearch("ĐỖ ĐỨC"), "do duc");
+  assert.equal(normalizeSearch("ĐỖ ĐỨC"), "do duc");
 });
 
 test("Search and role/status filters intersect rather than replacing one another", () => {

@@ -1,3 +1,4 @@
+import { matchesSearch, normalizeSearch } from "../../lib/search";
 import type { StaffBooking, StaffBookingFilters, StaffBookingStatus, StaffBookingTarget, StaffViewContext } from "./types";
 
 export const staffBookingTimeZone = "Asia/Ho_Chi_Minh";
@@ -17,15 +18,11 @@ export function scopeStaffBookings(bookings: readonly StaffBooking[], context: S
   return canViewStaffBookings(context) ? bookings.filter((booking) => booking.providerId === context.providerId) : [];
 }
 
-function normalizeSearch(value: string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLocaleLowerCase("vi").trim();
-}
-
 export function filterStaffBookings(bookings: readonly StaffBooking[], context: StaffViewContext, filters: StaffBookingFilters) {
   const query = normalizeSearch(filters.query);
   return scopeStaffBookings(bookings, context).filter((booking) =>
     (filters.status === "all" || booking.status === filters.status) &&
-    normalizeSearch(`${booking.id} ${booking.customerName} ${booking.petName}`).includes(query),
+    matchesSearch(query, [booking.id, booking.customerName, booking.petName]),
   );
 }
 
