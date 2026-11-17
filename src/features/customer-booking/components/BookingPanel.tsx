@@ -18,6 +18,7 @@ export default function BookingPanel({ providerId, serviceId, availabilityStatus
   const { petState, getPetState } = useCustomerWorkspace();
   const [dateInput, setDateInput] = useState<string | null>(null);
   const [dismissedSuccess, setDismissedSuccess] = useState<string | null>(null);
+  const [retryErrorMessage, setRetryErrorMessage] = useState<string | null>(null);
   useEffect(() => { store.ensureFlow(providerId, serviceId, selectedPetId); }, [store, providerId, serviceId, selectedPetId]);
   const flow = state.flows[providerId] ?? initialFlow(providerId, serviceId, selectedPetId);
   const { draft, submission } = flow;
@@ -40,10 +41,16 @@ export default function BookingPanel({ providerId, serviceId, availabilityStatus
   const date = selectedSlot?.date ?? (dateInput && dates.includes(dateInput) ? dateInput : dates[0] ?? "");
   const receipt = completed ? getOwnBooking(state.booking, actor, submission.bookingId) : null;
   const error = flow.error ?? (submission.phase === "failed" && submission.code !== "NOT_CREATED" ? submission.code : null);
+  const errorMessage = error ? vi.booking.errors[error] : null;
+  // Reserve the previous error's exact height while retrying, so a second click
+  // stays on the disabled submit button instead of landing on "Change provider".
+  const feedbackMessage = errorMessage ?? (locked ? retryErrorMessage : null);
   return <section id="booking" className={styles.booking} aria-labelledby="booking-title">
     <h2 id="booking-title">{vi.booking.title}</h2><p>{vi.booking.subtitle}</p>
     <form className={styles.bookingGrid} onSubmit={event => {
       event.preventDefault();
+      if (locked || completed) return;
+      setRetryErrorMessage(errorMessage);
       store.submit(providerId, { actor, pets: getPetState, now: () => store.getSnapshot().now, delayMs, fault: submitFault });
     }} aria-busy={submission.phase === "pending"}>
       <div className={styles.steps}>
@@ -81,7 +88,8 @@ export default function BookingPanel({ providerId, serviceId, availabilityStatus
         </dl>
         <label className={styles.field}>{vi.booking.note}<textarea value={draft.customerNote} disabled={locked || completed} placeholder={vi.booking.notePlaceholder} onChange={e => store.note(providerId, e.target.value)} /></label>
         <p>{vi.booking.pendingNotice}</p>
-        {error && <p role="alert" className={styles.error}>{vi.booking.errors[error]}</p>}
+        {feedbackMessage && <p role={error ? "alert" : undefined} aria-hidden={error ? undefined : true}
+          className={`${styles.error} ${error ? "" : styles.errorPlaceholder}`}>{feedbackMessage}</p>}
         {submission.phase === "failed" && submission.code === "NOT_CREATED" && <p role="status">{vi.booking.notCreated}</p>}
         {(submission.phase === "unknown" || submission.phase === "reconciling") && <div role="status" className={styles.notice}><p>{vi.booking.unknown}</p><button className={styles.primary} type="button" disabled={submission.phase === "reconciling"} onClick={() => { store.reconcile(providerId, actor, delayMs, faults.lookup); clearFault("lookup"); }}>{submission.phase === "reconciling" ? vi.booking.reconciling : vi.booking.reconcile}</button></div>}
         {receipt ? <div role="status"><p>{formatMessage(vi.booking.success, { bookingId: receipt.id })}</p><Link id={"booking-receipt-" + providerId} className={styles.primary} href={"/bookings/" + encodeURIComponent(receipt.id)}>{vi.booking.viewBooking}</Link><button type="button" className={styles.secondary} onClick={() => { store.resetFlow(providerId); store.ensureFlow(providerId, serviceId, selectedPetId); }}>{vi.booking.newBooking}</button></div> :
