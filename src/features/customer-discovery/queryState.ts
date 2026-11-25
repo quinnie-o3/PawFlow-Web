@@ -17,7 +17,7 @@ export function parseDiscoveryQuery(params: URLSearchParams): DiscoveryQuery {
   return { q: cleanSearch(params.get("q") ?? ""), categoryId, area, maxPrice: price, minRating: rating, available: params.get("available") === "1", sort, page };
 }
 export function serializeQuery(query: DiscoveryQuery): string {
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({ catalog: "demo" });
   if (query.q) params.set("q", query.q);
   if (query.categoryId) params.set("categoryId", query.categoryId);
   if (query.area) params.set("area", query.area);
@@ -30,15 +30,15 @@ export function serializeQuery(query: DiscoveryQuery): string {
 }
 export function discoveryHref(query: DiscoveryQuery): string { const search = serializeQuery(query); return `/discover${search ? `?${search}` : ""}`; }
 export function safeReturnTo(value: string | null): string {
-  if (!value || value.length > 2000 || /[\\\u0000-\u0020\u007f]/.test(value) || !/^\/discover(?:\?|#|$)/.test(value)) return "/discover";
+  if (!value || value.length > 2000 || /[\\\u0000-\u0020\u007f]/.test(value) || !/^\/discover(?:\?|#|$)/.test(value)) return "/discover?catalog=demo";
   try {
     const url = new URL(value, "https://pawflow.invalid");
-    if (url.origin !== "https://pawflow.invalid" || url.pathname !== "/discover") return "/discover";
+    if (url.origin !== "https://pawflow.invalid" || url.pathname !== "/discover") return "/discover?catalog=demo";
     return discoveryHref(parseDiscoveryQuery(url.searchParams));
-  } catch { return "/discover"; }
+  } catch { return "/discover?catalog=demo"; }
 }
 export function detailHref(providerId: string, serviceId: string, returnTo: string): string {
-  const params = new URLSearchParams({ serviceId, returnTo: safeReturnTo(returnTo) });
+  const params = new URLSearchParams({ catalog: "demo", serviceId, returnTo: safeReturnTo(returnTo) });
   return `/providers/${encodeURIComponent(providerId)}?${params}`;
 }
 export function changeCriteria(query: DiscoveryQuery, patch: Partial<DiscoveryQuery>): DiscoveryQuery { return parseDiscoveryQuery(new URLSearchParams(serializeQuery({ ...query, ...patch, page: 1 }))); }

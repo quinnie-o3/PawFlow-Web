@@ -18,7 +18,7 @@ export type VerifiedTargets = { providerIds: ReadonlySet<string>; bookingIds: Re
 export function notificationDestination(target: NotificationTarget | null, verified: VerifiedTargets):
   { kind: "available"; href: string } | { kind: "none" | "missing" | "unsupported" } {
   if (!target) return { kind: "none" };
-  if (target.type === "PROVIDER") return verified.providerIds.has(target.id) ? { kind: "available", href: "/providers/" + encodeURIComponent(target.id) } : { kind: "missing" };
+  if (target.type === "PROVIDER") return verified.providerIds.has(target.id) ? { kind: "available", href: "/providers/" + encodeURIComponent(target.id) + "?catalog=demo" } : { kind: "missing" };
   if (target.type === "BOOKING") return verified.bookingIds.has(target.id) ? { kind: "available", href: "/bookings/" + encodeURIComponent(target.id) } : { kind: "missing" };
   return { kind: "unsupported" };
 }

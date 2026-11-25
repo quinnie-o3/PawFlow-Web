@@ -3,16 +3,18 @@
 import { vi } from "@/lib/locale";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useRef } from "react";
 import { Bell, CalendarDays, Menu, UserRound } from "lucide-react";
 import { useCatalogWorkspace } from "../CatalogWorkspace";
+import { useSession } from "../../session/SessionProvider";
 import DesignAsset from "./DesignAsset";
 import styles from "../shell.module.css";
 
 export function Brand() { return <Link href="/discover" className={styles.brand} aria-label={vi.discovery.header.brand}><DesignAsset src="/customer-discovery/49717.svg" /><DesignAsset src="/customer-discovery/9eea8.svg" /></Link>; }
 export default function DiscoveryHeader() {
-  const { persona } = useCatalogWorkspace(); const path = usePathname(); const menu = useRef<HTMLDetailsElement>(null);
+  const workspace = useCatalogWorkspace(), session = useSession(), params = useSearchParams();
+  const persona = params.getAll("catalog").length === 1 && params.get("catalog") === "demo" ? workspace.persona : session.session?.user?.role === "CUSTOMER" ? "customer" : "guest"; const path = usePathname(); const menu = useRef<HTMLDetailsElement>(null);
   const nav = <><Link href="/discover" prefetch={false}>{vi.discovery.header.home}</Link><Link href="/discover#results" prefetch={false}>{vi.discovery.header.services}</Link><Link href="/discover" aria-current={path === "/discover" ? "page" : undefined}>{vi.discovery.header.providers}</Link><Link href="/bookings" prefetch={false}>{vi.discovery.header.booking}</Link><Link href="/account/pets" prefetch={false}>{vi.discovery.header.pets}</Link><span title={vi.discovery.header.contactUnavailable}><button disabled>{vi.discovery.header.contact}</button></span></>;
   return <header className={styles.header}>
     <a className={styles.skip} href="#discovery-content">{vi.discovery.header.skip}</a>

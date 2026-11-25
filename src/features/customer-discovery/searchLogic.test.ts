@@ -51,13 +51,13 @@ test("Query roundtrip preserves applied criteria and clamps only the result page
   const query: DiscoveryQuery = { q: "tắm & spa", categoryId: "bath", area: "q3", maxPrice: "300000", minRating: "4.5", available: true, sort: "price-desc", page: 2 };
   assert.deepEqual(parseDiscoveryQuery(new URLSearchParams(serializeQuery(query))), query);
   assert.equal(changeCriteria(query, { sort: "rating-desc" }).page, 1);
-  assert.equal(discoveryHref({ ...defaultQuery }), "/discover");
+  assert.equal(discoveryHref({ ...defaultQuery }), "/discover?catalog=demo");
 });
 test("Return navigation accepts only canonical internal Discovery destinations", () => {
-  for (const bad of [null, "https://evil.example/discover", "//evil.example", "/account", "/discover/../login", "/discover\\@evil", "javascript:alert(1)", "/%64iscover", "/discover\n?x=1"]) assert.equal(safeReturnTo(bad), "/discover", String(bad));
-  assert.equal(safeReturnTo("/discover?sort=price-asc&page=2&unknown=bad#results"), "/discover?sort=price-asc&page=2");
+  for (const bad of [null, "https://evil.example/discover", "//evil.example", "/account", "/discover/../login", "/discover\\@evil", "javascript:alert(1)", "/%64iscover", "/discover\n?x=1"]) assert.equal(safeReturnTo(bad), "/discover?catalog=demo", String(bad));
+  assert.equal(safeReturnTo("/discover?sort=price-asc&page=2&unknown=bad#results"), "/discover?catalog=demo&sort=price-asc&page=2");
   const href = detailHref("1", "102", "/discover?sort=price-desc&page=2"); const url = new URL(href, "https://local.invalid");
-  assert.equal(url.searchParams.get("returnTo"), "/discover?sort=price-desc&page=2"); assert.equal(url.searchParams.get("serviceId"), "102");
+  assert.equal(url.searchParams.get("returnTo"), "/discover?catalog=demo&sort=price-desc&page=2"); assert.equal(url.searchParams.get("serviceId"), "102");
 });
 
 test("Provider and representative-service ties stay stable when the input arrays are reversed", () => {

@@ -1,7 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { Suspense, createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { vi, formatMessageParts } from "@/lib/locale";
 import { useCustomerWorkspace } from "../customer-workspace/CustomerWorkspaceProvider";
 import { createCatalogMock, MOCK_NOW } from "../customer-catalog/data/catalogMock";
@@ -49,7 +49,7 @@ export default function CatalogWorkspace({ children }: { children: ReactNode }) 
     clearFault: fault => setFaults(previous => ({ ...previous, [fault]: false })),
     store, state, repository, actor, submitFault };
   return <Context.Provider value={value}>{children}
-    {!path.startsWith("/account") && <aside className={styles.container + " " + styles.mockTools} aria-label={vi.discovery.mockTools.title}>
+    {!path.startsWith("/account") && <Suspense fallback={null}><DemoTools><aside className={styles.container + " " + styles.mockTools} aria-label={vi.discovery.mockTools.title}>
       <details><summary>{vi.discovery.mockTools.title}</summary>
         <p>{vi.discovery.mockTools.description}</p>
         <div className={styles.toolFields}>
@@ -69,6 +69,12 @@ export default function CatalogWorkspace({ children }: { children: ReactNode }) 
           {providerId && <><button type="button" onClick={() => store.simulate(providerId, "full")}>{vi.booking.tools.full}</button><button type="button" onClick={() => store.simulate(providerId, "price")}>{vi.booking.tools.price}</button></>}
         </div><p>{vi.booking.tools.explanation}</p>
       </details>
-    </aside>}
+    </aside></DemoTools></Suspense>}
   </Context.Provider>;
+}
+
+function DemoTools({ children }: { children: ReactNode }) {
+  const path = usePathname(), params = useSearchParams();
+  if ((path === "/discover" || path.startsWith("/providers/")) && !(params.getAll("catalog").length === 1 && params.get("catalog") === "demo")) return null;
+  return children;
 }

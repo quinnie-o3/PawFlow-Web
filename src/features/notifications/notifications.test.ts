@@ -57,7 +57,7 @@ test("real mock timer cancellation rejects promptly", async () => {
 
 test("deep links use only verified route IDs, no target grants access", () => {
   const verified = { providerIds: new Set(["1"]), bookingIds: new Set(["PF-DEMO-1"]) };
-  assert.deepEqual(notificationDestination({ type: "PROVIDER", id: "1" }, verified), { kind: "available", href: "/providers/1" });
+  assert.deepEqual(notificationDestination({ type: "PROVIDER", id: "1" }, verified), { kind: "available", href: "/providers/1?catalog=demo" });
   assert.deepEqual(notificationDestination({ type: "BOOKING", id: "PF-DEMO-1" }, verified), { kind: "available", href: "/bookings/PF-DEMO-1" });
   assert.deepEqual(notificationDestination({ type: "BOOKING", id: "foreign" }, verified), { kind: "missing" });
   assert.deepEqual(notificationDestination({ type: "REVIEW", id: "1" }, verified), { kind: "unsupported" });

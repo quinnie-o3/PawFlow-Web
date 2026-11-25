@@ -40,6 +40,8 @@ export default function CustomerInboxPage({ notificationId }: { notificationId?:
     providerIds: new Set(catalog.state.catalog.providers.filter(provider => provider.approval === "APPROVED").map(provider => provider.id)),
     bookingIds: new Set(bookings.map(booking => booking.id)),
   });
+  const destinationHref = destination.kind === "available" ? new URL(destination.href, "https://pawflow.invalid") : null;
+  if (destinationHref && item) destinationHref.searchParams.set("fromInbox", item.id);
   function load() { void store.load(); }
   function read(id?: string) { void store.read(id); }
   return <section className={styles.page} aria-labelledby="inbox-title">
@@ -67,7 +69,7 @@ export default function CustomerInboxPage({ notificationId }: { notificationId?:
           <div className={styles.detailHeading}><NotificationIcon kind={item.type === "BOOKING_COMPLETED" ? "bookingCompleted" : "newBooking"} /><h2>{item.title}</h2></div>
           <span className={styles.readState}>{item.readAt ? <><Check size={16} aria-hidden="true" />{text.read}</> : text.unread}</span>
           <time dateTime={item.createdAt}>{formatNotificationDateTime(item.createdAt)} · {text.timeZone}</time><p>{item.body}</p>
-          {destination.kind === "available" ? <Link className={styles.primary} href={destination.href + "?fromInbox=" + encodeURIComponent(item.id)}>{text.visit} →</Link> :
+          {destination.kind === "available" ? <Link className={styles.primary} href={destinationHref!.pathname + destinationHref!.search}>{text.visit} →</Link> :
             <FormFeedback tone="status" className={styles.notice} message={destination.kind === "none" ? text.noTarget : destination.kind === "missing" ? text.unavailableTarget : text.unsupportedTarget} />}
           {destination.kind === "available" && <Link className={styles.back} href="/notifications">{text.back}</Link>}
         </article> : selectInbox(state.items, filter).length === 0 ? <div className={styles.empty}><Bell size={36} aria-hidden="true" /><h2>{state.items.length ? text.noResults : text.empty}</h2>{state.items.length > 0 && <button type="button" className={styles.secondary} onClick={() => setFilter("all")}>{text.clearFilter}</button>}</div> :
