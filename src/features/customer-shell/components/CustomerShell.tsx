@@ -23,7 +23,7 @@ export default function CustomerShell({ children }: { children: ReactNode }) {
         {path.startsWith("/account") && <CustomerNavigation />}
         {children}
         <p className={styles.mockNotice}><Info aria-hidden="true" size={16} />
-          <span>{vi.customer.shell.mockNotice}</span>
+          <span>{path.startsWith("/account") ? vi.customer.shell.accountNotice : vi.customer.shell.mockNotice}</span>
         </p>
       </main>
     </div>

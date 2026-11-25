@@ -1397,11 +1397,11 @@
         "saving": "Đang lưu…",
         "retry": "Thử lưu lại",
         "save": "Lưu thay đổi",
-        "pending": "Đang lưu bản mô phỏng, vui lòng chờ."
+        "pending": "Đang lưu, vui lòng chờ."
       },
       "feedback": {
         "saveFailed": "Chưa lưu được thay đổi (lỗi mô phỏng). Bản nháp được giữ lại; vui lòng thử lại.",
-        "saved": "Đã lưu thay đổi trong phiên dùng thử.",
+        "saved": "Đã lưu thay đổi.",
         "unexpectedSaveError": "Chưa lưu được bản mô phỏng. Bản nháp được giữ lại; vui lòng thử lại."
       },
       "validation": {
@@ -1416,11 +1416,11 @@
         "title": "Thú cưng của tôi",
         "add": "+ Thêm thú cưng",
         "loading": "Đang tải hồ sơ thú cưng…",
-        "loadError": "Chưa tải được danh sách (lỗi mô phỏng). Hồ sơ đã lưu không thay đổi.",
+        "loadError": "Chưa tải được danh sách. Vui lòng thử tải lại.",
         "retryLoad": "Thử tải lại",
         "empty": "Chưa có thú cưng đang sử dụng.",
         "addFirst": "Thêm hồ sơ đầu tiên",
-        "privacy": "Hồ sơ và ảnh được giữ trong phiên dùng thử này, chưa lưu lên máy chủ.",
+        "privacy": "Hồ sơ thuộc tài khoản của bạn và được lưu trên máy chủ. Chưa hỗ trợ lưu ảnh thú cưng.",
         "mockTools": "Dữ liệu mô phỏng · Thử tải và lưu thất bại",
         "failLoad": "Lần tải tiếp theo thất bại",
         "reload": "Tải lại danh sách",
@@ -1434,18 +1434,18 @@
         "deleteLabel": "Xóa hồ sơ {petName}"
       },
       "deletion": {
-        "impact": "{petName} sẽ không còn trong danh sách để chọn cho lịch hẹn mới. Bản ghi và các lịch đã tạo được giữ lại.",
+        "impact": "{petName} sẽ được ngừng sử dụng và không còn trong danh sách thú cưng đang hoạt động. Đặt lịch hiện dùng dữ liệu minh họa riêng.",
         "description": "Xác nhận ngừng sử dụng hồ sơ thú cưng.",
         "close": "Đóng xác nhận xóa",
         "keep": "Giữ hồ sơ",
         "pending": "Đang xóa…",
         "retry": "Thử xóa lại",
-        "busy": "Đang ngừng sử dụng hồ sơ trong phiên mô phỏng.",
+        "busy": "Đang ngừng sử dụng hồ sơ.",
         "confirm": "Xóa hồ sơ",
         "title": "Xóa hồ sơ {petName}?"
       },
       "details": {
-        "description": "Thông tin thú cưng đang lưu trong phiên dùng thử.",
+        "description": "Thông tin thú cưng được lưu trong tài khoản của bạn.",
         "close": "Đóng chi tiết",
         "name": "Tên thú cưng",
         "species": "Loài",
@@ -1481,22 +1481,22 @@
         "healthNote": "Ghi chú sức khỏe",
         "photo": "Ảnh thú cưng (không bắt buộc)",
         "noPhoto": "Chưa chọn ảnh",
-        "photoHint": "Một ảnh JPEG, PNG hoặc WebP, tối đa 5 MiB. Ảnh mới chỉ áp dụng sau khi lưu hồ sơ thành công.",
+        "photoHint": "Ảnh JPEG, PNG hoặc WebP tối đa 5 MiB chỉ xem tạm trong phiên này; chưa hỗ trợ tải lên hoặc lưu ảnh trên máy chủ.",
         "decoding": "Đang kiểm tra ảnh…",
         "discardPhoto": "Bỏ lựa chọn ảnh mới",
         "saving": "Đang lưu…",
         "retry": "Thử lưu lại",
         "create": "Tạo hồ sơ",
         "save": "Lưu hồ sơ",
-        "pending": "Đang lưu bản mô phỏng, vui lòng chờ."
+        "pending": "Đang lưu, vui lòng chờ."
       },
       "feedback": {
-        "created": "Đã thêm hồ sơ thú cưng trong phiên dùng thử.",
-        "updated": "Đã cập nhật hồ sơ thú cưng trong phiên dùng thử.",
-        "mutationError": "Thao tác chưa thành công. Dữ liệu không đổi; vui lòng thử lại.",
+        "created": "Đã thêm hồ sơ thú cưng.",
+        "updated": "Đã cập nhật hồ sơ thú cưng.",
+        "mutationError": "Chưa xác nhận được kết quả. Vui lòng kiểm tra dữ liệu trước khi thử lại.",
         "imageReadError": "Không đọc được ảnh.",
-        "saveError": "Không lưu được bản mô phỏng. Bản nháp vẫn được giữ; vui lòng thử lại.",
-        "deactivated": "Đã ngừng sử dụng hồ sơ {selectedPetName} cho lịch mới. Bản ghi được giữ trong phiên mô phỏng."
+        "saveError": "Chưa xác nhận được kết quả lưu. Bản nháp được giữ; hãy kiểm tra dữ liệu trước khi thử lại.",
+        "deactivated": "Đã ngừng sử dụng hồ sơ {selectedPetName}."
       },
       "image": {
         "type": "Chỉ nhận ảnh JPEG, PNG hoặc WebP.",
@@ -1551,6 +1551,7 @@
       },
       "skip": "Đến nội dung chính",
       "accountRegion": "Tài khoản khách hàng",
+      "accountNotice": "Hồ sơ tài khoản và thú cưng được lưu trên máy chủ. Khu vực đặt lịch vẫn dùng dữ liệu minh họa riêng, chưa đồng bộ thú cưng thật.",
       "mockNotice": "Dữ liệu chỉ tồn tại trong workspace Customer. Tải lại hoặc rời khu vực sẽ khôi phục mẫu; lịch vừa tạo có thể không còn.",
       "sidebar": {
         "role": "Khách hàng",

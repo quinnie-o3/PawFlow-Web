@@ -2,13 +2,15 @@ import { vi } from "@/lib/locale";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "@/features/session/SessionProvider";
 import { useCustomerWorkspace } from "@/features/customer-workspace/CustomerWorkspaceProvider";
 import UnreadBadge from "@/features/customer-notifications/UnreadBadge";
 import CustomerAsset from "./CustomerAsset";
 import styles from "../customerShell.module.css";
 
 export default function CustomerSidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const { profile } = useCustomerWorkspace();
+  const { profile: demoProfile } = useCustomerWorkspace();
+  const profile = useSession().session?.user ?? demoProfile;
   const path = usePathname();
   return <div className={styles.sidebarContent}>
     <div className={styles.identity}>

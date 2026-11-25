@@ -49,7 +49,7 @@ export default function CatalogWorkspace({ children }: { children: ReactNode }) 
     clearFault: fault => setFaults(previous => ({ ...previous, [fault]: false })),
     store, state, repository, actor, submitFault };
   return <Context.Provider value={value}>{children}
-    <aside className={styles.container + " " + styles.mockTools} aria-label={vi.discovery.mockTools.title}>
+    {!path.startsWith("/account") && <aside className={styles.container + " " + styles.mockTools} aria-label={vi.discovery.mockTools.title}>
       <details><summary>{vi.discovery.mockTools.title}</summary>
         <p>{vi.discovery.mockTools.description}</p>
         <div className={styles.toolFields}>
@@ -69,6 +69,6 @@ export default function CatalogWorkspace({ children }: { children: ReactNode }) 
           {providerId && <><button type="button" onClick={() => store.simulate(providerId, "full")}>{vi.booking.tools.full}</button><button type="button" onClick={() => store.simulate(providerId, "price")}>{vi.booking.tools.price}</button></>}
         </div><p>{vi.booking.tools.explanation}</p>
       </details>
-    </aside>
+    </aside>}
   </Context.Provider>;
 }

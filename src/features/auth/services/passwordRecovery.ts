@@ -3,8 +3,7 @@ import { postAuthJson, type PostAuthJsonOptions } from "./authApi";
 
 /**
  * Password recovery services (backend P3 account recovery).
- * NOTE: the frontend has no forgot/reset-password pages yet; these services are the
- * integration point those pages must use (see docs/P3-FE-turnstile.md).
+ * Recovery pages use these operations through the fixed same-origin recovery proxy.
  */
 
 /** Body of `POST /auth/forgot-password` (backend `ForgotPasswordDto`). */

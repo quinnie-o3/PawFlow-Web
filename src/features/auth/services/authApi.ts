@@ -7,6 +7,7 @@
  * "solve the challenge again", neither of which a refresh token can fix.
  */
 
+import { bffRequest } from "../../session/client";
 import { formatMessage, vi } from "../../../lib/locale";
 import { createApiClient } from "../../../lib/api/transport";
 import { apiUrl } from "../../../lib/api/config";
@@ -149,7 +150,7 @@ export function resolveAuthUrl(base: string, path: string): string {
  */
 export async function postAuthJson(flow: AuthFlow, payload: object, options: PostAuthJsonOptions = {}): Promise<{ status: number; body: unknown }> {
   try {
-    const response = await createApiClient({ apiUrl: options.apiUrl, fetchImpl: options.fetchImpl }).request(AUTH_ENDPOINTS[flow], {
+    const response = await (options.apiUrl || options.fetchImpl || typeof window === "undefined" ? createApiClient({ apiUrl: options.apiUrl, fetchImpl: options.fetchImpl }).request : bffRequest)(AUTH_ENDPOINTS[flow], {
       method: "POST", body: payload, credentials: options.credentials, signal: options.signal,
     });
     return { status: response.status, body: response.body };

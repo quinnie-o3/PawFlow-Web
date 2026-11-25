@@ -1,5 +1,6 @@
 "use client";
 
+import { bootstrap, acceptSession, snapshot, notifySessionChange } from "../../session/client";
 import { vi } from "@/lib/locale";
 import { useEffect, useRef, useState } from "react";
 import { isRequestCancelled, throwIfCancelled } from "../../../lib/api/errors";
@@ -19,8 +20,11 @@ export function useRegisterCustomer() {
     setIsSubmitting(true);
     setError(null);
     try {
-      await registerCustomer(payload, { signal: current.signal });
+      if (!snapshot().session) await bootstrap();
       throwIfCancelled(current.signal);
+      const response = await registerCustomer(payload, { signal: current.signal });
+      throwIfCancelled(current.signal);
+      acceptSession(response); notifySessionChange();
     } catch (requestError) {
       if (!isRequestCancelled(requestError) && requestRef.current === current) {
         setError(requestError instanceof AuthApiError ? requestError.message : vi.auth.errors.registerUnexpected);
