@@ -14,7 +14,7 @@ type Editor = {
 export type PetEditorOutcome = { ok: true; id: string; fromDetails: boolean } | { ok: false; firstError?: PetField };
 
 export function usePetEditor() {
-  const { petState, mutatePet, retainDraftImage, releaseDraftImage } = useCustomerWorkspace();
+  const { petState, mutatePet, retainDraftImage, releaseDraftImage, live } = useCustomerWorkspace();
   const [editor, setEditor] = useState<Editor | null>(null);
   const [saving, setSaving] = useState(false);
   const current = useRef<Editor | null>(null);
@@ -122,12 +122,13 @@ export function usePetEditor() {
     setSaving(true);
     update((now) => ({ ...now, errors: {}, saveError: null }));
     try {
-      await petMockDelay(controller.signal);
+      if (!live) await petMockDelay(controller.signal);
       if (controller.signal.aborted) return { ok: false };
       const command = value.version === null
         ? { type: "create" as const, id: value.id, draft: value.draft, image: value.image }
         : { type: "update" as const, id: value.id, expectedVersion: value.version, draft: value.draft, image: value.image };
-      const result = mutatePet(command, fail);
+      const result = await mutatePet(command, fail);
+      if (controller.signal.aborted) return { ok: false };
       if (!result.ok) {
         update((now) => ({ ...now, saveError: result.message, errors: result.errors ?? {} }));
         return { ok: false, firstError: result.errors ? (Object.keys(result.errors)[0] as keyof PetDraft) : undefined };

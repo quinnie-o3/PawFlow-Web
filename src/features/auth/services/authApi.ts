@@ -7,7 +7,12 @@
  * "solve the challenge again", neither of which a refresh token can fix.
  */
 
+import { bffRequest } from "../../session/client";
 import { formatMessage, vi } from "../../../lib/locale";
+import { createApiClient } from "../../../lib/api/transport";
+import { apiUrl } from "../../../lib/api/config";
+import { ApiError, isRequestCancelled, MAX_RETRY_AFTER_SECONDS, normalizeApiMessage, parseRetryAfterSeconds } from "../../../lib/api/errors";
+export { MAX_RETRY_AFTER_SECONDS, normalizeApiMessage, parseRetryAfterSeconds };
 
 export type AuthFlow = "login" | "register" | "forgotPassword" | "resetPassword";
 
@@ -36,9 +41,6 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<AuthErrorCode>([
 ]);
 
 export type AuthApiErrorKind = "http" | "network" | "config" | "invalid-response";
-
-/** Upper bound for any server-provided wait, so a bad value can never block the form forever. */
-export const MAX_RETRY_AFTER_SECONDS = 15 * 60;
 
 export class AuthApiError extends Error {
   readonly kind: AuthApiErrorKind;
@@ -74,44 +76,6 @@ export class AuthApiError extends Error {
   get isTurnstileError(): boolean {
     return this.code !== null && this.code.startsWith("TURNSTILE_");
   }
-}
-
-/** `message` may be a string or (for DTO validation) an array of strings. */
-export function normalizeApiMessage(message: unknown): string | null {
-  if (typeof message === "string") return message.trim() || null;
-  if (Array.isArray(message)) {
-    const parts = message.filter((m): m is string => typeof m === "string" && m.trim() !== "").map((m) => m.trim());
-    return parts.length ? parts.join("; ") : null;
-  }
-  return null;
-}
-
-function clampSeconds(seconds: number): number | null {
-  if (!Number.isFinite(seconds) || seconds < 0) return null;
-  return Math.min(Math.max(Math.ceil(seconds), 1), MAX_RETRY_AFTER_SECONDS);
-}
-
-/**
- * Retry delay in whole seconds from the `Retry-After` header (delta-seconds or HTTP-date),
- * falling back to the body's `retryAfterSeconds`. Invalid values are ignored; results are
- * clamped to [1, MAX_RETRY_AFTER_SECONDS].
- */
-export function parseRetryAfterSeconds(header: string | null | undefined, bodyValue: unknown, now: number = Date.now()): number | null {
-  const raw = header?.trim();
-  if (raw) {
-    if (/^\d+$/.test(raw)) {
-      const fromHeader = clampSeconds(Number(raw));
-      if (fromHeader !== null) return fromHeader;
-    } else {
-      const date = Date.parse(raw);
-      if (!Number.isNaN(date)) {
-        return clampSeconds(Math.max((date - now) / 1000, 1));
-      }
-    }
-  }
-  if (typeof bodyValue === "number") return clampSeconds(bodyValue);
-  if (typeof bodyValue === "string" && /^\d+$/.test(bodyValue.trim())) return clampSeconds(Number(bodyValue));
-  return null;
 }
 
 const FLOW_FALLBACK: Record<AuthFlow, string> = {
@@ -173,10 +137,11 @@ export type PostAuthJsonOptions = {
   fetchImpl?: AuthFetch;
   apiUrl?: string | undefined;
   credentials?: RequestCredentials;
+  signal?: AbortSignal;
 };
 
-export function resolveAuthUrl(apiUrl: string, path: string): string {
-  return `${apiUrl.replace(/\/+$/, "")}${path}`;
+export function resolveAuthUrl(base: string, path: string): string {
+  return apiUrl(base, path);
 }
 
 /**
@@ -184,44 +149,22 @@ export function resolveAuthUrl(apiUrl: string, path: string): string {
  * Throws AuthApiError for configuration, network and HTTP failures.
  */
 export async function postAuthJson(flow: AuthFlow, payload: object, options: PostAuthJsonOptions = {}): Promise<{ status: number; body: unknown }> {
-  const apiUrl = options.apiUrl ?? process.env.NEXT_PUBLIC_API_URL;
-  if (!apiUrl) {
-    throw new AuthApiError(CONFIG_MESSAGE[flow], { kind: "config" });
-  }
-
-  const fetchImpl = options.fetchImpl ?? ((input: string, init: RequestInit) => fetch(input, init));
-
-  let response: Response;
   try {
-    response = await fetchImpl(resolveAuthUrl(apiUrl, AUTH_ENDPOINTS[flow]), {
-      method: "POST",
-      credentials: options.credentials,
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(payload),
+    const response = await (options.apiUrl || options.fetchImpl || typeof window === "undefined" ? createApiClient({ apiUrl: options.apiUrl, fetchImpl: options.fetchImpl }).request : bffRequest)(AUTH_ENDPOINTS[flow], {
+      method: "POST", body: payload, credentials: options.credentials, signal: options.signal,
     });
-  } catch {
-    const error = new AuthApiError("", { kind: "network" });
-    throw withDescription(error, flow);
+    return { status: response.status, body: response.body };
+  } catch (error) {
+    if (isRequestCancelled(error)) throw error;
+    if (error instanceof ApiError) {
+      const mapped = new AuthApiError(error.kind === "invalid-response" ? vi.auth.errors.server : "", {
+        kind: error.kind, status: error.status, code: error.code, serverMessage: error.serverMessage,
+        retryAfterSeconds: error.status === 429 || error.status === 503 ? error.retryAfterSeconds : null,
+      });
+      throw withDescription(mapped, flow);
+    }
+    throw error;
   }
-
-  const body: unknown = response.status === 204 ? null : await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const record = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
-    const error = new AuthApiError("", {
-      kind: "http",
-      status: response.status,
-      code: typeof record.code === "string" ? record.code : null,
-      serverMessage: normalizeApiMessage(record.message),
-      retryAfterSeconds:
-        response.status === 429 || response.status === 503
-          ? parseRetryAfterSeconds(response.headers.get("Retry-After"), record.retryAfterSeconds)
-          : null,
-    });
-    throw withDescription(error, flow);
-  }
-
-  return { status: response.status, body };
 }
 
 function withDescription(error: AuthApiError, flow: AuthFlow): AuthApiError {

@@ -3,6 +3,7 @@
 import { vi, formatMessage } from "@/lib/locale";
 
 import Link from "next/link";
+import PublicProviderDetail from "./PublicProviderDetail";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, Check, Info, RefreshCw } from "lucide-react";
 import CatalogImage from "../../customer-catalog/components/CatalogImage";
@@ -21,6 +22,10 @@ import shell from "../../discovery-shell/shell.module.css";
 import styles from "../detail.module.css";
 
 export default function ProviderDetailPage({ providerId }: { providerId: string }) {
+  const params = useSearchParams();
+  return params.getAll("catalog").length === 1 && params.get("catalog") === "demo" ? <DemoProviderDetail key={providerId} providerId={providerId} /> : <PublicProviderDetail key={providerId} providerId={providerId} />;
+}
+function DemoProviderDetail({ providerId }: { providerId: string }) {
   const params = useSearchParams(); const returnTo = safeReturnTo(params.get("returnTo")); const requestedServiceId = params.get("serviceId");
   const { detail, availability, retryDetail, retryAvailability } = useProviderDetail(providerId); const { persona } = useCatalogWorkspace();
   if (detail.status !== "ready") return <div className={`${shell.container} ${styles.initialState}`}><Link href={returnTo}><ArrowLeft aria-hidden="true" size={18} />{vi.discovery.detail.back}</Link>{detail.status === "loading" ? <p role="status">{vi.discovery.detail.loading}</p> : <div role="alert" className={styles.feedback}><p>{detail.error}</p><button type="button" onClick={retryDetail}><RefreshCw size={18} aria-hidden="true" />{vi.common.actions.retry}</button></div>}</div>;

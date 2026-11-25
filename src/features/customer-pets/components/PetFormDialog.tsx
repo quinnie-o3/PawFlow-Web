@@ -80,10 +80,10 @@ export default function PetFormDialog({ model }: { model: ReturnType<typeof useC
         <div className={styles.imageField}>
           <label htmlFor={id + "-image"}>{vi.customer.pets.editor.photo}</label>
           <div className={styles.imagePreview}><PetPhoto image={editor.image} large /><span>{editor.image?.fileName ?? vi.customer.pets.editor.noPhoto}</span></div>
-          <input ref={fileInput} id={id + "-image"} name="image" type="file" accept={petImageAccept} aria-invalid={!!editor.imageError}
+          <input disabled={model.live} ref={fileInput} id={id + "-image"} name="image" type="file" accept={petImageAccept} aria-invalid={!!editor.imageError}
             aria-describedby={id + "-image-hint" + (editor.imageError ? " " + id + "-image-error" : "")}
             onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void model.form.selectImage(file); }} />
-          <p id={id + "-image-hint"} className={styles.hint}>{vi.customer.pets.editor.photoHint}</p>
+          <p id={id + "-image-hint"} className={styles.hint}>{model.live ? "Chưa hỗ trợ tải lên hoặc lưu ảnh thú cưng." : vi.customer.pets.editor.photoHint}</p>
           {editor.decoding && <p role="status" className={styles.hint}>{vi.customer.pets.editor.decoding}</p>}
           {editor.imageError && <p role="alert" id={id + "-image-error"} className={styles.fieldError}>{editor.imageError}</p>}
           {(editor.image !== editor.originalImage || editor.imageError || editor.decoding) && <button type="button" className={ui.secondaryButton} onClick={model.form.discardImageSelection}>{vi.customer.pets.editor.discardPhoto}</button>}

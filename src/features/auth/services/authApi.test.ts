@@ -9,7 +9,8 @@ import { FORGOT_PASSWORD_GENERIC_MESSAGE, requestPasswordReset, resetPassword } 
 import { createProtectedSubmitter, SubmitBlockedError } from "../turnstile/protectedSubmit";
 import { TURNSTILE_ACTIONS } from "../turnstile/turnstileConfig";
 
-const API = "http://localhost:8000/api";
+const API = "http://localhost:8000/api/bff";
+const session = { generation: "11111111-1111-4111-8111-111111111111", user: {id:"1",role:"CUSTOMER",status:"ACTIVE",fullName:"Customer",email:"a@example.com",phone:null,emailVerified:false} };
 
 type Call = { url: string; init: RequestInit; body: Record<string, unknown> };
 
@@ -48,18 +49,19 @@ function readSource(relative: string) {
 /* ------------------------------------------------------------- contracts */
 
 test("URL: endpoints are relative to NEXT_PUBLIC_API_URL without duplicating /api", () => {
-  assert.equal(resolveAuthUrl(API, "/auth/login"), "http://localhost:8000/api/auth/login");
-  assert.equal(resolveAuthUrl(`${API}/`, "/auth/login"), "http://localhost:8000/api/auth/login");
+  assert.equal(resolveAuthUrl(API, "/auth/login"), "http://localhost:8000/api/bff/auth/login");
+  assert.equal(resolveAuthUrl(`${API}/`, "/auth/login"), "http://localhost:8000/api/bff/auth/login");
 });
 
 test("login: request body matches LoginDto and carries turnstileToken in the JSON body only", async () => {
-  const { fetchImpl, calls } = fakeFetch([json(200, { accessToken: "jwt" })]);
+  const { fetchImpl, calls } = fakeFetch([json(200, session)]);
   const result = await loginCustomer({ email: "a@example.com", password: "password1", turnstileToken: "tok-login" }, { fetchImpl, apiUrl: API });
-  assert.equal(result.accessToken, "jwt");
+  assert.deepEqual(result, session);
+  assert.equal("accessToken" in result, false);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, `${API}/auth/login`);
   assert.equal(calls[0].init.method, "POST");
-  assert.equal(calls[0].init.credentials, "include");
+  assert.equal(calls[0].init.credentials, undefined);
   assert.deepEqual(calls[0].body, { email: "a@example.com", password: "password1", turnstileToken: "tok-login" });
   const headers = calls[0].init.headers as Record<string, string>;
   assert.deepEqual(Object.keys(headers).sort(), ["Accept", "Content-Type"], "token is not sent as a header");
@@ -67,7 +69,7 @@ test("login: request body matches LoginDto and carries turnstileToken in the JSO
 });
 
 test("register: request body matches RegisterDto (fullName, email, optional phone, password, turnstileToken)", async () => {
-  const { fetchImpl, calls } = fakeFetch([json(201, { message: "ok" }), json(201, {})]);
+  const { fetchImpl, calls } = fakeFetch([json(201, session), json(201, session)]);
   await registerCustomer({ fullName: "Nguyễn Văn A", email: "a@example.com", phone: " 0901234567 ", password: "password1", turnstileToken: "tok-reg" }, { fetchImpl, apiUrl: API });
   await registerCustomer({ fullName: "B", email: "b@example.com", phone: "  ", password: "password1", turnstileToken: "tok-reg-2" }, { fetchImpl, apiUrl: API });
   assert.equal(calls[0].url, `${API}/auth/register`);
@@ -204,7 +206,7 @@ function loginHarness(responses: Array<() => Response | Promise<Response>>) {
 }
 
 test("login lifecycle: challenge resets after a failed login and the next attempt needs a new token", async () => {
-  const h = loginHarness([json(401, { statusCode: 401, message: "Invalid credentials" }), json(200, { accessToken: "jwt" })]);
+  const h = loginHarness([json(401, { statusCode: 401, message: "Invalid credentials" }), json(200, session)]);
   h.solve("token-1");
   await assert.rejects(h.attempt(), AuthApiError);
   assert.equal(h.resets(), 1);

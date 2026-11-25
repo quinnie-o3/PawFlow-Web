@@ -1,0 +1,64 @@
+.provider {
+  min-width: 0;
+  min-height: 0;
+  width: 285px;
+}
+
+.collapsed {
+  width: 80px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  margin-bottom: 16px;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 12%);
+  color: white;
+  cursor: pointer;
+}
+
+.toggle:hover {
+  background: rgb(255 255 255 / 22%);
+}
+
+.toggle:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 3px;
+}
+
+.collapsed .brand {
+  flex-direction: column;
+}
+
+.collapsed .toggle {
+  margin-left: 0;
+}
+
+.identity {
+  display: flex;
+  padding-inline: 14px;
+  margin-bottom: 16px;
+}
+
+.link:focus-visible {
+  outline: 2px solid white;
+  outline-offset: -3px;
+}
+
+.link[aria-current="page"]:focus-visible {
+  outline-color: #3025a7;
+}

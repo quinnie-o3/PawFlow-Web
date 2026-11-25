@@ -13,8 +13,10 @@ import ui from "@/features/customer-shell/customerShell.module.css";
 
 export default function CustomerPetsPage() {
   const model = useCustomerPetsPage();
-  const pending = model.loadStatus === "loading" || model.deleting || model.form.saving;
+  const pending = model.detailBusy || model.loadStatus === "loading" || model.deleting || model.form.saving;
   return <>
+    {model.detailError && <p role="alert" className={styles.error}>{model.detailError}</p>}
+    {model.detailBusy && <p role="status">Đang tải thông tin thú cưng…</p>}
     {model.feedback && <p role="status" className={styles.success}><CheckCircle2 aria-hidden="true" size={20} />{model.feedback}</p>}
     <section className={styles.panel} aria-labelledby="customer-pets-title" aria-busy={model.loadStatus === "loading"}>
       <div className={styles.panelHeading}>
@@ -32,13 +34,13 @@ export default function CustomerPetsPage() {
       </div>)}
       <p className={styles.privacy}>{vi.customer.pets.page.privacy}</p>
     </section>
-    <details className={styles.mockTools}>
+    {!model.live && <details className={styles.mockTools}>
       <summary>{vi.customer.pets.page.mockTools}</summary>
       <label><input type="checkbox" checked={model.failNextLoad} disabled={pending} onChange={(event) => model.setFailNextLoad(event.target.checked)} />{vi.customer.pets.page.failLoad}</label>
       <button type="button" className={ui.secondaryButton} disabled={pending} onClick={model.reload}>{vi.customer.pets.page.reload}</button>
       <label><input type="checkbox" checked={model.failNextMutation} disabled={pending} onChange={(event) => model.setFailNextMutation(event.target.checked)} />{vi.customer.pets.page.failMutation}</label>
       <p>{formatMessage(vi.customer.pets.page.inactiveCount, { count: model.petState.pets.filter((pet) => pet.ownerId === "customer-demo" && pet.status === "INACTIVE").length })}</p>
-    </details>
+    </details>}
     {model.form.editor && <PetFormDialog model={model} />}
     {model.selection?.kind === "details" && model.selectedPet && <PetDetailsDialog pet={model.selectedPet} petTypes={model.petState.petTypes} today={model.today}
       onClose={model.closeSelection} onEdit={() => model.openEdit(model.selectedPet!, true)} onDelete={() => model.openDelete(model.selectedPet!, true)} />}

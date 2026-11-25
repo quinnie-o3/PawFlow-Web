@@ -1,15 +1,20 @@
 import { vi, formatMessage } from "@/lib/locale";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCustomerWorkspace } from "@/features/customer-workspace/CustomerWorkspaceProvider";
 import { activeOwnedPets, todayInVietnam } from "../petLogic";
 import { petMockDelay } from "../mockDelay";
 import { usePetEditor } from "./usePetEditor";
 import type { CustomerPet } from "../types";
 
+import {apiMessage} from "../../session/client";
+import {isRequestCancelled} from "../../../lib/api/errors";
+
 type Selection = { kind: "details" | "delete"; id: string; fromDetails?: boolean } | null;
-const actor = { id: "customer-demo", role: "CUSTOMER" };
+
 export function useCustomerPetsPage() {
-  const { petState, mutatePet } = useCustomerWorkspace();
+  const workspace = useCustomerWorkspace();
+  const { petState, mutatePet, profile, live } = workspace;
+  const actor = { id: profile.id, role: profile.role };
   const form = usePetEditor();
   const [selection, setSelection] = useState<Selection>(null);
   const [loadStatus, setLoadStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -17,6 +22,8 @@ export function useCustomerPetsPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [detailError,setDetailError]=useState<string|null>(null),[detailBusy,setDetailBusy]=useState(false);
+  const detailRequest=useRef(0);
   const [failNextLoad, setFailNextLoad] = useState(false);
   const [failNextMutation, setFailNextMutation] = useState(false);
   const loadRequest = useRef<AbortController | null>(null);
@@ -33,7 +40,7 @@ export function useCustomerPetsPage() {
     focusAfterDialog.current = null;
   }, [form.editor, form.saving, selection, deleting, petState]);
 
-  const load = useCallback(async (fail: boolean) => {
+  const load = async (fail: boolean) => {
     loadRequest.current?.abort();
     const controller = new AbortController(); loadRequest.current = controller;
     setLoadStatus("loading");
@@ -43,19 +50,23 @@ export function useCustomerPetsPage() {
       if (fail) setLoadStatus("error");
       else { setHasLoaded(true); setLoadStatus("ready"); }
     } catch { /* cancelling a page/load request does not modify any records */ }
-  }, []);
+  };
 
   useEffect(() => {
+    const detailGeneration=detailRequest;
     const controller = new AbortController();
     loadRequest.current = controller;
     void petMockDelay(controller.signal, 400).then(() => {
       if (!controller.signal.aborted) { setHasLoaded(true); setLoadStatus("ready"); }
     }).catch(() => { /* initial load was cancelled by navigation */ });
-    return () => { loadRequest.current?.abort(); deleteRequest.current?.abort(); };
+    return () => { detailGeneration.current++;loadRequest.current?.abort(); deleteRequest.current?.abort(); };
   }, []);
 
-  function showDetails(pet: CustomerPet) {
-    setFeedback(null); setSelection({ kind: "details", id: pet.id });
+  async function showDetails(pet: CustomerPet) {
+    setFeedback(null);setDetailError(null);setDetailBusy(true);const version=++detailRequest.current;
+    try {await workspace.loadPet?.(pet.id);if(version===detailRequest.current)setSelection({kind:"details",id:pet.id});}
+    catch(error){if(version===detailRequest.current&&!isRequestCancelled(error))setDetailError(apiMessage(error));}
+    finally{if(version===detailRequest.current)setDetailBusy(false);}
   }
   function openCreate() { setFeedback(null); form.open(); }
   function openEdit(pet: CustomerPet, fromDetails = false) {
@@ -93,9 +104,9 @@ export function useCustomerPetsPage() {
     const index = pets.findIndex((pet) => pet.id === selectedPet.id);
     const nextId = pets[index + 1]?.id ?? pets[index - 1]?.id;
     try {
-      await petMockDelay(controller.signal);
+      if (!live) await petMockDelay(controller.signal);
       if (controller.signal.aborted) return;
-      const result = mutatePet({ type: "deactivate", id: selectedPet.id, expectedVersion: selectedPet.version }, fail);
+      const result = await mutatePet({ type: "deactivate", id: selectedPet.id, expectedVersion: selectedPet.version }, fail);
       if (!result.ok) { setDeleteError(result.message); return; }
       setSelection(null);
       setFeedback(formatMessage(vi.customer.pets.feedback.deactivated, { selectedPetName: selectedPet.name }));
@@ -108,8 +119,8 @@ export function useCustomerPetsPage() {
     }
   }
 
-  return { petState, pets, today: todayInVietnam(), form, selection, selectedPet, loadStatus, hasLoaded, deleting, deleteError, feedback,
+  return { petState, pets, today: todayInVietnam(), form, selection, selectedPet, live, detailError, detailBusy, loadStatus: live ? workspace.loadStatus! : loadStatus, hasLoaded: live ? workspace.loadStatus === "ready" : hasLoaded, deleting, deleteError, feedback,
     failNextLoad, setFailNextLoad, failNextMutation, setFailNextMutation,
     reload: () => { const fail = failNextLoad; setFailNextLoad(false); void load(fail); },
-    retryLoad: () => { void load(false); }, showDetails, openCreate, openEdit, closeEditor, saveEditor, openDelete, closeSelection, deactivate };
+    retryLoad: () => { if (live) void workspace.reload?.(); else void load(false); }, showDetails, openCreate, openEdit, closeEditor, saveEditor, openDelete, closeSelection, deactivate };
 }

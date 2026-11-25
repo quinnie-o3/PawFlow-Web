@@ -10,11 +10,16 @@ import { useLoginCustomer } from "@/features/auth/hooks/useLoginCustomer";
 import { useTurnstileProtectedSubmit } from "@/features/auth/hooks/useTurnstileProtectedSubmit";
 import { describeSubmitBlock } from "@/features/auth/turnstile/protectedSubmit";
 import { TURNSTILE_ACTIONS } from "@/features/auth/turnstile/turnstileConfig";
+import { roleHome } from "@/features/session/model";
+import AuthSessionNotice from "@/features/session/AuthSessionNotice";
+import { useSession } from "@/features/session/SessionProvider";
 import AuthInput from "./AuthInput";
 import TurnstileField from "./TurnstileField";
 
 export default function LoginForm() {
   const router = useRouter();
+  const sessionState = useSession();
+  const activeSession = !!sessionState.session?.user || sessionState.status === "error" || sessionState.status === "pending";
   const { error, setError, isSubmitting, submitLogin } = useLoginCustomer();
   const turnstile = useTurnstileProtectedSubmit(TURNSTILE_ACTIONS.login);
   const isBusy = isSubmitting || turnstile.isSubmitting;
@@ -24,14 +29,14 @@ export default function LoginForm() {
     const formData = new FormData(event.currentTarget);
 
     try {
-      await turnstile.submit((turnstileToken) =>
+      const session = await turnstile.submit((turnstileToken) =>
         submitLogin({
           email: String(formData.get("email") ?? ""),
           password: String(formData.get("password") ?? ""),
           turnstileToken,
         }),
       );
-      router.push("/dashboard");
+      if (session.user) router.push(roleHome(session.user.role));
     } catch (submitError) {
       // Request errors are exposed by the hook; blocked submissions (no token, cooldown) are explained here.
       const blocked = describeSubmitBlock(submitError);
@@ -42,6 +47,7 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="flex h-full w-full flex-col justify-between">
       <div>
+        <AuthSessionNotice />
         <div className="relative">
           <h1 className="pr-12 text-[clamp(26px,2.23vw,32px)] font-bold leading-[48px] text-[var(--accent-hover)]">{vi.auth.login.title}</h1>
           <Image aria-hidden="true" src="/union.png" alt="" width={54} height={47} className="absolute right-[60px] top-0 h-[47px] w-[54px] object-contain" priority />
@@ -55,10 +61,10 @@ export default function LoginForm() {
           <AuthInput id="password" name="password" label={vi.common.fields.password} type="password" placeholder={vi.auth.login.passwordPlaceholder} autoComplete="current-password" required />
         </div>
         <div className="mt-0 flex items-center gap-[10px] text-[12px] leading-[18px]">
-          <label className="flex cursor-pointer items-center gap-[10px] text-[var(--text-secondary)]">
-            <input type="checkbox" className="h-[18px] w-[18px] appearance-none rounded-[2px] border bg-transparent checked:border-[var(--accent-hover)] checked:bg-[var(--accent-hover)]" />
+          <label title="Tùy chọn ghi nhớ chưa được hỗ trợ. Hãy đăng xuất khi dùng thiết bị chung." className="flex items-center gap-[10px] text-[var(--text-secondary)]">
+            <input type="checkbox" disabled className="h-[18px] w-[18px] appearance-none rounded-[2px] border bg-transparent checked:border-[var(--accent-hover)] checked:bg-[var(--accent-hover)]" />
             {vi.auth.login.remember}</label>
-          <button type="button" className="ml-auto text-right text-[#001aff] hover:underline">{vi.auth.login.forgotPassword}</button>
+          <Link href="/forgot-password" className="ml-auto text-right text-[#001aff] hover:underline">{vi.auth.login.forgotPassword}</Link>
         </div>
         <div className="mt-2.5">
           <TurnstileField turnstile={turnstile} />
@@ -66,7 +72,7 @@ export default function LoginForm() {
       </div>
 
       <div className="w-full text-center">
-        <button type="submit" disabled={!turnstile.canSubmit || isBusy} aria-disabled={!turnstile.canSubmit || isBusy} className="h-11 w-full rounded-[5px] bg-[var(--accent-hover)] px-[30px] py-[10px] text-[15px] font-semibold leading-[22px] text-[var(--text-on-primary)] transition-colors hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-70">
+        <button type="submit" disabled={activeSession || !turnstile.canSubmit || isBusy} aria-disabled={activeSession || !turnstile.canSubmit || isBusy} className="h-11 w-full rounded-[5px] bg-[var(--accent-hover)] px-[30px] py-[10px] text-[15px] font-semibold leading-[22px] text-[var(--text-on-primary)] transition-colors hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-70">
           {isBusy ? vi.auth.login.submitting : turnstile.cooldownSeconds > 0 ? formatMessage(vi.auth.turnstile.retryIn, { seconds: turnstile.cooldownSeconds }) : vi.auth.login.submit}
         </button>
         <p aria-live="polite" className="min-h-[18px] text-center text-[12px] leading-[18px] text-red-600">{error}</p>

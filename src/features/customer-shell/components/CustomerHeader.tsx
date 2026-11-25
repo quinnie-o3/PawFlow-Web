@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { Menu } from "lucide-react";
+import { useSession } from "@/features/session/SessionProvider";
 import { useCustomerWorkspace } from "@/features/customer-workspace/CustomerWorkspaceProvider";
 import CustomerAsset from "./CustomerAsset";
 import CustomerSidebar from "./CustomerSidebar";
@@ -11,7 +12,8 @@ import styles from "../customerShell.module.css";
 const outsideItems = [vi.customer.shell.header.home, vi.customer.shell.header.services, vi.customer.shell.header.providers, vi.customer.shell.header.booking, vi.customer.shell.header.contact];
 
 export default function CustomerHeader() {
-  const { profile } = useCustomerWorkspace();
+  const { profile: demoProfile } = useCustomerWorkspace();
+  const profile = useSession().session?.user ?? demoProfile;
   const menu = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     function closeOutside(event: PointerEvent) {

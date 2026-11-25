@@ -1,6 +1,7 @@
 import { vi } from "@/lib/locale";
 import { useId, useRef, type FormEvent } from "react";
 import { LoaderCircle } from "lucide-react";
+import { FieldError, FormFeedback } from "@/components/ui/Feedback";
 import CustomerDialog from "@/features/customer-shell/components/CustomerDialog";
 import type { useCustomerProfileEditor } from "../hooks/useCustomerProfileEditor";
 import styles from "../account.module.css";
@@ -32,7 +33,7 @@ export default function ProfileEditDialog({ model }: { model: ReturnType<typeof 
             aria-invalid={!!editor.errors.fullName} aria-describedby={id + "-name-hint" + (editor.errors.fullName ? " " + id + "-name-error" : "")}
             onChange={(event) => model.change("fullName", event.target.value)} />
           <p id={id + "-name-hint"} className={styles.fieldHint}>{vi.customer.account.editor.nameHint}</p>
-          {editor.errors.fullName && <p id={id + "-name-error"} className={styles.fieldError}>{editor.errors.fullName}</p>}
+          <FieldError id={id + "-name-error"} className={styles.fieldError} message={editor.errors.fullName} />
         </div>
         <div className={styles.field}>
           <label htmlFor={id + "-email"}>{vi.customer.account.page.email}</label>
@@ -45,14 +46,14 @@ export default function ProfileEditDialog({ model }: { model: ReturnType<typeof 
             aria-invalid={!!editor.errors.phone} aria-describedby={id + "-phone-hint" + (editor.errors.phone ? " " + id + "-phone-error" : "")}
             onChange={(event) => model.change("phone", event.target.value)} />
           <p id={id + "-phone-hint"} className={styles.fieldHint}>{vi.customer.account.editor.phoneHint}</p>
-          {editor.errors.phone && <p id={id + "-phone-error"} className={styles.fieldError}>{editor.errors.phone}</p>}
+          <FieldError id={id + "-phone-error"} className={styles.fieldError} message={editor.errors.phone} />
         </div>
         <div className={styles.field}>
           <span className={styles.fieldLabel}>{vi.customer.account.editor.address}</span>
           <div className={styles.address}>{vi.customer.account.editor.addressUnavailable}</div>
         </div>
       </fieldset>
-      {editor.saveError && <p role="alert" className={styles.saveError}>{editor.saveError}</p>}
+      <FormFeedback message={editor.saveError} className={styles.saveError} />
       <div className={styles.actions}>
         <button type="button" className={ui.secondaryButton} disabled={isSaving} onClick={model.close}>{vi.common.actions.cancel}</button>
         <button ref={saveButton} type="submit" className={ui.primaryButton} disabled={isSaving}>

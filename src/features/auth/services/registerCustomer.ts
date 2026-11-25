@@ -1,3 +1,4 @@
+import { decodeSession } from "../../session/model";
 import { AuthApiError, postAuthJson, type PostAuthJsonOptions } from "./authApi";
 
 /** Body of `POST /auth/register` (backend `RegisterDto`). */
@@ -11,9 +12,6 @@ export type RegisterCustomerPayload = {
   turnstileToken: string;
 };
 
-type RegisterCustomerResponse = {
-  message?: string;
-};
 
 /** Kept for existing callers; every auth failure is an AuthApiError. */
 export class RegisterCustomerError extends AuthApiError {
@@ -34,8 +32,7 @@ export function buildRegisterRequestBody(payload: RegisterCustomerPayload) {
   };
 }
 
-export async function registerCustomer(payload: RegisterCustomerPayload, options: PostAuthJsonOptions = {}): Promise<RegisterCustomerResponse> {
+export async function registerCustomer(payload: RegisterCustomerPayload, options: PostAuthJsonOptions = {}): Promise<ReturnType<typeof decodeSession>> {
   const { body } = await postAuthJson("register", buildRegisterRequestBody(payload), options);
-  const record = body && typeof body === "object" ? (body as { message?: unknown }) : {};
-  return typeof record.message === "string" ? { message: record.message } : {};
+  return decodeSession(body);
 }

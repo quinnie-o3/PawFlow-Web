@@ -2,12 +2,15 @@ import { vi } from "@/lib/locale";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "@/features/session/SessionProvider";
 import { useCustomerWorkspace } from "@/features/customer-workspace/CustomerWorkspaceProvider";
+import UnreadBadge from "@/features/customer-notifications/UnreadBadge";
 import CustomerAsset from "./CustomerAsset";
 import styles from "../customerShell.module.css";
 
 export default function CustomerSidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const { profile } = useCustomerWorkspace();
+  const { profile: demoProfile } = useCustomerWorkspace();
+  const profile = useSession().session?.user ?? demoProfile;
   const path = usePathname();
   return <div className={styles.sidebarContent}>
     <div className={styles.identity}>
@@ -22,7 +25,7 @@ export default function CustomerSidebar({ onNavigate }: { onNavigate?: () => voi
         <CustomerAsset name="account" /><span>{vi.customer.shell.sidebar.account}</span>
       </Link>
       <Link href="/bookings" prefetch={false} className={path.startsWith("/bookings") ? styles.sidebarActive : undefined} aria-current={path.startsWith("/bookings") ? "page" : undefined} onClick={onNavigate}><CustomerAsset name="bookings" /><span>{vi.customer.shell.sidebar.bookedServices}</span></Link>
-      <span title={vi.customer.shell.sidebar.unavailable}><button type="button" disabled><CustomerAsset name="notifications" /><span>{vi.customer.shell.sidebar.notifications}</span><span className={styles.srOnly}> {vi.customer.shell.sidebar.unavailableSuffix}</span></button></span>
+      <Link href="/notifications" prefetch={false} className={path.startsWith("/notifications") ? styles.sidebarActive : undefined} aria-current={path.startsWith("/notifications") ? "page" : undefined} onClick={onNavigate}><CustomerAsset name="notifications" /><span>{vi.customer.shell.sidebar.notifications}</span><UnreadBadge /></Link>
     </nav>
   </div>;
 }

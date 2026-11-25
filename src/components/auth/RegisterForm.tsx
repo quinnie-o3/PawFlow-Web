@@ -10,11 +10,15 @@ import { useRegisterCustomer } from "@/features/auth/hooks/useRegisterCustomer";
 import { useTurnstileProtectedSubmit } from "@/features/auth/hooks/useTurnstileProtectedSubmit";
 import { describeSubmitBlock } from "@/features/auth/turnstile/protectedSubmit";
 import { TURNSTILE_ACTIONS } from "@/features/auth/turnstile/turnstileConfig";
+import AuthSessionNotice from "@/features/session/AuthSessionNotice";
+import { useSession } from "@/features/session/SessionProvider";
 import AuthInput from "./AuthInput";
 import TurnstileField from "./TurnstileField";
 
 export default function RegisterForm() {
   const router = useRouter();
+  const sessionState = useSession();
+  const activeSession = !!sessionState.session?.user || sessionState.status === "error" || sessionState.status === "pending";
   const { error, setError, isSubmitting, submitRegistration } = useRegisterCustomer();
   const turnstile = useTurnstileProtectedSubmit(TURNSTILE_ACTIONS.register);
   const isBusy = isSubmitting || turnstile.isSubmitting;
@@ -52,15 +56,15 @@ export default function RegisterForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex h-full w-full flex-col justify-between">
-      <div className="relative h-12">
+      <div><AuthSessionNotice /><div className="relative h-12">
         <h1 className="text-[32px] font-bold leading-[48px] text-[var(--accent-hover)]">{vi.auth.register.title}</h1>
         <Image aria-hidden="true" src="/union.png" alt="" width={54} height={47} className="absolute left-[170px] top-0 h-[47px] w-[54px] object-contain" priority />
       </div>
 
-      <div className="space-y-1.5">
+      </div><div className="space-y-1.5">
         <AuthInput id="full-name" name="fullName" label={vi.common.fields.fullName} type="text" autoComplete="name" required />
         <AuthInput id="email" name="email" label="Email" type="email" autoComplete="email" required />
-        <AuthInput id="phone" name="phone" label={vi.common.fields.phone} type="tel" autoComplete="tel" required />
+        <AuthInput id="phone" name="phone" label={vi.common.fields.phone} type="tel" autoComplete="tel" />
         <AuthInput id="password" name="password" label={vi.common.fields.password} type="password" autoComplete="new-password" required />
         <AuthInput id="confirm-password" name="confirmPassword" label={vi.auth.register.confirmPassword} type="password" autoComplete="new-password" required />
       </div>
@@ -72,10 +76,15 @@ export default function RegisterForm() {
           <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[var(--accent)]" />
           <span aria-hidden="true" className="h-2 w-2 rounded-full border border-[var(--border)] bg-[var(--surface)]" />
         </div>
+<<<<<<< HEAD
         <button type="submit" disabled={isSubmitting} className="h-11 w-full rounded-[5px] bg-[var(--accent-hover)] px-[30px] py-[10px] text-[16px] font-semibold leading-[22px] text-[var(--text-on-primary)] transition-colors hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-70">
           {isSubmitting ? vi.auth.register.submitting : vi.auth.register.continue}
         <button type="submit" disabled={!turnstile.canSubmit || isBusy} aria-disabled={!turnstile.canSubmit || isBusy} className="h-11 w-full rounded-[5px] bg-[var(--accent-hover)] px-[30px] py-[10px] text-[16px] font-semibold leading-[22px] text-[var(--text-on-primary)] transition-colors hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-70">
           {isBusy ? "Đang đăng ký..." : turnstile.cooldownSeconds > 0 ? `Thử lại sau ${turnstile.cooldownSeconds} giây` : "Tiếp tục"}
+=======
+        <button type="submit" disabled={activeSession || !turnstile.canSubmit || isBusy} aria-disabled={activeSession || !turnstile.canSubmit || isBusy} className="h-11 w-full rounded-[5px] bg-[var(--accent-hover)] px-[30px] py-[10px] text-[16px] font-semibold leading-[22px] text-[var(--text-on-primary)] transition-colors hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-70">
+          {isBusy ? vi.auth.register.submitting : turnstile.cooldownSeconds > 0 ? formatMessage(vi.auth.turnstile.retryIn, { seconds: turnstile.cooldownSeconds }) : vi.auth.register.continue}
+>>>>>>> b628e26dbfcf025ddf7b38c10ab82db312f98de7
         </button>
         <p aria-live="polite" className="min-h-[18px] text-center text-[12px] leading-[18px] text-red-600">{validationError ?? error}</p>
         <p className="text-center text-[16px] leading-[22px] text-[var(--text-secondary)]">{formatMessageParts(vi.auth.register.loginPrompt, { loginLink: <Link key="login" href="/login" className="hover:text-[var(--accent-hover)] hover:underline">{vi.auth.login.submit}</Link> })}</p>

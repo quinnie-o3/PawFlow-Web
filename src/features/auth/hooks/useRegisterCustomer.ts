@@ -1,28 +1,38 @@
 "use client";
 
+import { bootstrap, acceptSession, snapshot, notifySessionChange } from "../../session/client";
 import { vi } from "@/lib/locale";
-
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { isRequestCancelled, throwIfCancelled } from "../../../lib/api/errors";
 import { AuthApiError } from "../services/authApi";
 import { registerCustomer, type RegisterCustomerPayload } from "../services/registerCustomer";
 
 export function useRegisterCustomer() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestRef = useRef<AbortController | null>(null);
+  useEffect(() => () => requestRef.current?.abort(), []);
 
   async function submitRegistration(payload: RegisterCustomerPayload) {
+    requestRef.current?.abort();
+    const current = new AbortController();
+    requestRef.current = current;
     setIsSubmitting(true);
     setError(null);
-
     try {
-      await registerCustomer(payload);
+      if (!snapshot().session) await bootstrap();
+      throwIfCancelled(current.signal);
+      const response = await registerCustomer(payload, { signal: current.signal });
+      throwIfCancelled(current.signal);
+      acceptSession(response); notifySessionChange();
     } catch (requestError) {
-      setError(requestError instanceof AuthApiError ? requestError.message : vi.auth.errors.registerUnexpected);
+      if (!isRequestCancelled(requestError) && requestRef.current === current) {
+        setError(requestError instanceof AuthApiError ? requestError.message : vi.auth.errors.registerUnexpected);
+      }
       throw requestError;
     } finally {
-      setIsSubmitting(false);
+      if (!current.signal.aborted && requestRef.current === current) setIsSubmitting(false);
     }
   }
-
   return { error, setError, isSubmitting, submitRegistration };
 }
