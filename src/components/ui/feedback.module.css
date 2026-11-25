@@ -1,0 +1,8 @@
+.srOnly{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.skeletonGroup{display:grid;gap:12px;padding:16px 0}
+.skeleton{height:110px;border:1px solid var(--border-muted,#e8def0);border-radius:14px;background:linear-gradient(110deg,var(--surface-muted,#f4eff9),var(--surface,#fff),var(--surface-muted,#f4eff9))}
+.toastRegion{position:fixed;bottom:20px;right:20px;z-index:50;display:flex;align-items:center;gap:16px;max-width:min(460px,calc(100vw - 32px));color:#fff;background:#45037d;border-radius:12px;box-shadow:0 8px 28px #25074530}
+.toastRegion:has(p:empty){display:none}
+.toastRegion p{padding:16px;margin:0;overflow-wrap:anywhere;line-height:1.5;font-size:14px}
+.toastRegion button{flex-shrink:0;display:grid;place-items:center;width:44px;height:44px;margin-right:8px;color:inherit;background:transparent;border:0;border-radius:8px;cursor:pointer}
+.toastRegion button:focus-visible{outline:3px solid #fff;outline-offset:-4px}

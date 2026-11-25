@@ -3,7 +3,8 @@
 import { vi } from "@/lib/locale";
 
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
+import InboxReturnLink from "@/features/customer-notifications/InboxReturnLink";
 import { Info } from "lucide-react";
 import CustomerHeader from "./CustomerHeader";
 import CustomerSidebar from "./CustomerSidebar";
@@ -18,10 +19,11 @@ export default function CustomerShell({ children }: { children: ReactNode }) {
     <div className={styles.workspace}>
       <aside className={styles.desktopSidebar} aria-label={vi.customer.shell.accountRegion}><CustomerSidebar /></aside>
       <main id="customer-content" tabIndex={-1} className={styles.main}>
+        <Suspense fallback={null}><InboxReturnLink /></Suspense>
         {path.startsWith("/account") && <CustomerNavigation />}
         {children}
         <p className={styles.mockNotice}><Info aria-hidden="true" size={16} />
-          <span>{vi.customer.shell.mockNotice}</span>
+          <span>{path.startsWith("/account") ? vi.customer.shell.accountNotice : vi.customer.shell.mockNotice}</span>
         </p>
       </main>
     </div>

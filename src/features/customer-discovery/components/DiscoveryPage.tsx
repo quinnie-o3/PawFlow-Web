@@ -2,6 +2,8 @@
 
 import { vi, formatMessage } from "@/lib/locale";
 
+import { useSearchParams } from "next/navigation";
+import PublicDiscoveryPage from "./PublicDiscoveryPage";
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, SearchX, RefreshCw } from "lucide-react";
 import DiscoveryHero from "../../discovery-shell/components/DiscoveryHero";
@@ -16,6 +18,10 @@ import shell from "../../discovery-shell/shell.module.css";
 import styles from "../discovery.module.css";
 
 export default function DiscoveryPage() {
+  const params = useSearchParams();
+  return params.getAll("catalog").length === 1 && params.get("catalog") === "demo" ? <DemoDiscoveryPage /> : <PublicDiscoveryPage />;
+}
+function DemoDiscoveryPage() {
   const state = useDiscovery(); const [filtersOpen, setFiltersOpen] = useState(false); const { persona, pet } = useCatalogWorkspace();
   const { resource } = state;
   return <><DiscoveryHero /><DiscoveryIntro /><section id="results" className={`${shell.container} ${styles.results}`} aria-labelledby="discovery-title">

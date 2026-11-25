@@ -1,0 +1,513 @@
+import { isIP } from "node:net";
+import { apiBaseUrl } from "../../api/config";
+import { createApiClient } from "../../api/transport";
+import { ApiError } from "../../api/errors";
+import { decodeUser } from "../../../features/session/model";
+import {
+  sessionStore,
+  sessionHash,
+  SessionEnded,
+  SessionBusy,
+  type Session,
+  type Tokens,
+} from "./store";
+
+const noStore = {
+  "Cache-Control": "private, no-store, max-age=0",
+  "Referrer-Policy": "no-referrer",
+  Vary: "Cookie",
+};
+const production = () => process.env.NODE_ENV === "production";
+const cookieName = () =>
+  production() ? "__Host-pawflow-session" : "pawflow-session";
+function cookie(value: string, clear = false) {
+  return `${cookieName()}=${value}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${clear ? 0 : 2592000}${production() ? "; Secure" : ""}`;
+}
+export function trustedOrigin(request: Request) {
+  const origin =
+    process.env.BFF_APP_ORIGIN ||
+    (!production() ? new URL(request.url).origin : "");
+  if (
+    !origin ||
+    new URL(origin).origin !== origin ||
+    (production() && !origin.startsWith("https://"))
+  )
+    throw new Error("Invalid BFF origin configuration");
+  const fetchSite = request.headers.get("sec-fetch-site");
+  return (
+    request.headers.get("origin") === origin &&
+    (!fetchSite || fetchSite === "same-origin" || fetchSite === "none")
+  );
+}
+export async function readBody(
+  request: Request,
+): Promise<Record<string, unknown>> {
+  if (
+    !/^application\/json(?:\s*;|$)/i.test(
+      request.headers.get("content-type") ?? "",
+    )
+  )
+    throw new ApiError("http", 415);
+  if (Number(request.headers.get("content-length") ?? 0) > 16384)
+    throw new ApiError("http", 413);
+  const reader = request.body?.getReader();
+  let size = 0,
+    text = "";
+  const decoder = new TextDecoder();
+  if (reader) {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (size > 16384) {
+        await reader.cancel();
+        throw new ApiError("http", 413);
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+    text += decoder.decode();
+  }
+  try {
+    const body = JSON.parse(text);
+    if (!body || typeof body !== "object" || Array.isArray(body))
+      throw new Error();
+    return body;
+  } catch {
+    throw new ApiError("http", 400);
+  }
+}
+function allowedFields(body: Record<string, unknown>, fields: string[]) {
+  if (Object.keys(body).some((key) => !fields.includes(key)))
+    throw new ApiError("http", 400);
+}
+export function clientHeaders(request: Request): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const agent = request.headers.get("user-agent");
+  if (agent) headers["User-Agent"] = agent.slice(0, 512);
+  // Enable only behind an ingress that overwrites this header and blocks direct origin access.
+  if (process.env.BFF_TRUST_PROXY_HEADERS === "true") {
+    const ip = request.headers.get("x-pawflow-client-ip");
+    if (!ip || !isIP(ip)) throw new ApiError("config");
+    headers["X-Forwarded-For"] = ip;
+    headers["X-Forwarded-Proto"] = "https";
+  }
+  return headers;
+}
+export async function upstream(
+  path: string,
+  method: "GET" | "POST" | "PATCH" | "DELETE" = "GET",
+  body?: unknown,
+  token?: string,
+  client: Record<string, string> = {},
+) {
+  const base = apiBaseUrl(process.env.PAWFLOW_API_URL ?? "");
+  if (production() && new URL(base).protocol !== "https:")
+    throw new ApiError("config");
+  return createApiClient({
+    apiUrl: base,
+    fetchImpl: (url, init) => fetch(url, { ...init, redirect: "error" }),
+  }).request(path, {
+    method,
+    body,
+    signal: AbortSignal.timeout(8000),
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...client,
+    },
+  });
+}
+function authTokens(body: unknown) {
+  const data = body as Record<string, unknown>;
+  if (
+    !data ||
+    typeof data.accessToken !== "string" ||
+    !data.accessToken ||
+    typeof data.refreshToken !== "string" ||
+    !/^[\w-]{43}$/.test(data.refreshToken) ||
+    data.tokenType !== "Bearer" ||
+    typeof data.expiresIn !== "number" ||
+    !Number.isFinite(data.expiresIn) ||
+    data.expiresIn <= 0 ||
+    typeof data.refreshTokenExpiresAt !== "string"
+  )
+    throw new ApiError("invalid-response");
+  const expires = new Date(data.refreshTokenExpiresAt);
+  if (!Number.isFinite(expires.getTime()) || expires.getTime() <= Date.now())
+    throw new ApiError("invalid-response");
+  return {
+    tokens: {
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+    } as Tokens,
+    expires,
+    accessExpires: new Date(Date.now() + data.expiresIn * 1000),
+  };
+}
+function publicResponse(path: string, body: unknown): unknown {
+  if (body === null) return null;
+  const pick = (value: unknown, keys: string[]) => {
+    if (!value || typeof value !== "object" || Array.isArray(value))
+      throw new ApiError("invalid-response");
+    const source = value as Record<string, unknown>;
+    return Object.fromEntries(
+      keys.filter((k) => Object.hasOwn(source, k)).map((k) => [k, source[k]]),
+    );
+  };
+  if (path === "users/me")
+    return pick(body, [
+      "id",
+      "fullName",
+      "email",
+      "phone",
+      "role",
+      "status",
+      "createdAt",
+      "updatedAt",
+    ]);
+  if (path.startsWith("pets")) {
+    const pet = (value: unknown) =>
+      pick(value, [
+        "id",
+        "ownerId",
+        "petTypeId",
+        "name",
+        "breed",
+        "birthDate",
+        "weight",
+        "healthNote",
+        "status",
+        "createdAt",
+        "updatedAt",
+      ]);
+    return Array.isArray(body) ? body.map(pet) : pet(body);
+  }
+  if (path === "pet-types") {
+    if (!Array.isArray(body)) throw new ApiError("invalid-response");
+    return body.map((value) => pick(value, ["id", "name"]));
+  }
+  if (path === "auth/sessions") {
+    if (!Array.isArray(body)) throw new ApiError("invalid-response");
+    return body.map((value) =>
+      pick(value, [
+        "id",
+        "createdAt",
+        "lastUsedAt",
+        "expiresAt",
+        "userAgent",
+        "ipAddress",
+        "current",
+      ]),
+    );
+  }
+  return pick(body, ["message", "expiresAt"]);
+}
+const errorResponse = (error: unknown) => {
+  const status =
+    error instanceof SessionEnded
+      ? 401
+      : error instanceof SessionBusy
+        ? 409
+        : error instanceof ApiError
+          ? (error.status ?? 503)
+          : 503;
+  const code =
+    error instanceof SessionEnded
+      ? "SESSION_ENDED"
+      : error instanceof SessionBusy
+        ? "SESSION_BUSY"
+        : error instanceof ApiError
+          ? error.code
+          : null;
+  const retry = error instanceof ApiError ? error.retryAfterSeconds : null;
+  return Response.json(
+    {
+      message:
+        status === 401
+          ? "Phiên đăng nhập đã kết thúc."
+          : "Không thể hoàn tất yêu cầu.",
+      code,
+      ...(retry ? { retryAfterSeconds: retry } : {}),
+    },
+    {
+      status,
+      headers: {
+        ...noStore,
+        ...(retry ? { "Retry-After": String(retry) } : {}),
+      },
+    },
+  );
+};
+export async function handleBff(
+  request: Request,
+  path: string,
+): Promise<Response> {
+  try {
+    const backend = (
+      path: string,
+      method: "GET" | "POST" | "PATCH" | "DELETE" = "GET",
+      body?: unknown,
+      token?: string,
+    ) => upstream(path, method, body, token, clientHeaders(request));
+    const method = request.method as "GET" | "POST" | "PATCH" | "DELETE";
+    if (method !== "GET" && !trustedOrigin(request))
+      return Response.json(
+        { code: "CSRF_REJECTED" },
+        { status: 403, headers: noStore },
+      );
+    const body = method !== "GET" ? await readBody(request) : undefined;
+    const raw = request.headers
+      .get("cookie")
+      ?.split(";")
+      .map((s) => s.trim())
+      .find((s) => s.startsWith(cookieName() + "="))
+      ?.slice(cookieName().length + 1);
+    const store = sessionStore();
+    let row =
+      raw && /^[\w-]{43}$/.test(raw)
+        ? await store.read(sessionHash(raw))
+        : null;
+    const reply = (
+      data: unknown,
+      status = 200,
+      extra: Record<string, string> = {},
+    ) =>
+      status === 204
+        ? new Response(null, { status, headers: { ...noStore, ...extra } })
+        : Response.json(data, { status, headers: { ...noStore, ...extra } });
+    const access = async (current: Session) =>
+      store.access(current.id_hash, current.generation, async (tokens) => {
+        const result = await backend("/auth/refresh", "POST", {
+          refreshToken: tokens.refreshToken,
+        });
+        const next = authTokens(result.body);
+        const user = decodeUser(
+          (await backend("/auth/me", "GET", undefined, next.tokens.accessToken))
+            .body,
+        );
+        if (user.id !== current.user_id) throw new SessionEnded();
+        return next;
+      });
+    if (path === "session" && method === "POST") {
+      let newCookie: string | undefined;
+      if (!row || row.state === "revoked") {
+        const created = await store.create();
+        row = created.row;
+        newCookie = created.cookie;
+      }
+      if (row.state === "anonymous")
+        return reply(
+          { generation: row.generation, user: null },
+          200,
+          newCookie ? { "Set-Cookie": cookie(newCookie) } : {},
+        );
+      if (row.state === "authenticating") throw new SessionBusy();
+      row = await access(row);
+      try {
+        const user = decodeUser(
+          (
+            await backend(
+              "/auth/me",
+              "GET",
+              undefined,
+              store.open(row).accessToken,
+            )
+          ).body,
+        );
+        if (user.id !== row.user_id) {
+          await store.revoke(row.id_hash, row.generation);
+          throw new SessionEnded();
+        }
+        await store.assertCurrent(row);
+        return reply({ generation: row.generation, user });
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401)
+          await store.revoke(row.id_hash, row.generation);
+        throw error;
+      }
+    }
+    if (path === "auth/logout" && method === "POST") {
+      const generation = request.headers.get("x-bff-generation") ?? "";
+      if (!raw || !/^[\w-]{43}$/.test(raw) || !/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(generation))
+        throw new SessionEnded();
+      const ended = await store.end(sessionHash(raw), generation);
+      let revoked = ended.state !== "revoked";
+      if (ended.tokens) {
+        try {
+          let token = store.open(ended).accessToken;
+          if (
+            !ended.access_expires_at ||
+            ended.access_expires_at.getTime() <= Date.now()
+          ) {
+            // Only an uncontested active owner can consume this token once after the local fence.
+            if (
+              ended.state !== "active" ||
+              ended.expires_at.getTime() <= Date.now()
+            )
+              throw new SessionEnded();
+            token = authTokens(
+              (
+                await backend("/auth/refresh", "POST", {
+                  refreshToken: store.open(ended).refreshToken,
+                })
+              ).body,
+            ).tokens.accessToken;
+          }
+          await backend("/auth/logout", "POST", {}, token);
+        } catch {
+          revoked = false;
+        }
+      }
+      return reply({ revoked }, 200, { "Set-Cookie": cookie("", true) });
+    }
+    if (
+      !row ||
+      row.state === "revoked" ||
+      request.headers.get("x-bff-generation") !== row.generation
+    )
+      throw new SessionEnded();
+    if (
+      (path === "auth/login" || path === "auth/register") &&
+      method === "POST"
+    ) {
+      allowedFields(
+        body!,
+        path.endsWith("login")
+          ? ["email", "password", "turnstileToken"]
+          : ["email", "password", "fullName", "phone", "turnstileToken"],
+      );
+      const claimed = await store.beginLogin(row.id_hash, row.generation);
+      let issued: ReturnType<typeof authTokens> | undefined;
+      try {
+        issued = authTokens((await backend("/" + path, "POST", body)).body);
+        const user = decodeUser(
+          (
+            await backend(
+              "/auth/me",
+              "GET",
+              undefined,
+              issued.tokens.accessToken,
+            )
+          ).body,
+        );
+        const sessions = (
+          await backend(
+            "/auth/sessions",
+            "GET",
+            undefined,
+            issued.tokens.accessToken,
+          )
+        ).body;
+        const current = Array.isArray(sessions)
+          ? sessions.find((s) => s?.current === true)
+          : undefined;
+        if (
+          !current ||
+          typeof current.id !== "string" ||
+          !/^[\da-f-]{36}$/i.test(current.id)
+        )
+          throw new ApiError("invalid-response");
+        const activated = await store.activate(
+          claimed,
+          issued.tokens,
+          user.id,
+          current.id,
+          issued.expires,
+          issued.accessExpires,
+        );
+        return reply(
+          { generation: activated.row.generation, user },
+          path.endsWith("register") ? 201 : 200,
+          { "Set-Cookie": cookie(activated.cookie) },
+        );
+      } catch (error) {
+        if (issued) {
+          await store.end(row.id_hash, row.generation);
+          try {
+            await backend(
+              "/auth/logout",
+              "POST",
+              {},
+              issued.tokens.accessToken,
+            );
+          } catch {}
+        } else await store.failLogin(claimed);
+        throw error;
+      }
+    }
+    row = await access(row);
+    const token = store.open(row).accessToken;
+    let endpoint = "",
+      fields: string[] = [];
+    if (path === "users/me" && ["GET", "PATCH"].includes(method)) {
+      endpoint = "/users/me";
+      fields = ["fullName", "phone"];
+    }
+    if (path === "pet-types" && method === "GET") endpoint = "/pet-types";
+    if (
+      (path === "pets" && ["GET", "POST"].includes(method)) ||
+      (/^pets\/[1-9]\d*$/.test(path) &&
+        ["GET", "PATCH", "DELETE"].includes(method))
+    ) {
+      endpoint = "/" + path;
+      fields = [
+        "petTypeId",
+        "name",
+        "breed",
+        "birthDate",
+        "weight",
+        "healthNote",
+      ];
+    }
+    if (path === "auth/sessions" && method === "GET") endpoint = "/" + path;
+    if (
+      /^auth\/sessions\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(
+        path,
+      ) &&
+      method === "DELETE"
+    )
+      endpoint = "/" + path;
+    if (
+      [
+        "auth/change-password",
+        "auth/logout-all",
+        "auth/verify-email/resend",
+      ].includes(path) &&
+      method === "POST"
+    ) {
+      endpoint = "/" + path;
+      fields =
+        path === "auth/change-password"
+          ? ["currentPassword", "newPassword"]
+          : [];
+    }
+    if (!endpoint) return reply({ message: "Not found" }, 404);
+    if (body) allowedFields(body, fields);
+    try {
+      const result = await backend(endpoint, method, body, token);
+      await store.assertCurrent(row);
+      if (path === "auth/change-password" || path === "auth/logout-all") {
+        await store.revokeUser(row.user_id!);
+        return reply(null, 204, { "Set-Cookie": cookie("", true) });
+      }
+      if (method === "DELETE" && path.startsWith("auth/sessions/")) {
+        const id = path.split("/")[2];
+        await store.revokeBackend(id, row.user_id!);
+        return reply(
+          null,
+          204,
+          id === row.backend_session_id
+            ? { "Set-Cookie": cookie("", true) }
+            : {},
+        );
+      }
+      // Only endpoints with known, non-secret response shapes reach this branch.
+      return reply(publicResponse(path, result.body), result.status);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401)
+        await store.revoke(row.id_hash, row.generation);
+      throw error;
+    }
+  } catch (error) {
+    return errorResponse(error);
+  }
+}

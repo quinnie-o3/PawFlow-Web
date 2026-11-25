@@ -1,5 +1,6 @@
 "use client";
 
+import { apiMessage } from "../../session/client";
 import { vi } from "@/lib/locale";
 
 import { useEffect, useRef, useState } from "react";
@@ -24,7 +25,7 @@ function waitForMockSave(signal: AbortSignal): Promise<void> {
 }
 
 export function useCustomerProfileEditor() {
-  const { profile, updateProfile } = useCustomerWorkspace();
+  const { profile, updateProfile, live, loadStatus } = useCustomerWorkspace();
   const [editor, setEditor] = useState<Editor | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -35,7 +36,7 @@ export function useCustomerProfileEditor() {
   useEffect(() => () => { request.current?.abort(); }, []);
 
   function open() {
-    if (busy.current) return;
+    if (busy.current || (live && loadStatus !== "ready")) return;
     setFeedback(null);
     setEditor({ draft: profileToDraft(profile), errors: {}, saveError: null });
   }
@@ -71,18 +72,19 @@ export function useCustomerProfileEditor() {
     setIsSaving(true);
     setEditor({ ...editor, errors: {}, saveError: null });
     try {
-      await waitForMockSave(controller.signal);
+      if (!live) await waitForMockSave(controller.signal);
       if (controller.signal.aborted) return;
-      if (shouldFail) {
+      if (shouldFail && !live) {
         setEditor({ ...editor, errors: {}, saveError: vi.customer.account.feedback.saveFailed });
         return;
       }
-      updateProfile(prepareProfileUpdate(editor.draft));
+      await updateProfile(prepareProfileUpdate(editor.draft));
+      if (controller.signal.aborted) return;
       setEditor(null);
       setFeedback(vi.customer.account.feedback.saved);
-    } catch {
+    } catch (error) {
       if (!controller.signal.aborted) {
-        setEditor({ ...editor, errors: {}, saveError: vi.customer.account.feedback.unexpectedSaveError });
+        setEditor({ ...editor, errors: {}, saveError: apiMessage(error) });
       }
     } finally {
       if (request.current === controller) {
@@ -93,5 +95,5 @@ export function useCustomerProfileEditor() {
     }
   }
 
-  return { profile, editor, isSaving, feedback, failNextSave, setFailNextSave, open, close, change, save };
+  return { live, loadStatus, profile, editor, isSaving, feedback, failNextSave, setFailNextSave, open, close, change, save };
 }
