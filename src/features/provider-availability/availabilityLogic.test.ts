@@ -17,6 +17,7 @@ import {
   closeWorkingHoursDialogSession,
   DISPLAY_WEEKDAYS,
   enterSlotUncertainSession,
+  enterWorkingHoursUncertainSession,
   findAffectedBookedSlotsForWorkingHourChange,
   findExactInactiveWorkingHour,
   findOverlappingWorkingHour,
@@ -31,6 +32,8 @@ import {
   INITIAL_SLOT_DIALOG_SESSION,
   INITIAL_WORKING_HOURS_SESSION,
   isSlotBookableUnderSchedule,
+  keepSlotUncertainOnLifecycleLock,
+  keepWorkingHoursUncertainOnLifecycleLock,
   localDate,
   openCreateSlotDialogSession,
   openEditSlotDialogSession,
@@ -956,5 +959,167 @@ test("R1 & R2 availability slots: 503 same-identity abort recovers into uncertai
   assert.deepEqual(
     recoverAbortedSlotReconcile(reconciling, identityA, identityB),
     INITIAL_SLOT_DIALOG_SESSION,
+  );
+});
+
+test("R3 lifecycle boundary on availability: forbidden-lifecycle keeps working-hours and slot pendingUncertain intact across SUSPENDED -> APPROVED", () => {
+  const identity = "gen-1:30:PROVIDER_OWNER";
+  const suspendedError = {
+    code: "PROVIDER_SUSPENDED_FORBIDDEN",
+    category: "lifecycle",
+    outcome: "definite-failure",
+    status: 403,
+    retryAfterSeconds: null,
+    shouldReconcile: false,
+  } as const;
+
+  const whDraft = { dayOfWeek: 1 as const, startTime: "09:00", endTime: "12:00" };
+  const whSession = enterWorkingHoursUncertainSession(
+    openWorkingHoursDialogSession(INITIAL_WORKING_HOURS_SESSION, identity),
+    {
+      attemptIdentity: identity,
+      mode: "create",
+      editingId: null,
+      draft: whDraft,
+      uncertain: {
+        kind: "create",
+        preSubmitIds: WORKING_HOURS.map((h) => h.id),
+        expected: {
+          dayOfWeek: 1,
+          startTime: "09:00",
+          endTime: "12:00",
+          isActive: true,
+        },
+      },
+      error: UNKNOWN_AVAILABILITY_ERROR,
+    },
+  );
+  const whClosed = closeWorkingHoursDialogSession(whSession);
+  const whPreserved = keepWorkingHoursUncertainOnLifecycleLock(
+    whClosed,
+    identity,
+    suspendedError,
+    "Cơ sở đang tạm khóa; giữ nguyên trạng thái đối soát.",
+  );
+  assert.equal(whPreserved.dialogOpen, false);
+  assert.notEqual(whPreserved.pendingUncertain, null);
+  assert.equal(whPreserved.dialog?.uncertain?.kind, "create");
+  assert.equal(whPreserved.dialog?.reconciling, false);
+  // Reactivating to APPROVED and opening dialog still restores pendingUncertain.
+  const whReopened = openWorkingHoursDialogSession(whPreserved, identity);
+  assert.equal(whReopened.dialog?.uncertain?.kind, "create");
+  assert.notEqual(whReopened.pendingUncertain, null);
+  // Late commit arriving even while SUSPENDED resolves as "created".
+  assert.equal(
+    reconcileWorkingHourCreate(
+      { dayOfWeek: 1, startTime: "09:00", endTime: "12:00", isActive: true },
+      WORKING_HOURS.map((h) => h.id),
+      [
+        ...WORKING_HOURS,
+        {
+          id: "299",
+          providerId: "10",
+          dayOfWeek: 1,
+          startTime: "09:00:00",
+          endTime: "12:00:00",
+          isActive: true,
+          createdAt: "2026-10-15T03:00:00.000Z",
+          updatedAt: "2026-10-15T03:00:00.000Z",
+        },
+      ],
+      "SUSPENDED",
+    ).outcome,
+    "created",
+  );
+
+  const slotDraft = {
+    serviceId: "101",
+    slotDate: "2026-10-16",
+    startTime: "14:00",
+    endTime: "16:00",
+    capacity: "2",
+  };
+  const slotSession = enterSlotUncertainSession(
+    openCreateSlotDialogSession(
+      INITIAL_SLOT_DIALOG_SESSION,
+      identity,
+      "2026-10-16",
+      "101",
+    ),
+    {
+      attemptIdentity: identity,
+      mode: "create",
+      slotId: null,
+      draft: slotDraft,
+      autoEndTime: false,
+      confirmAction: null,
+      uncertain: {
+        kind: "create",
+        preSubmitIds: SLOTS.map((s) => s.id),
+        expected: {
+          serviceId: "101",
+          slotDate: "2026-10-16",
+          startTime: "14:00",
+          endTime: "16:00",
+          capacity: 2,
+        },
+      },
+      error: UNKNOWN_AVAILABILITY_ERROR,
+    },
+  );
+  const slotClosed = closeSlotDialogSession(slotSession);
+  const slotPreserved = keepSlotUncertainOnLifecycleLock(
+    slotClosed,
+    identity,
+    suspendedError,
+    "Cơ sở đang tạm khóa; giữ nguyên trạng thái đối soát.",
+  );
+  assert.equal(slotPreserved.dialogOpen, false);
+  assert.notEqual(slotPreserved.pendingUncertain, null);
+  assert.equal(slotPreserved.editor?.uncertain?.kind, "create");
+  assert.equal(slotPreserved.editor?.reconciling, false);
+  assert.equal(
+    slotPreserved.editor?.saveError?.code,
+    "PROVIDER_SUSPENDED_FORBIDDEN",
+  );
+  const slotReopened = openCreateSlotDialogSession(
+    slotPreserved,
+    identity,
+    "2026-10-17",
+    "102",
+  );
+  assert.equal(slotReopened.editor?.uncertain?.kind, "create");
+  assert.deepEqual(slotReopened.editor?.draft, slotDraft);
+  // Late slot commit arriving while SUSPENDED resolves as "created".
+  assert.equal(
+    reconcileSlotCreate(
+      {
+        serviceId: "101",
+        slotDate: "2026-10-16",
+        startTime: "14:00",
+        endTime: "16:00",
+        capacity: 2,
+      },
+      SLOTS.map((s) => s.id),
+      [
+        ...SLOTS,
+        {
+          id: "399",
+          providerId: "10",
+          serviceId: "101",
+          slotDate: "2026-10-16",
+          startTime: "14:00:00",
+          endTime: "16:00:00",
+          capacity: 2,
+          bookedCount: 0,
+          status: "OPEN",
+          createdAt: "2026-10-15T03:00:00.000Z",
+          updatedAt: "2026-10-15T03:00:00.000Z",
+          service: null,
+        },
+      ],
+      "SUSPENDED",
+    ).outcome,
+    "created",
   );
 });

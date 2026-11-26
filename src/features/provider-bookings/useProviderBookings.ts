@@ -14,7 +14,6 @@ import {
   rejectProviderBooking,
   type ProviderApiErrorInfo,
   type ProviderBooking,
-  type ProviderBookingDetail,
 } from "../provider-workspace/liveApi";
 import {
   getProviderErrorMessage,
@@ -24,15 +23,19 @@ import { useProviderProfile } from "../provider-workspace/useProviderProfile";
 import {
   ACTION_SOURCE_STATUS,
   BOOKING_STATUS_LABELS,
+  EMPTY_BOOKING_DETAIL,
   EMPTY_BOOKING_DRAFT,
   EMPTY_PENDING_UNKNOWN_BOOKINGS,
   buildReasonPayload,
   clearPendingUnknownBooking,
+  createBookingDetailLoader,
   getPendingUnknownBooking,
   isBookingConflictOrNotFoundCode,
   reconcileUnknownMutation,
   recoverAbortedBookingDraft,
   storePendingUnknownBooking,
+  type BookingDetailLoader,
+  type FetchBookingDetailResult,
   type PendingUnknownBookingMap,
 } from "./bookingLogic";
 import type {
@@ -52,13 +55,7 @@ const EMPTY_LIST: BookingListLoadState = {
   refreshError: null,
 };
 
-const EMPTY_DETAIL: BookingDetailLoadState = {
-  identity: null,
-  bookingId: null,
-  status: "idle",
-  detail: null,
-  error: null,
-};
+const EMPTY_DETAIL: BookingDetailLoadState = EMPTY_BOOKING_DETAIL;
 
 const EMPTY_DRAFT: BookingDraftState = EMPTY_BOOKING_DRAFT;
 
@@ -127,17 +124,25 @@ export function useProviderBookings() {
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
 
   const listControllerRef = useRef<AbortController | null>(null);
-  const detailControllerRef = useRef<AbortController | null>(null);
+  const detailLoaderRef = useRef<BookingDetailLoader | null>(null);
   const mutationControllerRef = useRef<AbortController | null>(null);
   const pendingUnknownRef = useRef<PendingUnknownBookingMap>(
     EMPTY_PENDING_UNKNOWN_BOOKINGS,
   );
   const listRequestIdRef = useRef(0);
-  const detailRequestIdRef = useRef(0);
   const submittingRef = useRef(false);
   const currentIdentityRef = useRef<string | null>(identity);
   const canFetchRef = useRef(canFetchPrivate);
   const lockActionsRef = useRef(sessionBoundary.lockActions);
+  const selectedBookingIdRef = useRef<string | null>(null);
+  const profileStatusRef = useRef(profileStatus);
+
+  const preservedIdentity = !resetPrivateState && identity !== null;
+
+  const selectedBookingId =
+    preservedIdentity && selectionState.identity === identity
+      ? selectionState.bookingId
+      : null;
 
   useEffect(() => {
     pendingUnknownRef.current = pendingUnknownState;
@@ -147,16 +152,15 @@ export function useProviderBookings() {
     currentIdentityRef.current = identity;
     canFetchRef.current = canFetchPrivate;
     lockActionsRef.current = sessionBoundary.lockActions;
-  }, [identity, canFetchPrivate, sessionBoundary.lockActions]);
-
-  useEffect(() => {
-    return () => {
-      detailControllerRef.current?.abort();
-      detailControllerRef.current = null;
-      mutationControllerRef.current?.abort();
-      mutationControllerRef.current = null;
-    };
-  }, []);
+    selectedBookingIdRef.current = selectedBookingId;
+    profileStatusRef.current = profileStatus;
+  }, [
+    identity,
+    canFetchPrivate,
+    sessionBoundary.lockActions,
+    selectedBookingId,
+    profileStatus,
+  ]);
 
   useEffect(() => {
     if (cooldownSeconds <= 0) return;
@@ -178,18 +182,77 @@ export function useProviderBookings() {
     }
   }, []);
 
+  const getDetailLoader = useCallback((): BookingDetailLoader => {
+    if (!detailLoaderRef.current) {
+      detailLoaderRef.current = createBookingDetailLoader({
+        fetchDetail: (id, options) => getProviderBookingDetail(id, options),
+        classifyError: (err) => classifyProviderError(err, "get-booking"),
+        onStateChange: setDetailState,
+        onDetailLoaded: (targetIdentity, detail) => {
+          setListState((current) =>
+            current.identity === targetIdentity && current.status === "ready"
+              ? {
+                  ...current,
+                  bookings: mergeUpdatedBooking(current.bookings, detail),
+                }
+              : current,
+          );
+        },
+        onErrorInfo: applyCooldown,
+        onProfileNotFound: markNotFound,
+        initialIdentity: currentIdentityRef.current,
+        initialCanFetch: canFetchRef.current,
+      });
+    }
+    return detailLoaderRef.current;
+  }, [applyCooldown, markNotFound]);
+
+  // Manage <Activity mode="hidden"> cleanup and automatic same-identity recovery
+  // when returning to <Activity mode="visible"> after a transient 503 revalidate.
+  useEffect(() => {
+    const loader = getDetailLoader();
+    void loader.syncSession({
+      identity: currentIdentityRef.current,
+      canFetch: canFetchRef.current,
+      selectedBookingId: selectedBookingIdRef.current,
+      profileNotFound: profileStatusRef.current === "not-found",
+    });
+    return () => {
+      loader.interruptForHide();
+      listControllerRef.current?.abort();
+      listControllerRef.current = null;
+      mutationControllerRef.current?.abort();
+      mutationControllerRef.current = null;
+    };
+  }, [getDetailLoader]);
+
+  // Keep detail loader synchronized with reactive session/selection transitions.
+  useEffect(() => {
+    const loader = getDetailLoader();
+    void loader.syncSession({
+      identity,
+      canFetch: canFetchPrivate,
+      selectedBookingId,
+      profileNotFound: profileStatus === "not-found",
+    });
+  }, [
+    canFetchPrivate,
+    getDetailLoader,
+    identity,
+    profileStatus,
+    selectedBookingId,
+  ]);
+
   // Purge all private state asynchronously on 401/logout/role change/identity switch.
   // On same-identity session revalidate error (resetPrivateState === false),
   // preserve date filters, selected booking, action draft & reason in memory.
   useEffect(() => {
     if (!resetPrivateState) return;
     listRequestIdRef.current++;
-    detailRequestIdRef.current++;
     listControllerRef.current?.abort();
-    detailControllerRef.current?.abort();
+    detailLoaderRef.current?.resetPrivate();
     mutationControllerRef.current?.abort();
     listControllerRef.current = null;
-    detailControllerRef.current = null;
     mutationControllerRef.current = null;
     submittingRef.current = false;
     let cancelled = false;
@@ -261,6 +324,21 @@ export function useProviderBookings() {
           listRequestIdRef.current !== requestId ||
           currentIdentityRef.current !== targetIdentity
         ) {
+          if (
+            currentIdentityRef.current === targetIdentity &&
+            listRequestIdRef.current === requestId
+          ) {
+            setListState((current) =>
+              current.identity === targetIdentity
+                ? {
+                    ...current,
+                    status:
+                      current.status === "loading" ? "idle" : current.status,
+                    reloading: false,
+                  }
+                : current,
+            );
+          }
           return null;
         }
         const info = classifyProviderError(err, "list-bookings");
@@ -386,118 +464,17 @@ export function useProviderBookings() {
   }, [canFetchPrivate, identity, profileStatus, markNotFound, applyCooldown]);
 
   const fetchBookingDetail = useCallback(
-    async (
-      bookingId: string,
-    ): Promise<
-      | Readonly<{ ok: true; detail: ProviderBookingDetail }>
-      | Readonly<{ ok: false; notFound: boolean; error: ProviderApiErrorInfo; aborted?: false }>
-      | Readonly<{ ok: false; aborted: true }>
-    > => {
-      const targetIdentity = currentIdentityRef.current;
-      if (!canFetchRef.current || !targetIdentity) {
-        return { ok: false, aborted: true };
-      }
-
-      const controller = new AbortController();
-      detailControllerRef.current?.abort();
-      detailControllerRef.current = controller;
-      const requestId = ++detailRequestIdRef.current;
-
-      setDetailState((current) => ({
-        identity: targetIdentity,
-        bookingId,
-        status: "loading",
-        detail:
-          current.identity === targetIdentity && current.bookingId === bookingId
-            ? current.detail
-            : null,
-        error: null,
-      }));
-
-      try {
-        const detail = await getProviderBookingDetail(bookingId, {
-          signal: controller.signal,
-        });
-        if (
-          controller.signal.aborted ||
-          detailRequestIdRef.current !== requestId ||
-          currentIdentityRef.current !== targetIdentity
-        ) {
-          return { ok: false, aborted: true };
-        }
-        setDetailState({
-          identity: targetIdentity,
-          bookingId,
-          status: "ready",
-          detail,
-          error: null,
-        });
-        setListState((current) =>
-          current.identity === targetIdentity && current.status === "ready"
-            ? {
-                ...current,
-                bookings: mergeUpdatedBooking(current.bookings, detail),
-              }
-            : current,
-        );
-        return { ok: true, detail };
-      } catch (err) {
-        if (
-          isRequestCancelled(err) ||
-          controller.signal.aborted ||
-          detailRequestIdRef.current !== requestId ||
-          currentIdentityRef.current !== targetIdentity
-        ) {
-          return { ok: false, aborted: true };
-        }
-        const info = classifyProviderError(err, "get-booking");
-        applyCooldown(info);
-        if (info.outcome === "session-ended") {
-          setDetailState(EMPTY_DETAIL);
-          return { ok: false, notFound: false, error: info };
-        }
-        if (info.code === "PROVIDER_PROFILE_NOT_FOUND") {
-          markNotFound();
-          setDetailState({
-            identity: targetIdentity,
-            bookingId,
-            status: "error",
-            detail: null,
-            error: info,
-          });
-          return { ok: false, notFound: false, error: info };
-        }
-        if (info.code === "BOOKING_NOT_FOUND") {
-          setDetailState({
-            identity: targetIdentity,
-            bookingId,
-            status: "not-found",
-            detail: null,
-            error: info,
-          });
-          return { ok: false, notFound: true, error: info };
-        }
-        setDetailState({
-          identity: targetIdentity,
-          bookingId,
-          status: "error",
-          detail: null,
-          error: info,
-        });
-        return { ok: false, notFound: false, error: info };
-      } finally {
-        if (detailControllerRef.current === controller) {
-          detailControllerRef.current = null;
-        }
-      }
+    (bookingId: string): Promise<FetchBookingDetailResult> => {
+      return getDetailLoader().load(bookingId);
     },
-    [applyCooldown, markNotFound],
+    [getDetailLoader],
   );
 
   const openBooking = useCallback(
     (bookingId: string) => {
       const targetIdentity = currentIdentityRef.current;
       if (!targetIdentity || lockActionsRef.current) return;
+      selectedBookingIdRef.current = bookingId;
       setSelectionState({ identity: targetIdentity, bookingId });
       setFeedbackState(EMPTY_FEEDBACK);
       const preservedUnknown = getPendingUnknownBooking(
@@ -521,15 +498,15 @@ export function useProviderBookings() {
               reconcileError: null,
             };
       });
-      void fetchBookingDetail(bookingId);
+      void getDetailLoader().selectAndLoad(targetIdentity, bookingId);
     },
-    [fetchBookingDetail],
+    [getDetailLoader],
   );
 
   const closeBooking = useCallback(() => {
     if (submittingRef.current) return;
-    detailControllerRef.current?.abort();
-    detailControllerRef.current = null;
+    selectedBookingIdRef.current = null;
+    detailLoaderRef.current?.closeSelection();
     setSelectionState(EMPTY_SELECTION);
     setDetailState(EMPTY_DETAIL);
     // R2: preserve any unknown draft in pendingUnknownState; only clear non-unknown active draft.
@@ -1104,20 +1081,16 @@ export function useProviderBookings() {
       ? listState.bookings
       : [];
 
-  const preservedIdentity = !resetPrivateState && identity !== null;
-
-  const selectedBookingId =
-    preservedIdentity && selectionState.identity === identity
-      ? selectionState.bookingId
-      : null;
-
   const activeDraft: BookingDraftState =
     preservedIdentity && draftState.identity === identity
       ? draftState
       : EMPTY_DRAFT;
 
   const activeDetail: BookingDetailLoadState =
-    matchesVisibleIdentity && detailState.identity === identity
+    !hidePrivateData &&
+    !resetPrivateState &&
+    identity !== null &&
+    detailState.identity === identity
       ? detailState
       : EMPTY_DETAIL;
 

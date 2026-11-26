@@ -1896,3 +1896,86 @@ export function reopenPendingSlotSession(
     editor: existing ?? buildSlotEditorFromPending(state.pendingUncertain),
   };
 }
+
+/**
+ * Preserves working-hours pendingUncertain & dialog.uncertain when reconcile sees
+ * REJECTED/SUSPENDED before an earlier in-flight mutation settled, so the guard
+ * survives SUSPENDED/REJECTED -> APPROVED transitions until reconciled.
+ */
+export function keepWorkingHoursUncertainOnLifecycleLock(
+  state: WorkingHoursDialogSessionState,
+  attemptIdentity: string,
+  error: ProviderApiErrorInfo,
+  note: string,
+): WorkingHoursDialogSessionState {
+  const nextPending =
+    state.pendingUncertain &&
+    state.pendingUncertain.identity === attemptIdentity
+      ? {
+          ...state.pendingUncertain,
+          error,
+          reconcileNote: note,
+        }
+      : state.pendingUncertain;
+  const base =
+    state.dialog && state.dialog.identity === attemptIdentity
+      ? state.dialog
+      : nextPending
+        ? buildWorkingHoursDialogFromPending(nextPending)
+        : null;
+  return {
+    dialogOpen: state.dialogOpen,
+    pendingUncertain: nextPending,
+    dialog: base
+      ? {
+          ...base,
+          reconciling: false,
+          error,
+          reconcileNote: note,
+        }
+      : null,
+  };
+}
+
+/**
+ * Preserves slot pendingUncertain & editor.uncertain when reconcile sees
+ * REJECTED/SUSPENDED before an earlier in-flight mutation settled, so the guard
+ * survives SUSPENDED/REJECTED -> APPROVED transitions until reconciled.
+ */
+export function keepSlotUncertainOnLifecycleLock(
+  state: SlotDialogSessionState,
+  attemptIdentity: string,
+  error: ProviderApiErrorInfo,
+  note: string,
+): SlotDialogSessionState {
+  const nextPending =
+    state.pendingUncertain &&
+    state.pendingUncertain.identity === attemptIdentity
+      ? {
+          ...state.pendingUncertain,
+          error,
+          reconcileNote: note,
+        }
+      : state.pendingUncertain;
+  const base =
+    state.editor && state.editor.identity === attemptIdentity
+      ? state.editor
+      : nextPending
+        ? buildSlotEditorFromPending(nextPending)
+        : null;
+  const kind = nextPending?.uncertain.kind ?? base?.uncertain?.kind;
+  const isStatusKind = kind === "status" || kind === "cancel";
+  return {
+    dialogOpen: state.dialogOpen,
+    pendingUncertain: nextPending,
+    editor: base
+      ? {
+          ...base,
+          reconciling: false,
+          saveError: isStatusKind ? null : error,
+          statusError: isStatusKind ? error : null,
+          reconcileNote: note,
+        }
+      : null,
+  };
+}

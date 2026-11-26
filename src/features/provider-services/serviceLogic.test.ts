@@ -20,6 +20,7 @@ import {
   hasServiceDraftChanges,
   isServiceCategoryInactive,
   keepServiceCreateStillUnknown,
+  keepServiceUncertainOnLifecycleLock,
   openCreateServiceDialogSession,
   openEditServiceDialogSession,
   parseDurationMinutesInput,
@@ -418,7 +419,7 @@ test("Category filter options and service filtering combine status, categoryId a
   );
 });
 
-test("reconcileServiceCreate returns still-unknown until a matching new ID appears and detects lifecycle lock", () => {
+test("reconcileServiceCreate always returns still-unknown until a matching new ID appears regardless of lifecycle status", () => {
   const expected = {
     categoryId: "1",
     name: "Tắm spa",
@@ -438,7 +439,7 @@ test("reconcileServiceCreate returns still-unknown until a matching new ID appea
 
   // Same fields already existed before submit -> stays still-unknown (never unlocks blind duplicate POST).
   assert.deepEqual(
-    reconcileServiceCreate(expected, ["101"], [preExisting], "APPROVED"),
+    reconcileServiceCreate(expected, ["101"], [preExisting]),
     { outcome: "still-unknown" },
   );
 
@@ -451,7 +452,6 @@ test("reconcileServiceCreate returns still-unknown until a matching new ID appea
     expected,
     ["101"],
     [newlyCreated, preExisting],
-    "APPROVED",
   );
   assert.equal(created.outcome, "created");
   if (created.outcome === "created") {
@@ -464,18 +464,8 @@ test("reconcileServiceCreate returns still-unknown until a matching new ID appea
     price: "190000.00",
   });
   assert.deepEqual(
-    reconcileServiceCreate(expected, ["101"], [mismatch], "APPROVED"),
+    reconcileServiceCreate(expected, ["101"], [mismatch]),
     { outcome: "still-unknown" },
-  );
-
-  // Provider became REJECTED or SUSPENDED while request outcome was unknown.
-  assert.deepEqual(
-    reconcileServiceCreate(expected, ["101"], [preExisting], "REJECTED"),
-    { outcome: "forbidden-lifecycle", approvalStatus: "REJECTED" },
-  );
-  assert.deepEqual(
-    reconcileServiceCreate(expected, ["101"], [preExisting], "SUSPENDED"),
-    { outcome: "forbidden-lifecycle", approvalStatus: "SUSPENDED" },
   );
 });
 
@@ -736,7 +726,6 @@ test("R3: POST /services timeout -> GET #1 still-unknown stays locked -> late ba
     payload.expected,
     [preExisting.id],
     [preExisting],
-    "APPROVED",
   );
   assert.deepEqual(firstCheck, { outcome: "still-unknown" });
 
@@ -775,11 +764,167 @@ test("R3: POST /services timeout -> GET #1 still-unknown stays locked -> late ba
     payload.expected,
     [preExisting.id],
     [preExisting, lateCommitted],
-    "APPROVED",
   );
   assert.equal(secondCheck.outcome, "created");
   if (secondCheck.outcome === "created") {
     assert.equal(secondCheck.service.id, "299");
     assert.equal(secondCheck.service.price, "9999999999.95");
   }
+});
+
+test("R3 lifecycle boundary: APPROVED -> POST timeout -> SUSPENDED/REJECTED -> still-unknown keeps pendingUncertain -> APPROVED reactivation still blocks duplicate POST until late commit confirms created", () => {
+  const identity = "gen-1:30:PROVIDER_OWNER";
+  const draft = makeDraft({
+    name: "Tắm trị liệu đặc biệt",
+    price: "320000",
+    durationMinutes: "45",
+    description: "Dùng dầu gội dịu nhẹ",
+  });
+  const payload = buildCreateServicePayload(draft)!;
+  const preExisting = makeService({ id: "101" });
+
+  // 1. While APPROVED, POST /services times out -> pendingUncertain + editor.uncertain locked.
+  const initialUncertain = enterServiceUncertainSession(
+    openCreateServiceDialogSession(INITIAL_SERVICE_DIALOG_SESSION, identity),
+    {
+      attemptIdentity: identity,
+      mode: "create",
+      serviceId: null,
+      draft,
+      confirmStatus: null,
+      uncertain: {
+        kind: "create",
+        expected: payload.expected,
+        preSubmitIds: [preExisting.id],
+      },
+      error: UNKNOWN_SERVICE_ERROR,
+    },
+  );
+  assert.notEqual(initialUncertain.pendingUncertain, null);
+
+  // 2. Facility transitions to SUSPENDED (and also verified for REJECTED) while POST is still in-flight.
+  // GET /services/mine #1 does not yet contain the new record -> MUST return still-unknown (NEVER forbidden-lifecycle).
+  for (const lockedStatus of ["SUSPENDED", "REJECTED"] as const) {
+    const checkWhileLocked = reconcileServiceCreate(
+      payload.expected,
+      [preExisting.id],
+      [preExisting],
+    );
+    assert.deepEqual(
+      checkWhileLocked,
+      { outcome: "still-unknown" },
+      `must remain still-unknown under ${lockedStatus}`,
+    );
+  }
+
+  // Reconcile state transition preserves pendingUncertain & editor.uncertain with reconciling=false.
+  const afterSuspendedCheck = keepServiceCreateStillUnknown(
+    closeServiceDialogSession(initialUncertain),
+    identity,
+    "Chưa thấy dịch vụ mới; trạng thái cơ sở đang khóa nhưng vẫn giữ nguyên khóa gửi lặp.",
+  );
+  assert.equal(afterSuspendedCheck.dialogOpen, false);
+  assert.notEqual(afterSuspendedCheck.pendingUncertain, null);
+  assert.equal(afterSuspendedCheck.pendingUncertain?.uncertain.kind, "create");
+  assert.equal(afterSuspendedCheck.editor?.uncertain?.kind, "create");
+  assert.equal(afterSuspendedCheck.editor?.reconciling, false);
+
+  // 3. Facility is reactivated back to APPROVED.
+  // Clicking "Thêm dịch vụ" or opening edit MUST restore the pendingUncertain guard (blocking duplicate POST).
+  const reopenedAfterApprove = openCreateServiceDialogSession(
+    afterSuspendedCheck,
+    identity,
+  );
+  assert.equal(reopenedAfterApprove.dialogOpen, true);
+  assert.notEqual(reopenedAfterApprove.pendingUncertain, null);
+  assert.equal(reopenedAfterApprove.editor?.uncertain?.kind, "create");
+  assert.equal(reopenedAfterApprove.editor?.draft.name, "Tắm trị liệu đặc biệt");
+
+  const editAttemptAfterApprove = openEditServiceDialogSession(
+    afterSuspendedCheck,
+    identity,
+    preExisting,
+  );
+  assert.equal(editAttemptAfterApprove.editor?.uncertain?.kind, "create");
+  assert.notEqual(editAttemptAfterApprove.pendingUncertain, null);
+
+  // 4. First POST commits late -> GET #2 sees new ID=350 -> confirms "created" and clears pendingUncertain.
+  const lateService = makeService({
+    id: "350",
+    categoryId: payload.expected.categoryId,
+    name: payload.expected.name,
+    price: payload.expected.canonicalPrice,
+    durationMinutes: payload.expected.durationMinutes,
+    description: payload.expected.description,
+    status: "ACTIVE",
+  });
+  const confirmedAfterApprove = reconcileServiceCreate(
+    payload.expected,
+    [preExisting.id],
+    [preExisting, lateService],
+  );
+  assert.equal(confirmedAfterApprove.outcome, "created");
+  if (confirmedAfterApprove.outcome === "created") {
+    assert.equal(confirmedAfterApprove.service.id, "350");
+  }
+
+  // 5. Late commit arriving WHILE STILL SUSPENDED is ALSO detected as "created" immediately via GET /services/mine.
+  const confirmedWhileStillSuspended = reconcileServiceCreate(
+    payload.expected,
+    [preExisting.id],
+    [preExisting, lateService],
+  );
+  assert.equal(confirmedWhileStillSuspended.outcome, "created");
+
+  // 6. Update/status uncertain requests also retain pendingUncertain when reconcile hits forbidden-lifecycle.
+  const updateUncertain = enterServiceUncertainSession(
+    openEditServiceDialogSession(
+      INITIAL_SERVICE_DIALOG_SESSION,
+      identity,
+      preExisting,
+    ),
+    {
+      attemptIdentity: identity,
+      mode: "edit",
+      serviceId: preExisting.id,
+      draft: serviceToDraft({ ...preExisting, price: "310000.00" }),
+      confirmStatus: null,
+      uncertain: {
+        kind: "update",
+        serviceId: preExisting.id,
+        expected: { canonicalPrice: "310000.00" },
+      },
+      error: UNKNOWN_SERVICE_ERROR,
+    },
+  );
+  const suspendedUpdateResult = reconcileServiceUpdate(
+    preExisting.id,
+    { canonicalPrice: "310000.00" },
+    [preExisting],
+    "SUSPENDED",
+  );
+  assert.deepEqual(suspendedUpdateResult, {
+    outcome: "forbidden-lifecycle",
+    approvalStatus: "SUSPENDED",
+  });
+  const preservedUpdate = keepServiceUncertainOnLifecycleLock(
+    updateUncertain,
+    identity,
+    {
+      code: "PROVIDER_SUSPENDED_FORBIDDEN",
+      category: "lifecycle",
+      outcome: "definite-failure",
+      status: 403,
+      retryAfterSeconds: null,
+      shouldReconcile: false,
+    },
+    "Giữ nguyên trạng thái chờ đối soát.",
+  );
+  assert.notEqual(preservedUpdate.pendingUncertain, null);
+  assert.equal(preservedUpdate.editor?.uncertain?.kind, "update");
+  assert.equal(preservedUpdate.editor?.reconciling, false);
+  assert.equal(
+    preservedUpdate.editor?.saveError?.code,
+    "PROVIDER_SUSPENDED_FORBIDDEN",
+  );
 });

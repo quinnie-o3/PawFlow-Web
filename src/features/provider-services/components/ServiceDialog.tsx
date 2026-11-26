@@ -365,6 +365,11 @@ export default function ServiceDialog({
 
       {isEdit && service && (
         <div className={styles.actions}>
+          {editor.statusError && !canManageResources && (
+            <p className={styles.error} role="alert">
+              {getProviderErrorMessage(editor.statusError, cooldownSeconds)}
+            </p>
+          )}
           {canManageResources && (
             <>
               <button

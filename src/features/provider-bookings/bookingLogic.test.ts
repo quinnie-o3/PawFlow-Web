@@ -1,12 +1,20 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import type { ProviderBooking, ProviderBookingStatus } from "../provider-workspace/liveApi";
+import { ApiError } from "../../lib/api/errors";
+import {
+  classifyProviderError,
+  type ProviderBooking,
+  type ProviderBookingDetail,
+  type ProviderBookingStatus,
+} from "../provider-workspace/liveApi";
 import { getProviderLifecyclePermissions } from "../provider-workspace/lifecycle";
 import {
+  EMPTY_BOOKING_DETAIL,
   EMPTY_BOOKING_DRAFT,
   EMPTY_PENDING_UNKNOWN_BOOKINGS,
   buildReasonPayload,
   clearPendingUnknownBooking,
+  createBookingDetailLoader,
   evaluateBookingTimeNotice,
   filterProviderBookings,
   formatBookingSlotRange,
@@ -23,6 +31,7 @@ import {
   summarizeProviderBookings,
   validateBookingDateFilter,
 } from "./bookingLogic";
+import type { BookingDetailLoadState } from "./types";
 
 function makeBooking(overrides: Partial<ProviderBooking> = {}): ProviderBooking {
   return {
@@ -343,4 +352,266 @@ test("R1 & R2 provider bookings: 503 same-identity abort moves draft to unknown,
     ),
     EMPTY_BOOKING_DRAFT,
   );
+});
+
+function makeBookingDetail(
+  overrides: Partial<ProviderBookingDetail> = {},
+): ProviderBookingDetail {
+  return {
+    ...makeBooking(),
+    statusLogs: [
+      {
+        id: "7001",
+        oldStatus: null,
+        newStatus: "PENDING_CONFIRMATION",
+        reason: null,
+        createdAt: "2026-11-20T02:00:00.000Z",
+      },
+    ],
+    ...overrides,
+  };
+}
+
+function createAbortAwareDeferred<T>(signal: AbortSignal) {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  const onAbort = () => {
+    reject(new DOMException("The operation was aborted.", "AbortError"));
+  };
+  if (signal.aborted) {
+    onAbort();
+  } else {
+    signal.addEventListener("abort", onAbort, { once: true });
+  }
+  return { promise, resolve, reject };
+}
+
+test("503 detail recovery Case 1: real AbortController hide cleanup exits loading and auto-refetches detail to ready on same-identity recovery", async () => {
+  const identityA = "gen-1:30:PROVIDER_OWNER";
+  const bookingId = "90071992547409951";
+  const expectedDetail = makeBookingDetail({ id: bookingId });
+
+  const signals: AbortSignal[] = [];
+  const deferreds: Array<ReturnType<typeof createAbortAwareDeferred<ProviderBookingDetail>>> = [];
+  const history: BookingDetailLoadState[] = [];
+
+  const loader = createBookingDetailLoader({
+    fetchDetail: (_id, { signal }) => {
+      signals.push(signal);
+      const d = createAbortAwareDeferred<ProviderBookingDetail>(signal);
+      deferreds.push(d);
+      return d.promise;
+    },
+    classifyError: (err) => classifyProviderError(err, "get-booking"),
+    onStateChange: (next) => history.push(next),
+    initialIdentity: identityA,
+    initialCanFetch: true,
+  });
+
+  // 1. User opens booking detail -> GET is in-flight with real AbortSignal, status === "loading".
+  const firstRequest = loader.selectAndLoad(identityA, bookingId);
+  assert.equal(signals.length, 1);
+  assert.equal(signals[0].aborted, false);
+  assert.equal(loader.getSnapshot().state.status, "loading");
+  assert.equal(loader.getSnapshot().inFlight, true);
+
+  // 2. Same-identity 503 hides <Activity mode="hidden"> -> cleanup runs interruptForHide() + abort().
+  loader.interruptForHide();
+  loader.syncSession({
+    identity: identityA,
+    canFetch: false,
+    selectedBookingId: bookingId,
+    profileNotFound: false,
+  });
+
+  assert.equal(signals[0].aborted, true);
+  assert.deepEqual(await firstRequest, { ok: false, aborted: true });
+  assert.equal(loader.getSnapshot().inFlight, false);
+  assert.equal(loader.getSnapshot().interrupted, true);
+  assert.notEqual(
+    loader.getSnapshot().state.status,
+    "loading",
+    "detailState must not stay stuck in loading after 503 abort",
+  );
+
+  // 3. Session recovers on the same identity (canFetch: true) -> auto-refetch launches immediately!
+  const recoveryPromise = loader.syncSession({
+    identity: identityA,
+    canFetch: true,
+    selectedBookingId: bookingId,
+    profileNotFound: false,
+  });
+  assert.notEqual(recoveryPromise, null, "expected automatic detail recovery fetch");
+  assert.equal(signals.length, 2);
+  assert.equal(signals[1].aborted, false);
+  assert.equal(loader.getSnapshot().state.status, "loading");
+
+  // 4. Recovery GET resolves -> transitions cleanly to "ready" with full detail.
+  deferreds[1].resolve(expectedDetail);
+  const recoveryResult = await recoveryPromise!;
+  assert.equal(recoveryResult.ok, true);
+  assert.equal(loader.getSnapshot().state.status, "ready");
+  assert.equal(loader.getSnapshot().state.detail?.id, bookingId);
+  assert.equal(loader.getSnapshot().interrupted, false);
+
+  // 5. Subsequent syncSession while already ready must NOT trigger duplicate fetches.
+  assert.equal(
+    loader.syncSession({
+      identity: identityA,
+      canFetch: true,
+      selectedBookingId: bookingId,
+      profileNotFound: false,
+    }),
+    null,
+  );
+  assert.equal(signals.length, 2);
+  assert.ok(history.length >= 3);
+});
+
+test("503 detail recovery Case 2: network failure on recovery sets status=error while preserving detail & uncertain; 401/switch purges both", async () => {
+  const identityA = "gen-1:30:PROVIDER_OWNER";
+  const identityB = "gen-2:31:PROVIDER_OWNER";
+  const bookingId = "90071992547409951";
+  const initialDetail = makeBookingDetail({ id: bookingId });
+
+  const unknownDraft = {
+    identity: identityA,
+    bookingId,
+    action: "reject" as const,
+    reason: "Hết nhân sự ca chiều",
+    openedAtMs: 1_700_000_000_000,
+    phase: "unknown" as const,
+    error: {
+      code: "NETWORK_ERROR" as const,
+      category: "uncertain" as const,
+      outcome: "unknown" as const,
+      status: null,
+      retryAfterSeconds: null,
+      shouldReconcile: true,
+    },
+    reconcileError: null,
+  };
+  const pendingMap = storePendingUnknownBooking(
+    EMPTY_PENDING_UNKNOWN_BOOKINGS,
+    unknownDraft,
+  );
+
+  let attempt = 0;
+  const loader = createBookingDetailLoader({
+    fetchDetail: (_id, { signal }) => {
+      attempt++;
+      if (attempt === 1) {
+        return Promise.resolve(initialDetail);
+      }
+      if (attempt === 2) {
+        return createAbortAwareDeferred<ProviderBookingDetail>(signal).promise;
+      }
+      return Promise.reject(new ApiError("network"));
+    },
+    classifyError: (err) => classifyProviderError(err, "get-booking"),
+    onStateChange: () => {},
+    initialIdentity: identityA,
+    initialCanFetch: true,
+  });
+
+  // Load initial detail cleanly, then start reload (attempt 2) and interrupt with same-identity 503.
+  const first = await loader.selectAndLoad(identityA, bookingId);
+  assert.equal(first.ok, true);
+  assert.equal(loader.getSnapshot().state.status, "ready");
+
+  const interruptedReload = loader.load(bookingId);
+  assert.equal(loader.getSnapshot().state.status, "loading");
+  loader.interruptForHide();
+  assert.deepEqual(await interruptedReload, { ok: false, aborted: true });
+  assert.equal(loader.getSnapshot().state.status, "ready");
+  assert.equal(loader.getSnapshot().state.detail?.id, bookingId);
+  assert.equal(loader.getSnapshot().interrupted, true);
+
+  // Recovery triggers attempt 3 which fails with network error -> status === "error", detail & uncertain preserved.
+  const recovery = loader.syncSession({
+    identity: identityA,
+    canFetch: true,
+    selectedBookingId: bookingId,
+    profileNotFound: false,
+  });
+  assert.notEqual(recovery, null);
+  const recoveryRes = await recovery!;
+  assert.equal(recoveryRes.ok, false);
+  assert.equal(loader.getSnapshot().state.status, "error");
+  assert.equal(loader.getSnapshot().state.error?.code, "NETWORK_ERROR");
+  assert.equal(loader.getSnapshot().state.detail?.id, bookingId);
+  assert.equal(loader.getSnapshot().interrupted, false);
+  // Uncertain state for this booking remains intact so dialog can reconcile alongside retry.
+  assert.deepEqual(
+    getPendingUnknownBooking(pendingMap, identityA, bookingId),
+    unknownDraft,
+  );
+
+  // Close selection clears detail without scheduling recovery; identity switch / 401 purges detail & uncertain.
+  loader.resetPrivate();
+  assert.deepEqual(loader.getSnapshot().state, EMPTY_BOOKING_DETAIL);
+  assert.equal(loader.getSnapshot().interrupted, false);
+  assert.equal(getPendingUnknownBooking(pendingMap, identityB, bookingId), null);
+  assert.deepEqual(
+    recoverAbortedBookingDraft(
+      unknownDraft,
+      identityA,
+      null,
+      unknownDraft.error,
+    ),
+    EMPTY_BOOKING_DRAFT,
+  );
+});
+
+test("503 detail recovery Case 3: explicit closeSelection and booking switch abort cleanly without bogus recovery", async () => {
+  const identityA = "gen-1:30:PROVIDER_OWNER";
+  const signals: AbortSignal[] = [];
+  const deferreds: Array<ReturnType<typeof createAbortAwareDeferred<ProviderBookingDetail>>> = [];
+
+  const loader = createBookingDetailLoader({
+    fetchDetail: (_id, { signal }) => {
+      signals.push(signal);
+      const d = createAbortAwareDeferred<ProviderBookingDetail>(signal);
+      deferreds.push(d);
+      return d.promise;
+    },
+    classifyError: (err) => classifyProviderError(err, "get-booking"),
+    onStateChange: () => {},
+    initialIdentity: identityA,
+    initialCanFetch: true,
+  });
+
+  // Explicit close aborts in-flight fetch and must NOT mark interrupted.
+  const req1 = loader.selectAndLoad(identityA, "101");
+  loader.closeSelection();
+  assert.equal(signals[0].aborted, true);
+  assert.deepEqual(await req1, { ok: false, aborted: true });
+  assert.equal(loader.getSnapshot().interrupted, false);
+  assert.deepEqual(loader.getSnapshot().state, EMPTY_BOOKING_DETAIL);
+  assert.equal(
+    loader.syncSession({
+      identity: identityA,
+      canFetch: true,
+      selectedBookingId: null,
+      profileNotFound: false,
+    }),
+    null,
+  );
+  assert.equal(signals.length, 1);
+
+  // Switching from booking 201 -> 202 aborts 201 and settles cleanly on 202.
+  const req201 = loader.selectAndLoad(identityA, "201");
+  const req202 = loader.selectAndLoad(identityA, "202");
+  assert.equal(signals[1].aborted, true);
+  assert.equal(signals[2].aborted, false);
+  assert.deepEqual(await req201, { ok: false, aborted: true });
+  deferreds[2].resolve(makeBookingDetail({ id: "202" }));
+  const res202 = await req202;
+  assert.equal(res202.ok, true);
+  assert.equal(loader.getSnapshot().state.bookingId, "202");
+  assert.equal(loader.getSnapshot().state.status, "ready");
 });

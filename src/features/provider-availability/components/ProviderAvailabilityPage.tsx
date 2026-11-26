@@ -44,6 +44,8 @@ import {
   formatTimeHhMm,
   getDayOfWeekLabel,
   groupWorkingHoursByDay,
+  keepSlotUncertainOnLifecycleLock,
+  keepWorkingHoursUncertainOnLifecycleLock,
   localDate,
   openCreateSlotDialogSession,
   openEditSlotDialogSession,
@@ -1513,26 +1515,15 @@ export default function ProviderAvailabilityPage() {
           return;
         }
         if (res.outcome === "forbidden-lifecycle") {
-          setWorkingSession((current) => {
-            const base =
-              current.dialog && current.dialog.identity === attemptIdentity
-                ? current.dialog
-                : current.pendingUncertain &&
-                    current.pendingUncertain.identity === attemptIdentity
-                  ? buildWorkingHoursDialogFromPending(current.pendingUncertain)
-                  : null;
-            if (!base) return INITIAL_WORKING_HOURS_SESSION;
-            return {
-              dialogOpen: true,
-              pendingUncertain: null,
-              dialog: {
-                ...base,
-                reconciling: false,
-                uncertain: null,
-                error: lifecycleErrorInfo(res.approvalStatus),
-              },
-            };
-          });
+          const info = lifecycleErrorInfo(res.approvalStatus);
+          setWorkingSession((current) =>
+            keepWorkingHoursUncertainOnLifecycleLock(
+              current,
+              attemptIdentity,
+              info,
+              getProviderErrorMessage(info),
+            ),
+          );
           return;
         }
         setWorkingSession((current) => {
@@ -1628,26 +1619,15 @@ export default function ProviderAvailabilityPage() {
         return;
       }
       if (res.outcome === "forbidden-lifecycle") {
-        setWorkingSession((current) => {
-          const base =
-            current.dialog && current.dialog.identity === attemptIdentity
-              ? current.dialog
-              : current.pendingUncertain &&
-                  current.pendingUncertain.identity === attemptIdentity
-                ? buildWorkingHoursDialogFromPending(current.pendingUncertain)
-                : null;
-          if (!base) return INITIAL_WORKING_HOURS_SESSION;
-          return {
-            dialogOpen: true,
-            pendingUncertain: null,
-            dialog: {
-              ...base,
-              reconciling: false,
-              uncertain: null,
-              error: lifecycleErrorInfo(res.approvalStatus),
-            },
-          };
-        });
+        const info = lifecycleErrorInfo(res.approvalStatus);
+        setWorkingSession((current) =>
+          keepWorkingHoursUncertainOnLifecycleLock(
+            current,
+            attemptIdentity,
+            info,
+            getProviderErrorMessage(info),
+          ),
+        );
         return;
       }
       setWorkingSession((current) => {
@@ -2501,26 +2481,15 @@ export default function ProviderAvailabilityPage() {
           return;
         }
         if (res.outcome === "forbidden-lifecycle") {
-          setSlotSession((current) => {
-            const base =
-              current.editor && current.editor.identity === attemptIdentity
-                ? current.editor
-                : current.pendingUncertain &&
-                    current.pendingUncertain.identity === attemptIdentity
-                  ? buildSlotEditorFromPending(current.pendingUncertain)
-                  : null;
-            if (!base) return INITIAL_SLOT_DIALOG_SESSION;
-            return {
-              dialogOpen: true,
-              pendingUncertain: null,
-              editor: {
-                ...base,
-                reconciling: false,
-                uncertain: null,
-                saveError: lifecycleErrorInfo(res.approvalStatus),
-              },
-            };
-          });
+          const info = lifecycleErrorInfo(res.approvalStatus);
+          setSlotSession((current) =>
+            keepSlotUncertainOnLifecycleLock(
+              current,
+              attemptIdentity,
+              info,
+              getProviderErrorMessage(info),
+            ),
+          );
           return;
         }
         setSlotSession((current) => {
@@ -2573,26 +2542,15 @@ export default function ProviderAvailabilityPage() {
           return;
         }
         if (res.outcome === "forbidden-lifecycle") {
-          setSlotSession((current) => {
-            const base =
-              current.editor && current.editor.identity === attemptIdentity
-                ? current.editor
-                : current.pendingUncertain &&
-                    current.pendingUncertain.identity === attemptIdentity
-                  ? buildSlotEditorFromPending(current.pendingUncertain)
-                  : null;
-            if (!base) return INITIAL_SLOT_DIALOG_SESSION;
-            return {
-              dialogOpen: true,
-              pendingUncertain: null,
-              editor: {
-                ...base,
-                reconciling: false,
-                uncertain: null,
-                saveError: lifecycleErrorInfo(res.approvalStatus),
-              },
-            };
-          });
+          const info = lifecycleErrorInfo(res.approvalStatus);
+          setSlotSession((current) =>
+            keepSlotUncertainOnLifecycleLock(
+              current,
+              attemptIdentity,
+              info,
+              getProviderErrorMessage(info),
+            ),
+          );
           return;
         }
         setSlotSession((current) => {
@@ -2671,27 +2629,15 @@ export default function ProviderAvailabilityPage() {
         return;
       }
       if (res.outcome === "forbidden-lifecycle") {
-        setSlotSession((current) => {
-          const base =
-            current.editor && current.editor.identity === attemptIdentity
-              ? current.editor
-              : current.pendingUncertain &&
-                  current.pendingUncertain.identity === attemptIdentity
-                ? buildSlotEditorFromPending(current.pendingUncertain)
-                : null;
-          if (!base) return INITIAL_SLOT_DIALOG_SESSION;
-          return {
-            dialogOpen: true,
-            pendingUncertain: null,
-            editor: {
-              ...base,
-              reconciling: false,
-              uncertain: null,
-              confirmAction: null,
-              statusError: lifecycleErrorInfo(res.approvalStatus),
-            },
-          };
-        });
+        const info = lifecycleErrorInfo(res.approvalStatus);
+        setSlotSession((current) =>
+          keepSlotUncertainOnLifecycleLock(
+            current,
+            attemptIdentity,
+            info,
+            getProviderErrorMessage(info),
+          ),
+        );
         return;
       }
       setSlotSession((current) => {

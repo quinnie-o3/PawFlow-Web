@@ -172,7 +172,7 @@ export default function BookingDetailsDialog({
               <button
                 type="button"
                 className={styles.softButton}
-                disabled={busy || cooldownSeconds > 0}
+                disabled={busy || locked || cooldownSeconds > 0}
                 onClick={() => {
                   onReloadList();
                   onClose();
@@ -196,7 +196,7 @@ export default function BookingDetailsDialog({
               <button
                 type="button"
                 className={styles.softButton}
-                disabled={busy || cooldownSeconds > 0}
+                disabled={busy || locked || cooldownSeconds > 0}
                 onClick={onRetryDetail}
               >
                 <RefreshCw aria-hidden="true" size={14} />
@@ -205,6 +205,78 @@ export default function BookingDetailsDialog({
             </div>
           </div>
         )}
+
+        {isUnknown &&
+          activeAction &&
+          !isDetailReady &&
+          detailState.status !== "not-found" && (
+            <section className={styles.confirmation} aria-busy={busy}>
+              <h3 ref={confirmationRef} tabIndex={-1}>
+                {formatMessage(vi.provider.bookings.confirmation.heading, {
+                  action: BOOKING_ACTION_LABELS[activeAction],
+                })}
+              </h3>
+              {booking && (
+                <p className={styles.transitionSummary}>
+                  {formatMessage(vi.provider.bookings.confirmation.transition, {
+                    from: BOOKING_STATUS_LABELS[booking.status],
+                    to: BOOKING_STATUS_LABELS[ACTION_TARGET_STATUS[activeAction]],
+                  })}
+                </p>
+              )}
+              {(activeAction === "reject" || activeAction === "no-show") && (
+                <label className={styles.fieldLabel}>
+                  <span>
+                    {activeAction === "reject"
+                      ? vi.provider.bookings.confirmation.rejectReasonLabel
+                      : vi.provider.bookings.confirmation.noShowReasonLabel}
+                  </span>
+                  <textarea
+                    value={draftState.reason}
+                    onChange={(event) => onReasonChange(event.target.value)}
+                    disabled
+                    rows={3}
+                    maxLength={500}
+                    placeholder={
+                      activeAction === "reject"
+                        ? vi.provider.bookings.confirmation
+                            .rejectReasonPlaceholder
+                        : vi.provider.bookings.confirmation
+                            .noShowReasonPlaceholder
+                    }
+                  />
+                </label>
+              )}
+              <div className={styles.warning} role="alert">
+                <AlertTriangle aria-hidden="true" size={18} />
+                <div className={styles.warningBody}>
+                  <h4>{vi.provider.bookings.unknown.title}</h4>
+                  <p>{vi.provider.bookings.unknown.description}</p>
+                  {draftState.reconcileError && (
+                    <p className={styles.errorInline}>
+                      {getProviderErrorMessage(
+                        draftState.reconcileError,
+                        cooldownSeconds,
+                      )}
+                    </p>
+                  )}
+                  <div className={styles.inlineActions}>
+                    <button
+                      type="button"
+                      className={styles.primaryButton}
+                      disabled={busy || locked || cooldownSeconds > 0}
+                      onClick={onReconcileUnknown}
+                    >
+                      <RefreshCw aria-hidden="true" size={15} />
+                      {draftState.phase === "reconciling"
+                        ? vi.provider.bookings.unknown.reconciling
+                        : vi.provider.bookings.unknown.reconcileButton}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
 
         {booking && detailState.status !== "not-found" && (
           <>

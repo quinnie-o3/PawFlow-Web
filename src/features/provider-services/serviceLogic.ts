@@ -383,23 +383,20 @@ export function filterServices(
 
 export type ReconcileCreateResult =
   | Readonly<{ outcome: "created"; service: ProviderService }>
-  | Readonly<{
-      outcome: "forbidden-lifecycle";
-      approvalStatus: "REJECTED" | "SUSPENDED";
-    }>
   | Readonly<{ outcome: "still-unknown" }>;
 
 /**
- * Reconciles an uncertain POST /services against authoritative GET /services/mine.
+ * Reconciles an uncertain POST /services against authoritative GET /services/mine
+ * (readable across all 4 provider lifecycle statuses).
  * Because BFF timeout (8s) does not prove the backend transaction stopped and
- * POST /services has no uniqueness constraint, absence on a GET check remains
- * "still-unknown" (never "not-created") so duplicate POST stays locked until confirmed.
+ * POST /services has no uniqueness constraint, absence on a GET check ALWAYS
+ * remains "still-unknown" — regardless of current approvalStatus — so duplicate
+ * POST stays locked across SUSPENDED/REJECTED -> APPROVED cycles until confirmed.
  */
 export function reconcileServiceCreate(
   expected: ExpectedCreateServicePayload,
   preSubmitIds: readonly string[],
   serverServices: readonly ProviderService[],
-  approvalStatus?: ProviderApprovalStatus,
 ): ReconcileCreateResult {
   const existingIds = new Set(preSubmitIds);
   const matched = serverServices.find(
@@ -414,9 +411,6 @@ export function reconcileServiceCreate(
   );
   if (matched) {
     return { outcome: "created", service: matched };
-  }
-  if (approvalStatus === "REJECTED" || approvalStatus === "SUSPENDED") {
-    return { outcome: "forbidden-lifecycle", approvalStatus };
   }
   return { outcome: "still-unknown" };
 }
@@ -801,6 +795,49 @@ export function keepServiceCreateStillUnknown(
           ...baseEditor,
           reconciling: false,
           saveError: null,
+          reconcileNote: note,
+        }
+      : null,
+  };
+}
+
+/**
+ * Keeps pendingUncertain & editor.uncertain intact when a reconcile check finds
+ * the provider currently REJECTED or SUSPENDED before a prior in-flight mutation
+ * has settled, so the guard survives SUSPENDED/REJECTED -> APPROVED cycles.
+ */
+export function keepServiceUncertainOnLifecycleLock(
+  state: ServiceDialogSessionState,
+  attemptIdentity: string,
+  error: ProviderApiErrorInfo,
+  note: string,
+): ServiceDialogSessionState {
+  const nextPending =
+    state.pendingUncertain &&
+    state.pendingUncertain.identity === attemptIdentity
+      ? {
+          ...state.pendingUncertain,
+          error,
+          reconcileNote: note,
+        }
+      : state.pendingUncertain;
+  const baseEditor =
+    state.editor && state.editor.identity === attemptIdentity
+      ? state.editor
+      : nextPending
+        ? buildServiceEditorFromPending(nextPending)
+        : null;
+  const isStatus =
+    (nextPending?.uncertain.kind ?? baseEditor?.uncertain?.kind) === "status";
+  return {
+    dialogOpen: state.dialogOpen,
+    pendingUncertain: nextPending,
+    editor: baseEditor
+      ? {
+          ...baseEditor,
+          reconciling: false,
+          saveError: isStatus ? null : error,
+          statusError: isStatus ? error : null,
           reconcileNote: note,
         }
       : null,

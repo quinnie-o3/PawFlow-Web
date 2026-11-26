@@ -34,6 +34,7 @@ import {
   hasServiceDraftChanges,
   isServiceCategoryInactive,
   keepServiceCreateStillUnknown,
+  keepServiceUncertainOnLifecycleLock,
   openCreateServiceDialogSession,
   openEditServiceDialogSession,
   reconcileServiceCreate,
@@ -1113,7 +1114,6 @@ export default function ProviderServicesPage() {
           uncertain.expected,
           uncertain.preSubmitIds,
           listResult.services,
-          approvalStatus,
         );
         if (result.outcome === "created") {
           setDialogSession(INITIAL_SERVICE_DIALOG_SESSION);
@@ -1124,36 +1124,17 @@ export default function ProviderServicesPage() {
           );
           return;
         }
-        if (result.outcome === "forbidden-lifecycle") {
-          setDialogSession((current) => {
-            const baseEditor =
-              current.editor && current.editor.identity === attemptIdentity
-                ? current.editor
-                : current.pendingUncertain &&
-                    current.pendingUncertain.identity === attemptIdentity
-                  ? buildServiceEditorFromPending(current.pendingUncertain)
-                  : null;
-            if (!baseEditor) return INITIAL_SERVICE_DIALOG_SESSION;
-            return {
-              dialogOpen: true,
-              pendingUncertain: null,
-              editor: {
-                ...baseEditor,
-                reconciling: false,
-                uncertain: null,
-                saveError: lifecycleErrorInfo(result.approvalStatus),
-                reconcileNote: null,
-              },
-            };
-          });
-          return;
-        }
-        // R3: absence in GET /services/mine never proves POST stopped; keep pendingUncertain locked!
+        // R3: absence in GET /services/mine never proves an earlier POST stopped
+        // (even if the facility is now REJECTED or SUSPENDED); keep pendingUncertain locked!
+        const stillUnknownNote =
+          approvalStatus === "REJECTED" || approvalStatus === "SUSPENDED"
+            ? vi.provider.services.dialog.reconcileStillUnknownLifecycle
+            : vi.provider.services.dialog.reconcileStillUnknown;
         setDialogSession((current) =>
           keepServiceCreateStillUnknown(
             current,
             attemptIdentity,
-            vi.provider.services.dialog.reconcileStillUnknown,
+            stillUnknownNote,
           ),
         );
         return;
@@ -1185,27 +1166,14 @@ export default function ProviderServicesPage() {
           return;
         }
         if (result.outcome === "forbidden-lifecycle") {
-          setDialogSession((current) => {
-            const baseEditor =
-              current.editor && current.editor.identity === attemptIdentity
-                ? current.editor
-                : current.pendingUncertain &&
-                    current.pendingUncertain.identity === attemptIdentity
-                  ? buildServiceEditorFromPending(current.pendingUncertain)
-                  : null;
-            if (!baseEditor) return INITIAL_SERVICE_DIALOG_SESSION;
-            return {
-              dialogOpen: true,
-              pendingUncertain: null,
-              editor: {
-                ...baseEditor,
-                reconciling: false,
-                uncertain: null,
-                saveError: lifecycleErrorInfo(result.approvalStatus),
-                reconcileNote: null,
-              },
-            };
-          });
+          setDialogSession((current) =>
+            keepServiceUncertainOnLifecycleLock(
+              current,
+              attemptIdentity,
+              lifecycleErrorInfo(result.approvalStatus),
+              vi.provider.services.dialog.reconcileUpdateStillUnknownLifecycle,
+            ),
+          );
           return;
         }
         setDialogSession((current) => {
@@ -1282,28 +1250,14 @@ export default function ProviderServicesPage() {
         return;
       }
       if (statusResult.outcome === "forbidden-lifecycle") {
-        setDialogSession((current) => {
-          const baseEditor =
-            current.editor && current.editor.identity === attemptIdentity
-              ? current.editor
-              : current.pendingUncertain &&
-                  current.pendingUncertain.identity === attemptIdentity
-                ? buildServiceEditorFromPending(current.pendingUncertain)
-                : null;
-          if (!baseEditor) return INITIAL_SERVICE_DIALOG_SESSION;
-          return {
-            dialogOpen: true,
-            pendingUncertain: null,
-            editor: {
-              ...baseEditor,
-              reconciling: false,
-              uncertain: null,
-              confirmStatus: null,
-              statusError: lifecycleErrorInfo(statusResult.approvalStatus),
-              reconcileNote: null,
-            },
-          };
-        });
+        setDialogSession((current) =>
+          keepServiceUncertainOnLifecycleLock(
+            current,
+            attemptIdentity,
+            lifecycleErrorInfo(statusResult.approvalStatus),
+            vi.provider.services.dialog.reconcileUpdateStillUnknownLifecycle,
+          ),
+        );
         return;
       }
       setDialogSession((current) => {

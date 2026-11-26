@@ -995,6 +995,8 @@
         "pendingUpdateBannerDescription": "Yêu cầu lưu thay đổi dịch vụ chưa nhận được phản hồi rõ ràng từ máy chủ. Hãy kiểm tra lại với máy chủ hoặc xem lại yêu cầu trước khi tiếp tục.",
         "pendingStatusBannerDescription": "Yêu cầu đổi trạng thái dịch vụ chưa nhận được phản hồi rõ ràng từ máy chủ. Hãy kiểm tra lại với máy chủ hoặc xem lại yêu cầu trước khi tiếp tục.",
         "reconcileStillUnknown": "Đã kiểm tra máy chủ nhưng chưa thấy dịch vụ mới được ghi nhận. Yêu cầu tạo trước đó vẫn có thể đang được máy chủ xử lý trễ nên hệ thống tiếp tục khóa gửi lặp để tránh tạo trùng; hãy đợi ít giây rồi bấm \"Kiểm tra lại với máy chủ\".",
+        "reconcileStillUnknownLifecycle": "Đã kiểm tra máy chủ nhưng chưa thấy dịch vụ mới được ghi nhận. Dù trạng thái cơ sở hiện tại đang khóa thao tác mới, yêu cầu tạo đã gửi trước đó vẫn có thể đang được xử lý trễ nên hệ thống giữ nguyên hàng rào chống tạo trùng; hãy đợi ít giây rồi bấm \"Kiểm tra lại với máy chủ\".",
+        "reconcileUpdateStillUnknownLifecycle": "Đã kiểm tra máy chủ nhưng chưa thấy thay đổi được ghi nhận. Trạng thái cơ sở hiện tại đang khóa thao tác mới, tuy nhiên yêu cầu đã gửi trước đó vẫn có thể đang xử lý trễ nên hệ thống giữ nguyên trạng thái chờ đối soát.",
         "reconcileNotSaved": "Đã kiểm tra máy chủ: thay đổi của bạn chưa được lưu. Bản nháp vẫn được giữ nguyên — bạn có thể bấm Lưu thay đổi để thử lại an toàn.",
         "reconcileStatusNotSaved": "Đã kiểm tra máy chủ: trạng thái dịch vụ chưa thay đổi. Bạn có thể thực hiện lại thao tác đổi trạng thái an toàn."
       },

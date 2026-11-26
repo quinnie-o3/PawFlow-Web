@@ -1,3 +1,4 @@
+import { isRequestCancelled } from "../../lib/api/errors";
 import { vi } from "../../lib/locale";
 import { matchesSearch, normalizeSearch } from "../../lib/search";
 import {
@@ -5,6 +6,7 @@ import {
   type ProviderApiErrorInfo,
   type ProviderApprovalStatus,
   type ProviderBooking,
+  type ProviderBookingDetail,
   type ProviderBookingReasonInput,
   type ProviderBookingSlot,
   type ProviderBookingStatus,
@@ -12,6 +14,7 @@ import {
 import type { ProviderLifecyclePermissions } from "../provider-workspace/lifecycle";
 import type {
   BookingActionOption,
+  BookingDetailLoadState,
   BookingDraftState,
   BookingFilters,
   BookingReconcileOutcome,
@@ -436,4 +439,370 @@ export function getPendingUnknownBooking(
     ? map.byBookingId[bookingId]
     : null;
   return found && found.phase === "unknown" ? found : null;
+}
+
+export const EMPTY_BOOKING_DETAIL: BookingDetailLoadState = {
+  identity: null,
+  bookingId: null,
+  status: "idle",
+  detail: null,
+  error: null,
+};
+
+export type FetchBookingDetailResult =
+  | Readonly<{ ok: true; detail: ProviderBookingDetail }>
+  | Readonly<{
+      ok: false;
+      notFound: boolean;
+      error: ProviderApiErrorInfo;
+      aborted?: false;
+    }>
+  | Readonly<{ ok: false; aborted: true }>;
+
+export type BookingDetailSyncParams = Readonly<{
+  identity: string | null;
+  canFetch: boolean;
+  selectedBookingId: string | null;
+  profileNotFound: boolean;
+}>;
+
+export type BookingDetailLoaderSnapshot = Readonly<{
+  state: BookingDetailLoadState;
+  interrupted: boolean;
+  inFlight: boolean;
+}>;
+
+export type BookingDetailLoader = Readonly<{
+  load: (
+    bookingId: string,
+    explicitIdentity?: string,
+  ) => Promise<FetchBookingDetailResult>;
+  selectAndLoad: (
+    identity: string,
+    bookingId: string,
+  ) => Promise<FetchBookingDetailResult>;
+  interruptForHide: () => void;
+  closeSelection: () => void;
+  resetPrivate: () => void;
+  syncSession: (
+    params: BookingDetailSyncParams,
+  ) => Promise<FetchBookingDetailResult> | null;
+  getSnapshot: () => BookingDetailLoaderSnapshot;
+}>;
+
+/**
+ * Coordinates GET /bookings/provider/:id lifecycle across <Activity mode="hidden">
+ * aborts on same-identity 503 revalidation vs explicit close, selection switch,
+ * and 401/logout/identity-switch purges.
+ * - On same-identity 503 hide cleanup: aborts the in-flight request, exits any
+ *   orphaned "loading" status (preserving previously loaded detail), records an
+ *   interrupted flag, and auto-recovers as soon as canFetch returns true on the
+ *   same identity with selectedBookingId still open.
+ * - On closeSelection / resetPrivate / identity switch: aborts and clears all
+ *   interruption markers so stale requests never resurrect or leak across users.
+ */
+export function createBookingDetailLoader(deps: Readonly<{
+  fetchDetail: (
+    bookingId: string,
+    options: { signal: AbortSignal },
+  ) => Promise<ProviderBookingDetail>;
+  classifyError: (err: unknown) => ProviderApiErrorInfo;
+  onStateChange: (next: BookingDetailLoadState) => void;
+  onDetailLoaded?: (identity: string, detail: ProviderBookingDetail) => void;
+  onErrorInfo?: (info: ProviderApiErrorInfo) => void;
+  onProfileNotFound?: () => void;
+  initialIdentity?: string | null;
+  initialCanFetch?: boolean;
+}>): BookingDetailLoader {
+  let state: BookingDetailLoadState = EMPTY_BOOKING_DETAIL;
+  let activeController: AbortController | null = null;
+  let activeTarget: { identity: string; bookingId: string } | null = null;
+  let interruptedTarget: { identity: string; bookingId: string } | null = null;
+  let requestId = 0;
+  let liveIdentity: string | null = deps.initialIdentity ?? null;
+  let canFetch = deps.initialCanFetch ?? false;
+  let selectedBookingId: string | null = null;
+
+  function emit(next: BookingDetailLoadState) {
+    state = next;
+    deps.onStateChange(next);
+  }
+
+  function hasMatchingInterrupted(identity: string, bookingId: string): boolean {
+    return (
+      interruptedTarget !== null &&
+      interruptedTarget.identity === identity &&
+      interruptedTarget.bookingId === bookingId
+    );
+  }
+
+  function hasMatchingActive(identity: string, bookingId: string): boolean {
+    return (
+      activeController !== null &&
+      activeTarget !== null &&
+      activeTarget.identity === identity &&
+      activeTarget.bookingId === bookingId
+    );
+  }
+
+  async function load(
+    bookingId: string,
+    explicitIdentity?: string,
+  ): Promise<FetchBookingDetailResult> {
+    const targetIdentity = explicitIdentity ?? liveIdentity;
+    if (!canFetch || !targetIdentity) {
+      if (targetIdentity && selectedBookingId === bookingId) {
+        interruptedTarget = { identity: targetIdentity, bookingId };
+      }
+      return { ok: false, aborted: true };
+    }
+
+    const reqId = ++requestId;
+    activeController?.abort();
+    const controller = new AbortController();
+    activeController = controller;
+    activeTarget = { identity: targetIdentity, bookingId };
+    interruptedTarget = null;
+
+    const preservedDetail =
+      state.identity === targetIdentity && state.bookingId === bookingId
+        ? state.detail
+        : null;
+
+    emit({
+      identity: targetIdentity,
+      bookingId,
+      status: "loading",
+      detail: preservedDetail,
+      error: null,
+    });
+
+    try {
+      const detail = await deps.fetchDetail(bookingId, {
+        signal: controller.signal,
+      });
+      if (
+        controller.signal.aborted ||
+        requestId !== reqId ||
+        liveIdentity !== targetIdentity
+      ) {
+        return { ok: false, aborted: true };
+      }
+      interruptedTarget = null;
+      emit({
+        identity: targetIdentity,
+        bookingId,
+        status: "ready",
+        detail,
+        error: null,
+      });
+      deps.onDetailLoaded?.(targetIdentity, detail);
+      return { ok: true, detail };
+    } catch (err) {
+      if (
+        isRequestCancelled(err) ||
+        controller.signal.aborted ||
+        requestId !== reqId ||
+        liveIdentity !== targetIdentity
+      ) {
+        return { ok: false, aborted: true };
+      }
+      const info = deps.classifyError(err);
+      deps.onErrorInfo?.(info);
+      if (info.outcome === "session-ended") {
+        interruptedTarget = null;
+        emit(EMPTY_BOOKING_DETAIL);
+        return { ok: false, notFound: false, error: info };
+      }
+      if (info.code === "PROVIDER_PROFILE_NOT_FOUND") {
+        interruptedTarget = null;
+        deps.onProfileNotFound?.();
+        emit({
+          identity: targetIdentity,
+          bookingId,
+          status: "error",
+          detail: null,
+          error: info,
+        });
+        return { ok: false, notFound: false, error: info };
+      }
+      if (info.code === "BOOKING_NOT_FOUND") {
+        interruptedTarget = null;
+        emit({
+          identity: targetIdentity,
+          bookingId,
+          status: "not-found",
+          detail: null,
+          error: info,
+        });
+        return { ok: false, notFound: true, error: info };
+      }
+      const retainedDetail =
+        state.identity === targetIdentity && state.bookingId === bookingId
+          ? state.detail
+          : null;
+      interruptedTarget = null;
+      emit({
+        identity: targetIdentity,
+        bookingId,
+        status: "error",
+        detail: retainedDetail,
+        error: info,
+      });
+      return { ok: false, notFound: false, error: info };
+    } finally {
+      if (activeController === controller) {
+        activeController = null;
+        activeTarget = null;
+      }
+    }
+  }
+
+  function interruptForHide() {
+    const target =
+      activeTarget ??
+      (liveIdentity !== null &&
+      selectedBookingId !== null &&
+      state.identity === liveIdentity &&
+      state.bookingId === selectedBookingId &&
+      state.status === "loading"
+        ? { identity: liveIdentity, bookingId: selectedBookingId }
+        : null);
+
+    requestId++;
+    const controllerToAbort = activeController;
+    activeController = null;
+    activeTarget = null;
+
+    if (
+      target !== null &&
+      target.identity === liveIdentity &&
+      target.bookingId === selectedBookingId
+    ) {
+      interruptedTarget = target;
+      if (
+        state.identity === target.identity &&
+        state.bookingId === target.bookingId &&
+        state.status === "loading"
+      ) {
+        emit({
+          ...state,
+          status: state.detail !== null ? "ready" : "idle",
+        });
+      }
+    }
+
+    controllerToAbort?.abort();
+  }
+
+  function selectAndLoad(identity: string, bookingId: string) {
+    liveIdentity = identity;
+    selectedBookingId = bookingId;
+    return load(bookingId, identity);
+  }
+
+  function closeSelection() {
+    selectedBookingId = null;
+    interruptedTarget = null;
+    requestId++;
+    const controllerToAbort = activeController;
+    activeController = null;
+    activeTarget = null;
+    controllerToAbort?.abort();
+    emit(EMPTY_BOOKING_DETAIL);
+  }
+
+  function resetPrivate() {
+    liveIdentity = null;
+    canFetch = false;
+    selectedBookingId = null;
+    interruptedTarget = null;
+    requestId++;
+    const controllerToAbort = activeController;
+    activeController = null;
+    activeTarget = null;
+    controllerToAbort?.abort();
+    emit(EMPTY_BOOKING_DETAIL);
+  }
+
+  function syncSession(
+    params: BookingDetailSyncParams,
+  ): Promise<FetchBookingDetailResult> | null {
+    const identityChanged =
+      liveIdentity !== null &&
+      params.identity !== null &&
+      liveIdentity !== params.identity;
+
+    liveIdentity = params.identity;
+    canFetch = params.canFetch;
+    selectedBookingId = params.selectedBookingId;
+
+    if (identityChanged || params.identity === null) {
+      interruptedTarget = null;
+      if (activeController) {
+        requestId++;
+        const controllerToAbort = activeController;
+        activeController = null;
+        activeTarget = null;
+        controllerToAbort.abort();
+      }
+      if (state.identity !== null) {
+        emit(EMPTY_BOOKING_DETAIL);
+      }
+      return null;
+    }
+
+    if (params.profileNotFound || params.selectedBookingId === null) {
+      if (
+        interruptedTarget !== null &&
+        (interruptedTarget.identity !== params.identity ||
+          interruptedTarget.bookingId !== params.selectedBookingId)
+      ) {
+        interruptedTarget = null;
+      }
+      return null;
+    }
+
+    if (!params.canFetch) {
+      if (
+        hasMatchingActive(params.identity, params.selectedBookingId) ||
+        (state.identity === params.identity &&
+          state.bookingId === params.selectedBookingId &&
+          state.status === "loading")
+      ) {
+        interruptForHide();
+      }
+      return null;
+    }
+
+    const orphanedLoading =
+      state.identity === params.identity &&
+      state.bookingId === params.selectedBookingId &&
+      state.status === "loading" &&
+      activeController === null;
+
+    if (
+      !hasMatchingActive(params.identity, params.selectedBookingId) &&
+      (hasMatchingInterrupted(params.identity, params.selectedBookingId) ||
+        orphanedLoading)
+    ) {
+      return load(params.selectedBookingId, params.identity);
+    }
+
+    return null;
+  }
+
+  return {
+    load,
+    selectAndLoad,
+    interruptForHide,
+    closeSelection,
+    resetPrivate,
+    syncSession,
+    getSnapshot: () => ({
+      state,
+      interrupted: interruptedTarget !== null,
+      inFlight: activeController !== null,
+    }),
+  };
 }
