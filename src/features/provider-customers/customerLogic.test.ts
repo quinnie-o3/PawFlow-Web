@@ -1,198 +1,286 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildCustomerRecords, currentMockMonth, filterCustomers, formatCustomerDateTime, reportingBounds, summarizeCustomers, validateReportingRange } from "./customerLogic";
-import { createCustomersMockData, customersMockFacility, customersMockNow } from "./data/providerCustomersMock";
-import type { CustomerBooking, CustomersMockData, ReportingRange } from "./types";
-import type { BookingStatus } from "../provider-bookings/types";
+import type { ProviderBooking } from "../provider-workspace/liveApi";
+import {
+  buildLiveCustomerRecords,
+  classifyCustomerGroup,
+  filterLiveCustomers,
+  getPresetCustomerRange,
+  getVietnamCalendarDate,
+  getVietnamCurrentMonthRange,
+  summarizeLiveCustomers,
+  validateReportingRange,
+} from "./customerLogic";
+import type { ReportingRange } from "./types";
 
-const range: ReportingRange = { start: "2026-10-01", end: "2026-10-31" };
-const facilityId = customersMockFacility.id;
-const statuses: BookingStatus[] = ["pendingConfirmation", "confirmed", "completed", "cancelled", "rejected", "noShow"];
-function booking(overrides: Partial<CustomerBooking> = {}): CustomerBooking {
-  return { id: "TEST-1", facilityId, customerId: "C01", petId: "P01", serviceName: "Dịch vụ mẫu", scheduledAt: "2026-10-10T09:00:00+07:00", status: "completed", ...overrides };
+const octRange: ReportingRange = { start: "2026-10-01", end: "2026-10-31" };
+const nowMs = Date.parse("2026-10-15T10:00:00+07:00");
+
+function makeBooking(overrides: Partial<ProviderBooking> = {}): ProviderBooking {
+  return {
+    id: "1001",
+    status: "COMPLETED",
+    bookedPrice: "250000.00",
+    customerNote: null,
+    createdAt: "2026-10-01T02:00:00.000Z",
+    updatedAt: "2026-10-01T02:00:00.000Z",
+    service: { id: "10", name: "Tắm & vệ sinh", durationMinutes: 60 },
+    slot: {
+      id: "50",
+      slotDate: "2026-10-10",
+      startTime: "09:00:00",
+      endTime: "10:00:00",
+    },
+    customer: { id: "90071992547409921", fullName: "Hà Linh" },
+    pet: {
+      id: "7001",
+      name: "Miu",
+      breed: "Anh lông ngắn",
+      birthDate: "2024-02-10",
+      weight: "4.10",
+      healthNote: "Nhạy cảm tiếng ồn",
+      petType: { id: "2", name: "Mèo" },
+    },
+    ...overrides,
+  };
 }
-function withBookings(bookings: CustomerBooking[]): CustomersMockData { return { ...createCustomersMockData(), bookings }; }
-function records(data = createCustomersMockData(), period = range, now = customersMockNow) { return buildCustomerRecords(data, facilityId, period, now); }
 
-test("The default report counts distinct served customer and pet IDs at the current facility", () => {
-  const result = records();
-  assert.equal(result.length, 8);
-  assert.deepEqual(summarizeCustomers(result, range), { servedCustomers: 5, returningCustomers: 2, servedPets: 6 });
+test("Matching customer names with distinct BIGINT string IDs are never merged", () => {
+  const bookings: ProviderBooking[] = [
+    makeBooking({
+      id: "1001",
+      customer: { id: "90071992547409921", fullName: "Hà Linh" },
+      pet: {
+        id: "7001",
+        name: "Miu",
+        breed: "Anh lông ngắn",
+        birthDate: null,
+        weight: null,
+        healthNote: null,
+        petType: { id: "2", name: "Mèo" },
+      },
+    }),
+    makeBooking({
+      id: "1002",
+      customer: { id: "90071992547409922", fullName: "Hà Linh" },
+      pet: {
+        id: "7002",
+        name: "Miu",
+        breed: "Anh lông dài",
+        birthDate: null,
+        weight: null,
+        healthNote: null,
+        petType: { id: "2", name: "Mèo" },
+      },
+    }),
+  ];
+
+  const records = buildLiveCustomerRecords(bookings, octRange, nowMs);
+  assert.equal(records.length, 2);
+  assert.deepEqual(
+    records.map((r) => r.customer.id).sort(),
+    ["90071992547409921", "90071992547409922"],
+  );
+  assert.deepEqual(summarizeLiveCustomers(records, octRange), {
+    servedCustomers: 2,
+    returningCustomers: 0,
+    servedPets: 2,
+  });
 });
 
-test("Customers without bookings here are excluded, while all six booking statuses remain visible", () => {
-  const data = createCustomersMockData();
-  data.customers.push({ id: "UNBOOKED", name: "Chưa đặt lịch", email: "", phone: "" });
-  const result = records(data);
-  assert.ok(!result.some((record) => ["UNBOOKED", "C-OTHER"].includes(record.customer.id)));
-  assert.deepEqual(new Set(result.flatMap((record) => record.bookings.map((item) => item.status))), new Set(statuses));
-  for (const status of statuses) assert.equal(records(withBookings([booking({ status })])).length, 1);
+test("Returning formula matches Backend SQL DashboardService.getReturningCustomers exactly", () => {
+  // 1) Completed before period + completed in period => returning
+  const priorAndInPeriod: ProviderBooking[] = [
+    makeBooking({
+      id: "1",
+      slot: { id: "s1", slotDate: "2026-09-20", startTime: "09:00:00", endTime: "10:00:00" },
+    }),
+    makeBooking({
+      id: "2",
+      slot: { id: "s2", slotDate: "2026-10-05", startTime: "09:00:00", endTime: "10:00:00" },
+    }),
+  ];
+  assert.equal(classifyCustomerGroup(priorAndInPeriod, octRange), "returning");
+
+  // 2) Two COMPLETED bookings at different times WITHIN the same period => returning (matches SQL!)
+  const twoWithinSamePeriodDifferentDay: ProviderBooking[] = [
+    makeBooking({
+      id: "3",
+      slot: { id: "s3", slotDate: "2026-10-02", startTime: "09:00:00", endTime: "10:00:00" },
+    }),
+    makeBooking({
+      id: "4",
+      slot: { id: "s4", slotDate: "2026-10-08", startTime: "09:00:00", endTime: "10:00:00" },
+    }),
+  ];
+  assert.equal(classifyCustomerGroup(twoWithinSamePeriodDifferentDay, octRange), "returning");
+
+  // 3) Same slotDate, strictly earlier startTime within the same day => returning (matches SQL!)
+  const sameDayEarlierStart: ProviderBooking[] = [
+    makeBooking({
+      id: "5",
+      slot: { id: "s5", slotDate: "2026-10-05", startTime: "09:00:00", endTime: "10:00:00" },
+    }),
+    makeBooking({
+      id: "6",
+      slot: { id: "s6", slotDate: "2026-10-05", startTime: "14:00:00", endTime: "15:00:00" },
+    }),
+  ];
+  assert.equal(classifyCustomerGroup(sameDayEarlierStart, octRange), "returning");
+
+  // 4) Two COMPLETED bookings with identical (slotDate, startTime) and no earlier booking => NOT returning (new)
+  const simultaneousOnly: ProviderBooking[] = [
+    makeBooking({
+      id: "7",
+      slot: { id: "s7", slotDate: "2026-10-05", startTime: "09:00:00", endTime: "10:00:00" },
+    }),
+    makeBooking({
+      id: "8",
+      slot: { id: "s8", slotDate: "2026-10-05", startTime: "09:00:00", endTime: "10:00:00" },
+    }),
+  ];
+  assert.equal(classifyCustomerGroup(simultaneousOnly, octRange), "new");
+
+  // 5) Earlier non-COMPLETED booking does NOT qualify as returning
+  const earlierCancelled: ProviderBooking[] = [
+    makeBooking({
+      id: "9",
+      status: "CANCELLED",
+      slot: { id: "s9", slotDate: "2026-09-01", startTime: "09:00:00", endTime: "10:00:00" },
+    }),
+    makeBooking({
+      id: "10",
+      status: "COMPLETED",
+      slot: { id: "s10", slotDate: "2026-10-05", startTime: "09:00:00", endTime: "10:00:00" },
+    }),
+  ];
+  assert.equal(classifyCustomerGroup(earlierCancelled, octRange), "new");
+
+  // 6) All-time mode (range === null) applies the exact same chronological rule
+  assert.equal(classifyCustomerGroup(priorAndInPeriod, null), "returning");
+  assert.equal(classifyCustomerGroup(simultaneousOnly, null), "new");
+  assert.equal(
+    classifyCustomerGroup([makeBooking({ id: "11", status: "CONFIRMED" })], null),
+    "noCompleted",
+  );
+  assert.equal(
+    classifyCustomerGroup(
+      [
+        makeBooking({
+          id: "12",
+          status: "COMPLETED",
+          slot: { id: "s12", slotDate: "2026-08-01", startTime: "09:00:00", endTime: "10:00:00" },
+        }),
+      ],
+      octRange,
+    ),
+    "outsidePeriod",
+  );
 });
 
-test("A customer's history and pet profiles are limited to their own bookings at this facility", () => {
-  const linh = records().find((record) => record.customer.id === "C01")!;
-  assert.equal(linh.bookings.length, 8);
-  assert.ok(linh.bookings.every((item) => item.facilityId === facilityId && item.customerId === "C01"));
-  assert.deepEqual(linh.pets.map((pet) => pet.id), ["P01", "P02"]);
-  assert.ok(!linh.pets.some((pet) => ["P-PRIVATE", "P-UNBOOKED"].includes(pet.id)));
+test("BigInt total spend sums only COMPLETED bookedPrice with zero float drift and tracks status counts & upcoming slot", () => {
+  const bookings: ProviderBooking[] = [
+    makeBooking({
+      id: "201",
+      status: "COMPLETED",
+      bookedPrice: "5000000000.50",
+      slot: { id: "s1", slotDate: "2026-10-02", startTime: "09:00:00", endTime: "10:00:00" },
+    }),
+    makeBooking({
+      id: "202",
+      status: "COMPLETED",
+      bookedPrice: "5000000000.75",
+      slot: { id: "s2", slotDate: "2026-10-12", startTime: "10:00:00", endTime: "11:00:00" },
+    }),
+    makeBooking({
+      id: "203",
+      status: "CANCELLED",
+      bookedPrice: "999999.00",
+      slot: { id: "s3", slotDate: "2026-10-14", startTime: "11:00:00", endTime: "12:00:00" },
+    }),
+    makeBooking({
+      id: "204",
+      status: "CONFIRMED",
+      bookedPrice: "300000.00",
+      slot: { id: "s4", slotDate: "2026-10-20", startTime: "15:00:00", endTime: "16:00:00" },
+    }),
+    makeBooking({
+      id: "205",
+      status: "PENDING_CONFIRMATION",
+      bookedPrice: "150000.00",
+      slot: { id: "s5", slotDate: "2026-10-18", startTime: "08:30:00", endTime: "09:30:00" },
+    }),
+  ];
+
+  const [record] = buildLiveCustomerRecords(bookings, octRange, nowMs);
+  assert.equal(record.completedCount, 2);
+  assert.equal(record.statusCounts.total, 5);
+  assert.equal(record.statusCounts.CANCELLED, 1);
+  assert.equal(record.statusCounts.CONFIRMED, 1);
+  assert.equal(record.statusCounts.PENDING_CONFIRMATION, 1);
+  assert.equal(record.totalCompletedSpendCents, BigInt("1000000000125"));
+  assert.equal(record.totalCompletedSpendFormatted, "10.000.000.001,25 ₫");
+  assert.equal(record.latestCompletedSlot?.slotDate, "2026-10-12");
+  assert.equal(record.nextUpcomingSlot?.slotDate, "2026-10-18");
 });
 
-test("Matching names never merge customer IDs or pet IDs", () => {
-  const result = filterCustomers(records(), { query: "HA LINH", group: "all" });
-  assert.deepEqual(result.map((record) => record.customer.id), ["C01", "C07"]);
-  assert.equal(result[0].customer.name, result[1].customer.name);
-  assert.equal(result[0].pets[0].name, result[1].pets[0].name);
-  assert.deepEqual(summarizeCustomers(result, range), { servedCustomers: 2, returningCustomers: 1, servedPets: 3 });
-  assert.equal(result[1].customer.email, "halinh.khac@example.com");
-  assert.deepEqual(result[1].bookings.map((item) => item.id), ["KH-015"]);
-});
+test("Pet deduplication, Vietnamese accent-insensitive search, and Asia/Ho_Chi_Minh date presets work cleanly", () => {
+  const bookings: ProviderBooking[] = [
+    makeBooking({
+      id: "301",
+      customer: { id: "501", fullName: "Đức Huy" },
+      pet: {
+        id: "801",
+        name: "Bắp",
+        breed: "Corgi",
+        birthDate: "2023-01-01",
+        weight: "12.00",
+        healthNote: "Không dị ứng",
+        petType: { id: "1", name: "Chó" },
+      },
+    }),
+    makeBooking({
+      id: "302",
+      customer: { id: "501", fullName: "Đức Huy" },
+      slot: { id: "s2", slotDate: "2026-10-11", startTime: "11:00:00", endTime: "12:00:00" },
+      pet: {
+        id: "801",
+        name: "Bắp",
+        breed: "Corgi",
+        birthDate: "2023-01-01",
+        weight: "12.50",
+        healthNote: "Không dị ứng",
+        petType: { id: "1", name: "Chó" },
+      },
+    }),
+  ];
 
-test("Only Completed contributes to served KPIs and lifetime completion count", () => {
-  for (const status of statuses) {
-    const result = records(withBookings([booking({ status })]));
-    const expected = status === "completed" ? 1 : 0;
-    assert.equal(result[0].completedCount, expected);
-    assert.deepEqual(summarizeCustomers(result, range), { servedCustomers: expected, returningCustomers: 0, servedPets: expected });
-    assert.equal(result[0].group, expected ? "new" : "noCompleted");
-  }
-});
+  const records = buildLiveCustomerRecords(bookings, octRange, nowMs);
+  assert.equal(records[0].pets.length, 1);
+  assert.equal(records[0].pets[0].weight, "12.50");
+  assert.equal(
+    filterLiveCustomers(records, { query: "DUC HUY", group: "returning" }).length,
+    1,
+  );
+  assert.equal(
+    filterLiveCustomers(records, { query: "bap", group: "all" }).length,
+    1,
+  );
+  assert.equal(
+    filterLiveCustomers(records, { query: "501", group: "all" }).length,
+    1,
+  );
 
-test("Reporting boundaries include local midnight and end of final day, excluding adjacent instants", () => {
-  const dates = [
-    ["2026-09-30T23:59:59.999+07:00", false],
-    ["2026-09-30T17:00:00Z", true],
-    ["2026-10-31T23:59:59.999+07:00", true],
-    ["2026-10-31T17:00:00Z", false],
-  ] as const;
-  for (const [scheduledAt, included] of dates) {
-    const result = records(withBookings([booking({ scheduledAt })]));
-    assert.equal(summarizeCustomers(result, range).servedCustomers, included ? 1 : 0, scheduledAt);
-  }
-});
-
-test("A one-day report covers the entire local day", () => {
-  const singleDay = { start: "2026-10-01", end: "2026-10-01" };
-  const data = withBookings([booking({ scheduledAt: "2026-10-01T23:59:59+07:00" })]);
-  assert.equal(summarizeCustomers(records(data, singleDay), singleDay).servedCustomers, 1);
-  assert.equal(reportingBounds(singleDay).endExclusive - reportingBounds(singleDay).start, 86_400_000);
-});
-
-test("Returning requires Completed before the first local day; exactly at the boundary is New", () => {
-  const data = withBookings([booking({ scheduledAt: "2026-09-30T23:59:59.999+07:00" }), booking({ id: "IN-PERIOD", scheduledAt: "2026-10-01T00:00:00+07:00" })]);
-  assert.equal(records(data)[0].group, "returning");
-  data.bookings.shift();
-  assert.equal(records(data)[0].group, "new");
-  data.bookings.push(booking({ id: "SECOND-IN-PERIOD" }));
-  assert.equal(records(data)[0].group, "new", "two Completed within the same period do not make a returning customer");
-});
-
-test("Prior non-Completed bookings and prior completions at another facility do not make Returning", () => {
-  const data = withBookings([
-    booking({ scheduledAt: "2026-09-20T09:00:00+07:00", status: "confirmed" }),
-    booking({ id: "OTHER", facilityId: "OTHER", scheduledAt: "2026-09-01T09:00:00+07:00" }),
-    booking({ id: "CURRENT" }),
-  ]);
-  assert.equal(records(data)[0].group, "new");
-  assert.equal(summarizeCustomers(records(data), range).returningCustomers, 0);
-});
-
-test("Changing the period recalculates New/Returning and KPIs but preserves the entire customer list", () => {
-  const september = { start: "2026-09-01", end: "2026-09-30" };
-  const before = records(undefined, september);
-  const after = records();
-  assert.deepEqual(before.map((record) => record.customer.id), after.map((record) => record.customer.id));
-  assert.equal(before[0].group, "new");
-  assert.equal(after[0].group, "returning");
-  assert.deepEqual(summarizeCustomers(before, september), { servedCustomers: 3, returningCustomers: 0, servedPets: 3 });
-  const november = { start: "2026-11-01", end: "2026-11-30" };
-  assert.equal(records(undefined, november)[0].group, "outsidePeriod");
-});
-
-test("Customers with no Completed are distinct from customers completed only outside the selected period", () => {
-  const result = records();
-  assert.equal(result.find((item) => item.customer.id === "C04")!.group, "noCompleted");
-  assert.equal(result.find((item) => item.customer.id === "C05")!.group, "outsidePeriod");
-  for (const group of ["new", "returning"] as const) {
-    assert.ok(filterCustomers(result, { query: "", group }).every((item) => item.group === group));
-  }
-});
-
-test("Lifetime count and most recent service ignore the reporting period and other statuses", () => {
-  const result = records();
-  const other = records(undefined, { start: "2026-01-01", end: "2026-01-31" });
-  assert.deepEqual(result.map((item) => [item.completedCount, item.lastServedAt]), other.map((item) => [item.completedCount, item.lastServedAt]));
-  assert.equal(result[0].completedCount, 3);
-  assert.equal(result[0].lastServedAt, "2026-10-10T14:00:00+07:00");
-  const noCompleted = result.find((item) => item.customer.id === "C04")!;
-  assert.equal(noCompleted.completedCount, 0);
-  assert.equal(noCompleted.lastServedAt, null);
-});
-
-test("Latest served time includes now exactly and never selects a future Completed slot", () => {
-  const data = withBookings([
-    booking({ id: "AT-NOW", scheduledAt: customersMockNow }),
-    booking({ id: "FUTURE", scheduledAt: "2026-10-15T10:00:00.001+07:00" }),
-  ]);
-  assert.equal(records(data)[0].lastServedAt, customersMockNow);
-  data.bookings.shift();
-  assert.equal(records(data)[0].lastServedAt, null);
-  assert.equal(records(data)[0].completedCount, 1, "lifetime count follows Completed status; the clock cap applies to the latest service time");
-});
-
-test("Pet KPI deduplicates by pet ID and excludes pets with only pending/confirmed bookings", () => {
-  const data = withBookings([
-    booking(), booking({ id: "REPEAT" }), booking({ id: "SECOND-PET", petId: "P02" }),
-    booking({ id: "WAITING", customerId: "C02", petId: "P03", status: "confirmed" }),
-    booking({ id: "OTHER", petId: "P-PRIVATE", facilityId: "OTHER" }),
-  ]);
-  assert.equal(summarizeCustomers(records(data), range).servedPets, 2);
-  assert.deepEqual(records(data).find((item) => item.customer.id === "C02")!.pets.map((pet) => pet.id), ["P03"], "a pending pet is visible in the scoped profile but is not a served pet");
-});
-
-test("Search trims, ignores Vietnamese accents/case, handles Đ, and combines with the period group", () => {
-  const result = records();
-  assert.equal(filterCustomers(result, { query: "  DUC HUY ", group: "all" })[0].customer.id, "C06");
-  assert.equal(filterCustomers(result, { query: "BAP", group: "returning" })[0].customer.id, "C02");
-  assert.equal(filterCustomers(result, { query: "c07", group: "new" })[0].customer.id, "C07");
-  assert.equal(filterCustomers(result, { query: "halinh", group: "all" }).length, 0);
-  assert.equal(filterCustomers(result, { query: "MIU", group: "new" })[0].customer.id, "C07");
-  assert.equal(filterCustomers(result, { query: "Thú cưng chỉ ở nơi khác", group: "all" }).length, 0);
-});
-
-test("Default month and display use Vietnam time across UTC month/year boundaries and leap February", () => {
-  assert.deepEqual(currentMockMonth("2026-09-30T17:00:00Z"), range);
-  assert.deepEqual(currentMockMonth("2026-12-31T18:00:00Z"), { start: "2027-01-01", end: "2027-01-31" });
-  assert.deepEqual(currentMockMonth("2028-02-15T00:00:00Z"), { start: "2028-02-01", end: "2028-02-29" });
-  assert.match(formatCustomerDateTime("2026-09-30T17:00:00Z"), /00:00.*01\/10\/2026/);
-});
-
-test("Invalid, missing, impossible, and reversed reporting dates are rejected without normalization", () => {
-  for (const invalid of [
-    { start: "", end: range.end }, { start: range.start, end: "" },
-    { start: "2026-02-30", end: range.end }, { start: "2026-1-1", end: range.end },
-    { start: range.end, end: range.start },
-  ]) {
-    assert.ok(validateReportingRange(invalid));
-    assert.throws(() => reportingBounds(invalid));
-  }
-  assert.equal(validateReportingRange(range), null);
-});
-
-test("Empty data yields zero KPIs and derivation leaves source mock data unchanged", () => {
-  const empty = records(createCustomersMockData(true));
-  assert.deepEqual(empty, []);
-  assert.deepEqual(summarizeCustomers(empty, range), { servedCustomers: 0, returningCustomers: 0, servedPets: 0 });
-  const data = createCustomersMockData();
-  const snapshot = JSON.stringify(data);
-  const result = records(data);
-  filterCustomers(result, { query: "", group: "all" });
-  summarizeCustomers(result, range);
-  assert.equal(JSON.stringify(data), snapshot);
-  data.customers[0].name = "Changed";
-  data.pets[0].name = "Changed";
-  data.bookings[0].status = "cancelled";
-  const fresh = createCustomersMockData();
-  assert.equal(fresh.customers[0].name, "Hà Linh");
-  assert.equal(fresh.pets[0].name, "Miu");
-  assert.equal(fresh.bookings[0].status, "completed");
+  // Vietnam timezone rollover check (2026-09-30T17:00:00Z == 2026-10-01 00:00:00 +07:00)
+  assert.equal(getVietnamCalendarDate(Date.parse("2026-09-30T17:00:00Z")), "2026-10-01");
+  assert.deepEqual(
+    getVietnamCurrentMonthRange(Date.parse("2028-02-15T00:00:00Z")),
+    { start: "2028-02-01", end: "2028-02-29" },
+  );
+  assert.deepEqual(
+    getPresetCustomerRange("30d", Date.parse("2026-10-30T10:00:00+07:00")),
+    { start: "2026-10-01", end: "2026-10-30" },
+  );
+  assert.ok(validateReportingRange({ start: "2026-10-31", end: "2026-10-01" }));
+  assert.equal(validateReportingRange(octRange), null);
 });

@@ -1,28 +1,68 @@
 import { vi } from "../../lib/locale";
-import { profileFields } from "./profileLogic";
-import type { ProfileErrors, ProfileSection, ProfileValues } from "./types";
+import { normalizeOptionalText } from "../provider-workspace/liveApi";
+import { profileSectionFields } from "./profileLogic";
+import type {
+  NormalizedProfileDraft,
+  ProfileEditSection,
+  ProfileFormValues,
+  ProfileValidationErrors,
+} from "./types";
 
-export const profileFieldLimits = { name: 100, description: 2000, area: 200, email: 254 } as const;
+/**
+ * Exact limits from PawFlow-API/src/providers/dto/update-provider.dto.ts:
+ * - businessName: trim, MinLength(2), MaxLength(200)
+ * - address: trim, MinLength(5), no MaxLength (text)
+ * - phone: optional, nullable, MaxLength(20)
+ * - description: optional, nullable, no MaxLength (text)
+ */
+export const profileFieldLimits = {
+  businessNameMin: 2,
+  businessNameMax: 200,
+  addressMin: 5,
+  phoneMax: 20,
+} as const;
 
-export function normalizeProfileValues(values: ProfileValues): ProfileValues {
+export function normalizeProfileDraft(
+  values: ProfileFormValues,
+): NormalizedProfileDraft {
   return {
-    name: values.name.trim(),
-    description: values.description.trim(),
-    area: values.area.trim(),
-    phone: values.phone.trim().replace(/[\s-]/g, ""),
-    email: values.email.trim(),
+    businessName: values.businessName.trim(),
+    description: normalizeOptionalText(values.description),
+    address: values.address.trim(),
+    phone: normalizeOptionalText(values.phone),
   };
 }
 
-/** emailFormatValid comes from the same native type=email constraint as auth. */
-export function validateProfileValues(values: ProfileValues, section: ProfileSection, emailFormatValid: boolean): ProfileErrors {
-  const clean = normalizeProfileValues(values);
-  const errors: ProfileErrors = {};
-  const fields = profileFields(section);
-  if (fields.includes("name") && (clean.name.length < 2 || clean.name.length > profileFieldLimits.name)) errors.name = vi.provider.profile.validation.name;
-  if (fields.includes("description") && clean.description.length > profileFieldLimits.description) errors.description = vi.provider.profile.validation.description;
-  if (fields.includes("area") && (!clean.area || clean.area.length > profileFieldLimits.area)) errors.area = vi.provider.profile.validation.area;
-  if (fields.includes("phone") && !/^(?:0|\+84)\d{9}$/.test(clean.phone)) errors.phone = vi.provider.profile.validation.phone;
-  if (fields.includes("email") && (!clean.email || clean.email.length > profileFieldLimits.email || !emailFormatValid)) errors.email = vi.provider.profile.validation.email;
+export function validateProfileDraft(
+  values: ProfileFormValues,
+  section: ProfileEditSection,
+): ProfileValidationErrors {
+  const clean = normalizeProfileDraft(values);
+  const errors: ProfileValidationErrors = {};
+  const fields = profileSectionFields(section);
+
+  if (
+    fields.includes("businessName") &&
+    (clean.businessName.length < profileFieldLimits.businessNameMin ||
+      clean.businessName.length > profileFieldLimits.businessNameMax)
+  ) {
+    errors.businessName = vi.provider.profile.validation.businessName;
+  }
+
+  if (
+    fields.includes("address") &&
+    clean.address.length < profileFieldLimits.addressMin
+  ) {
+    errors.address = vi.provider.profile.validation.address;
+  }
+
+  if (
+    fields.includes("phone") &&
+    clean.phone !== null &&
+    clean.phone.length > profileFieldLimits.phoneMax
+  ) {
+    errors.phone = vi.provider.profile.validation.phone;
+  }
+
   return errors;
 }

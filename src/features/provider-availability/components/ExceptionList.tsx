@@ -1,20 +1,79 @@
-import { vi, formatMessage } from "@/lib/locale";
-import { formatAvailabilityDate, formatRanges, localDate } from "../availabilityLogic";
-import type { DateException } from "../types";
+"use client";
+
+import Link from "next/link";
+import { Info } from "lucide-react";
+import { vi } from "@/lib/locale";
 import styles from "../availability.module.css";
 
-export default function ExceptionList({ exceptions, now, onEdit, onAdd }: {
-  exceptions: DateException[]; now: string; onEdit: (exception: DateException) => void; onAdd: () => void;
+export default function ExceptionList({
+  canOpenDialogs,
+  onOpenSlots,
+  onOpenWeekly,
+}: {
+  canOpenDialogs: boolean;
+  onOpenSlots: () => void;
+  onOpenWeekly: () => void;
 }) {
-  return <section className={`${styles.card} ${styles.exceptionsCard}`} aria-labelledby="exceptions-title">
-    <div className={styles.sectionHeading}><h2 id="exceptions-title">{vi.provider.availability.exception.title}</h2><p>{vi.provider.availability.exceptions.description}</p></div>
-    {exceptions.length ? <ul className={styles.exceptionList}>{exceptions.map((exception) => <li key={exception.id}>
-      <button type="button" onClick={() => onEdit(exception)} aria-label={formatMessage(vi.provider.availability.exceptions.viewLabel, { date: formatAvailabilityDate(exception.date) })}>
-        <strong>{formatAvailabilityDate(exception.date)}</strong><span>{exception.ranges.length ? formatMessage(vi.provider.availability.exceptions.hours, { ranges: formatRanges(exception.ranges) }) : vi.provider.availability.exception.closedAllDay}</span>
-        {exception.date < localDate(now) && <small>{vi.provider.availability.labels.historical}</small>}
-      </button>
-    </li>)}</ul> : <p className={styles.empty}>{vi.provider.availability.exceptions.empty}</p>}
-    <p className={styles.hint}>{vi.provider.availability.exceptions.heldNote}</p>
-    <button type="button" className={styles.outlineButton} onClick={onAdd}>{vi.provider.availability.exceptions.add}</button>
-  </section>;
+  const locale = vi.provider.availability.exceptions;
+
+  return (
+    <section
+      className={`${styles.card} ${styles.exceptionsCard}`}
+      aria-labelledby="exceptions-title"
+    >
+      <div className={styles.cardHeaderRow}>
+        <div className={styles.sectionHeading}>
+          <h2 id="exceptions-title">{locale.title}</h2>
+          <p>{locale.description}</p>
+        </div>
+        <span className={`${styles.badge} ${styles.badgeNeutral}`}>
+          {locale.badge}
+        </span>
+      </div>
+
+      <div className={styles.unsupportedBox}>
+        <div className={styles.unsupportedHeading}>
+          <Info aria-hidden="true" focusable="false" size={16} />
+          <h3>{locale.unsupportedTitle}</h3>
+        </div>
+        <p>{locale.unsupportedBody}</p>
+      </div>
+
+      <div className={styles.guidanceBlock}>
+        <p className={styles.guidanceTitle}>{locale.guidanceTitle}</p>
+        <ul className={styles.guidanceList}>
+          <li>{locale.guidanceStepSlots}</li>
+          <li>{locale.guidanceStepBookings}</li>
+          <li>{locale.guidanceStepWeekly}</li>
+        </ul>
+      </div>
+
+      <div className={styles.slotActions}>
+        <button
+          type="button"
+          className={styles.outlineButton}
+          disabled={!canOpenDialogs}
+          onClick={onOpenSlots}
+        >
+          {locale.openSlots}
+        </button>
+        <button
+          type="button"
+          className={styles.softButton}
+          disabled={!canOpenDialogs}
+          onClick={onOpenWeekly}
+        >
+          {locale.openWeekly}
+        </button>
+      </div>
+
+      <Link
+        href="/dashboard/bookings"
+        prefetch={false}
+        className={styles.textButton}
+      >
+        {locale.viewBookings}
+      </Link>
+    </section>
+  );
 }

@@ -1,41 +1,149 @@
-import { vi } from "@/lib/locale";
-import { useId, useState } from "react";
-import type { ServiceFeedback } from "../types";
-import ServicesFeedback from "./ServicesFeedback";
+import { RefreshCw } from "lucide-react";
+import { formatMessage, vi } from "@/lib/locale";
+import { getProviderErrorMessage } from "@/features/provider-workspace/lifecycle";
+import {
+  getServiceCategoryName,
+  isServiceCategoryInactive,
+} from "../serviceLogic";
+import type { CategoriesLoadStatus } from "../useProviderServices";
+import type {
+  ProviderApiErrorInfo,
+  ProviderService,
+  ServiceCategoryOption,
+} from "../types";
 import styles from "../services.module.css";
 
-export default function ServiceCategoryField({ categories, value, onChange, onCreate }: {
-  categories: string[];
+export default function ServiceCategoryField({
+  inputId,
+  categories,
+  categoriesStatus,
+  categoriesError,
+  value,
+  currentService,
+  disabled,
+  error,
+  onChange,
+  onReloadCategories,
+}: {
+  inputId: string;
+  categories: readonly ServiceCategoryOption[];
+  categoriesStatus: CategoriesLoadStatus;
+  categoriesError: ProviderApiErrorInfo | null;
   value: string;
-  onChange: (category: string) => void;
-  onCreate: (name: string) => ServiceFeedback;
+  currentService?: ProviderService | null;
+  disabled: boolean;
+  error?: string;
+  onChange: (categoryId: string) => void;
+  onReloadCategories: () => void;
 }) {
-  const id = useId();
-  const [adding, setAdding] = useState(false);
-  const [name, setName] = useState("");
-  const [feedback, setFeedback] = useState<ServiceFeedback | null>(null);
-  function create() {
-    const result = onCreate(name);
-    setFeedback(result);
-    if (result.outcome === "success") {
-      onChange(name.trim());
-      setName("");
-      setAdding(false);
-      window.requestAnimationFrame(() => document.getElementById(id)?.focus());
-    }
-  }
-  return <div>
-    <div className={styles.field}><label htmlFor={id}>{vi.provider.services.category.requiredLabel}</label>
-      <select id={id} value={value} onChange={(event) => onChange(event.target.value)} required>
-        <option value="">{vi.provider.services.category.choose}</option>
-        {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+  const categoryLocale = vi.provider.services.category;
+  const hintId = `${inputId}-hint`;
+  const errorId = `${inputId}-error`;
+  const categoriesLoaded = categoriesStatus === "ready";
+  const currentCategoryName = currentService
+    ? getServiceCategoryName(currentService, categories)
+    : "";
+  const currentCategoryInactive = currentService
+    ? isServiceCategoryInactive(currentService, categories, categoriesLoaded)
+    : false;
+  const showFallbackCurrentOption =
+    currentService !== null &&
+    currentService !== undefined &&
+    !categories.some((item) => item.id === currentService.categoryId);
+
+  const describedBy = error ? `${errorId} ${hintId}` : hintId;
+
+  return (
+    <div className={styles.field}>
+      <label htmlFor={inputId}>{categoryLocale.requiredLabel}</label>
+
+      <select
+        id={inputId}
+        value={value}
+        disabled={disabled}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy}
+        onChange={(event) => onChange(event.target.value)}
+        required
+      >
+        <option value="">{categoryLocale.choose}</option>
+        {showFallbackCurrentOption && currentService && (
+          <option value={currentService.categoryId}>
+            {currentCategoryInactive
+              ? formatMessage(categoryLocale.inactiveOption, {
+                  name: currentCategoryName,
+                })
+              : currentCategoryName}
+          </option>
+        )}
+        {categories.map((category) => (
+          <option key={category.id} value={category.id}>
+            {category.name}
+          </option>
+        ))}
       </select>
+
+      {error && (
+        <span id={errorId} className={styles.fieldError} role="alert">
+          {error}
+        </span>
+      )}
+
+      {currentService &&
+        currentCategoryInactive &&
+        value === currentService.categoryId && (
+          <div className={styles.warningBox} role="note">
+            <p>
+              {formatMessage(categoryLocale.inactiveWarning, {
+                name: currentCategoryName,
+              })}
+            </p>
+          </div>
+        )}
+
+      {categoriesStatus === "loading" && (
+        <span className={styles.fieldHint} role="status">
+          {categoryLocale.loading}
+        </span>
+      )}
+
+      {categoriesStatus === "error" && (
+        <div className={styles.inlineRetryRow}>
+          <span className={styles.fieldError} role="alert">
+            {categoriesError
+              ? getProviderErrorMessage(categoriesError)
+              : categoryLocale.loadError}
+          </span>
+          <button
+            type="button"
+            className={styles.inlineRetryButton}
+            disabled={disabled}
+            onClick={onReloadCategories}
+          >
+            <RefreshCw aria-hidden="true" focusable="false" size={12} />
+            {categoryLocale.retry}
+          </button>
+        </div>
+      )}
+
+      {categoriesStatus === "ready" && categories.length === 0 && (
+        <div className={styles.inlineRetryRow}>
+          <span className={styles.fieldHint}>{categoryLocale.empty}</span>
+          <button
+            type="button"
+            className={styles.inlineRetryButton}
+            disabled={disabled}
+            onClick={onReloadCategories}
+          >
+            <RefreshCw aria-hidden="true" focusable="false" size={12} />
+            {categoryLocale.retry}
+          </button>
+        </div>
+      )}
+
+      <span id={hintId} className={styles.fieldHint}>
+        {categoryLocale.adminManagedHint}
+      </span>
     </div>
-    {!adding ? <button className={styles.softButton} type="button" onClick={() => { setAdding(true); setFeedback(null); }}>{vi.provider.services.category.add}</button> : <div className={styles.confirmation}>
-      <label className={styles.field}>{vi.provider.services.category.newName}<input autoFocus value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); create(); } }} /></label>
-      <ServicesFeedback feedback={feedback} />
-      <button className={styles.primaryButton} type="button" onClick={create}>{feedback?.outcome === "error" ? vi.provider.services.category.retry : vi.provider.services.category.create}</button>
-      <button className={styles.softButton} type="button" onClick={() => { setAdding(false); window.requestAnimationFrame(() => document.getElementById(id)?.focus()); }}>{vi.provider.services.category.skip}</button>
-    </div>}
-  </div>;
+  );
 }

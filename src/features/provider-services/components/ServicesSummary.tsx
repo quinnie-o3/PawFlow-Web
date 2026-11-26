@@ -1,13 +1,64 @@
-import { vi, formatMessage } from "@/lib/locale";
-import type { ProviderService } from "../types";
+import { formatMessage, vi } from "@/lib/locale";
+import { isServiceCategoryInactive } from "../serviceLogic";
+import type { ProviderService, ServiceCategoryOption } from "../types";
 import styles from "../services.module.css";
 
-export default function ServicesSummary({ services }: { services: ProviderService[] }) {
-  const visible = services.filter((service) => service.active).length;
-  const popular = services.reduce<ProviderService | undefined>((best, service) => !best || service.completedCount > best.completedCount ? service : best, undefined);
-  return <div className={styles.summaries} aria-label={vi.provider.services.summary.label}>
-    <article><h2>{vi.provider.services.status.displayed}</h2><p className={styles.summaryCount}>{String(visible).padStart(2, "0")}</p><p>{vi.provider.services.summary.bookable}</p></article>
-    <article><h2>{vi.provider.services.status.hidden}</h2><p className={styles.summaryCount}>{String(services.length - visible).padStart(2, "0")}</p><p>{vi.provider.services.summary.hiddenHint}</p></article>
-    <article><h2>{vi.provider.services.summary.popularTitle}</h2><p className={styles.summaryCount}>{popular?.completedCount || 0}</p><p>{popular && popular.completedCount > 0 ? formatMessage(vi.provider.services.summary.popularService, { serviceName: popular.name }) : vi.provider.services.summary.noCompletedBookings}</p></article>
-  </div>;
+export default function ServicesSummary({
+  services,
+  activeCategories,
+  categoriesLoaded,
+}: {
+  services: readonly ProviderService[];
+  activeCategories: readonly ServiceCategoryOption[];
+  categoriesLoaded: boolean;
+}) {
+  const activeCount = services.filter(
+    (service) => service.status === "ACTIVE",
+  ).length;
+  const inactiveCount = services.length - activeCount;
+  const distinctCategoryIds = new Set(
+    services.map((service) => service.categoryId),
+  );
+  const inactiveCategoryServiceCount = services.filter((service) =>
+    isServiceCategoryInactive(service, activeCategories, categoriesLoaded),
+  ).length;
+
+  const summaryLocale = vi.provider.services.summary;
+  const totalSubtitle =
+    services.length === 0
+      ? summaryLocale.noServicesHint
+      : inactiveCategoryServiceCount > 0
+        ? formatMessage(summaryLocale.categoriesUsedWithInactive, {
+            count: distinctCategoryIds.size,
+            inactiveCount: inactiveCategoryServiceCount,
+          })
+        : formatMessage(summaryLocale.categoriesUsed, {
+            count: distinctCategoryIds.size,
+          });
+
+  return (
+    <div className={styles.summaries} aria-label={summaryLocale.label}>
+      <article>
+        <h2>{summaryLocale.activeTitle}</h2>
+        <p className={styles.summaryCount}>
+          {String(activeCount).padStart(2, "0")}
+        </p>
+        <p>{summaryLocale.activeHint}</p>
+      </article>
+      <article>
+        <h2>{summaryLocale.inactiveTitle}</h2>
+        <p className={styles.summaryCount}>
+          {String(inactiveCount).padStart(2, "0")}
+        </p>
+        <p>{summaryLocale.inactiveHint}</p>
+      </article>
+      <article>
+        <h2>{summaryLocale.totalTitle}</h2>
+        <p className={styles.summaryCount}>
+          {String(services.length).padStart(2, "0")}
+        </p>
+        <p>{totalSubtitle}</p>
+      </article>
+    </div>
+  );
 }

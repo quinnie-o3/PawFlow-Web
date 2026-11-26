@@ -1,57 +1,70 @@
-export type BookingStatus =
-  | "pendingConfirmation"
-  | "confirmed"
-  | "rejected"
-  | "cancelled"
-  | "completed"
-  | "noShow";
+import type {
+  ProviderApiErrorInfo,
+  ProviderBooking,
+  ProviderBookingDetail,
+  ProviderBookingStatus,
+} from "../provider-workspace/liveApi";
 
-export type Booking = {
-  id: string;
-  customerName: string;
-  petName: string;
-  petSpecies: string;
-  serviceName: string;
-  scheduledAt: string;
-  /** Snapshot of the duration agreed at booking time. */
-  durationMinutes: number;
-  price: number;
-  notes: string;
-  status: BookingStatus;
-};
+export type ProviderBookingAction = "confirm" | "reject" | "complete" | "no-show";
 
-export type BookingActor = {
-  id: string;
-  name: string;
-  role: "providerOwner" | "providerStaff";
-};
+export type BookingFilters = Readonly<{
+  query: string;
+  status: ProviderBookingStatus | "all";
+  fromDate: string;
+  toDate: string;
+}>;
 
-export type BookingFilters = { query: string; status: BookingStatus | "all" };
-export type BookingCommand = {
+export type BookingSummaryItem = Readonly<{
+  status: ProviderBookingStatus;
+  title: string;
+  count: number;
+}>;
+
+export type BookingActionOption = Readonly<{
+  action: ProviderBookingAction;
+  targetStatus: ProviderBookingStatus;
+  label: string;
+  requiresReasonField: boolean;
+  disabledReason: string | null;
+}>;
+
+export type BookingTimeNoticeKind = "no-show-before-start" | "complete-before-start" | "complete-before-end" | null;
+
+export type BookingReconcileOutcome =
+  | "applied"
+  | "not-applied"
+  | "changed-elsewhere";
+
+export type BookingFeedback = Readonly<{
   bookingId: string;
-  expectedStatus: BookingStatus;
-  targetStatus: BookingStatus;
-  reason: string;
-  confirmedActualOutcome: boolean;
-  simulateFailure: boolean;
-};
-
-export type BookingLog = {
-  id: number;
-  bookingId: string;
-  previousStatus: BookingStatus;
-  nextStatus: BookingStatus;
-  requestedStatus: BookingStatus;
-  actor: BookingActor;
-  occurredAt: string;
-  reason: string;
-  outcome: "success" | "error";
+  tone: "success" | "error" | "warning";
   message: string;
-};
+}>;
 
-export type MockBookingsState = {
-  bookings: Booking[];
-  logs: BookingLog[];
-  pending: BookingCommand | null;
-  feedback: { bookingId: string; outcome: "success" | "error"; message: string } | null;
-};
+export type BookingDraftState = Readonly<{
+  identity: string | null;
+  bookingId: string | null;
+  action: ProviderBookingAction | null;
+  reason: string;
+  openedAtMs: number | null;
+  phase: "idle" | "submitting" | "unknown" | "reconciling";
+  error: ProviderApiErrorInfo | null;
+  reconcileError: ProviderApiErrorInfo | null;
+}>;
+
+export type BookingDetailLoadState = Readonly<{
+  identity: string | null;
+  bookingId: string | null;
+  status: "idle" | "loading" | "ready" | "not-found" | "error";
+  detail: ProviderBookingDetail | null;
+  error: ProviderApiErrorInfo | null;
+}>;
+
+export type BookingListLoadState = Readonly<{
+  identity: string | null;
+  status: "idle" | "loading" | "ready" | "error";
+  bookings: readonly ProviderBooking[];
+  error: ProviderApiErrorInfo | null;
+  reloading: boolean;
+  refreshError: ProviderApiErrorInfo | null;
+}>;

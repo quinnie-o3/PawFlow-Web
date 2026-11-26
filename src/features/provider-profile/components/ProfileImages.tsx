@@ -1,20 +1,44 @@
-import { vi, formatMessage } from "@/lib/locale";
-import { Pencil } from "lucide-react";
-import type { ProfileImages as Images } from "../types";
-import ProfileImagePreview from "./ProfileImagePreview";
+import { ImageIcon } from "lucide-react";
+import { formatMessage, vi } from "@/lib/locale";
 import styles from "../profile.module.css";
 
-export default function ProfileImages({ images, onEdit }: { images: Images; onEdit: () => void }) {
-  return <section className={styles.card} aria-labelledby="profile-images-title">
-    <div className={styles.sectionHeading}>
-      <h2 id="profile-images-title">{vi.provider.profile.images.title}</h2>
-      <button type="button" className={styles.outlineButton} onClick={onEdit}><Pencil aria-hidden="true" size={14} />{vi.provider.profile.images.edit}</button>
-    </div>
-    <div className={styles.imageGrid}>{(["logo", "cover"] as const).map((slot) => <div className={styles.imageTile} key={slot}>
-      <h3>{slot === "logo" ? vi.provider.profile.images.logo : vi.provider.profile.images.cover}</h3>
-      <ProfileImagePreview slot={slot} image={images[slot]} />
-      {images[slot] && <p className={styles.help}>{formatMessage(vi.provider.profile.images.memoryDescription, { fileName: images[slot].fileName, width: images[slot].width, height: images[slot].height })}</p>}
-    </div>)}</div>
-    <p className={styles.help}>{vi.provider.profile.images.storageHint}</p>
-  </section>;
+const IMAGE_SLOTS = [
+  { key: "logo", previewClass: styles.logoPreview },
+  { key: "cover", previewClass: styles.coverPreview },
+] as const;
+
+export default function ProfileImages() {
+  const imagesLocale = vi.provider.profile.images;
+
+  return (
+    <section className={styles.card} aria-labelledby="profile-images-title">
+      <div className={styles.sectionHeading}>
+        <h2 id="profile-images-title">{imagesLocale.title}</h2>
+        <span className={styles.readonlyBadge}>
+          {imagesLocale.unavailableBadge}
+        </span>
+      </div>
+      <div className={styles.imageGrid}>
+        {IMAGE_SLOTS.map(({ key, previewClass }) => {
+          const label = key === "logo" ? imagesLocale.logo : imagesLocale.cover;
+          return (
+            <div className={styles.imageTile} key={key}>
+              <h3>{label}</h3>
+              <div className={`${styles.imagePreview} ${previewClass}`}>
+                <div className={styles.imagePlaceholder}>
+                  <ImageIcon aria-hidden="true" size={30} strokeWidth={1.5} />
+                  <span>
+                    {formatMessage(imagesLocale.placeholder, {
+                      imageLabel: label.toLowerCase(),
+                    })}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className={styles.help}>{imagesLocale.unavailableHint}</p>
+    </section>
+  );
 }

@@ -1,199 +1,1125 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { applyAvailabilityCommand, availabilityCommandError, canAcceptBooking, effectiveHours, formatAvailabilityDate, heldSeats, localDate, rangesError, summarizeAvailability, weeklyHours } from "./availabilityLogic";
-import { availabilityMockNow as now, createAvailabilityMock } from "./data/providerAvailabilityMock";
-import type { AvailabilityCommand, AvailabilitySlot, AvailabilityState, DateException } from "./types";
+import type {
+  ProviderAvailabilitySlot,
+  ProviderService,
+  ProviderWorkingHour,
+} from "../provider-workspace/liveApi";
+import {
+  applyLocalSlotMutation,
+  applyLocalWorkingHourMutation,
+  buildCreateSlotPayload,
+  buildUpdateSlotPatch,
+  buildWorkingHourMutationPlan,
+  canReopenSlot,
+  captureVietnamClock,
+  closeSlotDialogSession,
+  closeWorkingHoursDialogSession,
+  DISPLAY_WEEKDAYS,
+  enterSlotUncertainSession,
+  enterWorkingHoursUncertainSession,
+  findAffectedBookedSlotsForWorkingHourChange,
+  findExactInactiveWorkingHour,
+  findOverlappingWorkingHour,
+  formatAvailabilityDate,
+  formatTimeHhMm,
+  getDayOfWeek,
+  getDayOfWeekLabel,
+  groupWorkingHoursByDay,
+  hasSlotDraftChanges,
+  hasSlotStarted,
+  hasWorkingHourDraftChanges,
+  INITIAL_SLOT_DIALOG_SESSION,
+  INITIAL_WORKING_HOURS_SESSION,
+  isSlotBookableUnderSchedule,
+  keepSlotUncertainOnLifecycleLock,
+  keepWorkingHoursUncertainOnLifecycleLock,
+  localDate,
+  openCreateSlotDialogSession,
+  openEditSlotDialogSession,
+  openWorkingHoursDialogSession,
+  reconcileSlotCancel,
+  reconcileSlotCreate,
+  reconcileSlotUpdate,
+  reconcileWorkingHourCreate,
+  reconcileWorkingHourDeactivate,
+  reconcileWorkingHourUpdate,
+  recoverAbortedSlotMutation,
+  recoverAbortedSlotReconcile,
+  recoverAbortedWorkingHoursMutation,
+  recoverAbortedWorkingHoursReconcile,
+  reopenPendingSlotSession,
+  reopenPendingWorkingHoursSession,
+  resolveSlotService,
+  slotCoversServiceDuration,
+  slotFitsWorkingHours,
+  slotToDraft,
+  suggestSlotEndTime,
+  summarizeAvailability,
+  validateSlotDraft,
+  validateWorkingHourDraft,
+  workingHourToDraft,
+} from "./availabilityLogic";
 
-const state = createAvailabilityMock();
-const occupied = state.slots.find((slot) => slot.id === "slot-4")!;
-const free = state.slots.find((slot) => slot.id === "slot-6")!;
-function update(slot: AvailabilitySlot): AvailabilityCommand { return { type: "updateSlot", slot }; }
-function create(overrides: Partial<AvailabilitySlot> = {}): AvailabilityCommand {
-  return { type: "createSlot", slot: { ...occupied, id: "new-slot", start: "15:30", end: "16:30", ...overrides } };
-}
-function exception(overrides: Partial<DateException> = {}): AvailabilityCommand {
-  return { type: "createException", exception: { id: "new-exception", date: "2026-10-19", ranges: [], ...overrides } };
-}
-const error = (command: AvailabilityCommand, input = state, time = now) => availabilityCommandError(input, command, time);
+const NOW = "2026-10-15T10:00:00+07:00"; // Thursday (dayOfWeek = 4)
 
-test("Each Pending Confirmation and Confirmed booking holds exactly one seat; terminal states do not", () => {
-  const reservations = ["pendingConfirmation", "confirmed", "cancelled", "rejected", "completed", "noShow"].map((status, i) => ({ id: String(i), slotId: "s", status })) as AvailabilityState["reservations"];
-  assert.equal(heldSeats("s", reservations), 2);
-  assert.equal(heldSeats("other", reservations), 0);
+const SERVICES: readonly ProviderService[] = [
+  {
+    id: "101",
+    providerId: "10",
+    categoryId: "1",
+    name: "Tắm & cắt tỉa",
+    price: "250000.00",
+    durationMinutes: 90,
+    description: null,
+    status: "ACTIVE",
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-01T00:00:00.000Z",
+    category: { id: "1", name: "Grooming", description: null, status: "ACTIVE" },
+  },
+  {
+    id: "102",
+    providerId: "10",
+    categoryId: "1",
+    name: "Spa thư giãn",
+    price: "180000.00",
+    durationMinutes: 60,
+    description: null,
+    status: "ACTIVE",
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-01T00:00:00.000Z",
+    category: { id: "1", name: "Grooming", description: null, status: "ACTIVE" },
+  },
+  {
+    id: "103",
+    providerId: "10",
+    categoryId: "1",
+    name: "Khám cũ tạm ẩn",
+    price: "150000.00",
+    durationMinutes: 45,
+    description: null,
+    status: "INACTIVE",
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-01T00:00:00.000Z",
+    category: { id: "1", name: "Grooming", description: null, status: "ACTIVE" },
+  },
+];
+
+const WORKING_HOURS: readonly ProviderWorkingHour[] = [
+  {
+    id: "201",
+    providerId: "10",
+    dayOfWeek: 4, // Thursday
+    startTime: "08:00:00",
+    endTime: "12:00:00",
+    isActive: true,
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-01T00:00:00.000Z",
+  },
+  {
+    id: "202",
+    providerId: "10",
+    dayOfWeek: 4, // Thursday adjacent afternoon
+    startTime: "12:00:00",
+    endTime: "18:00:00",
+    isActive: true,
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-01T00:00:00.000Z",
+  },
+  {
+    id: "203",
+    providerId: "10",
+    dayOfWeek: 5, // Friday
+    startTime: "09:00:00",
+    endTime: "17:00:00",
+    isActive: true,
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-01T00:00:00.000Z",
+  },
+  {
+    id: "204",
+    providerId: "10",
+    dayOfWeek: 4, // Thursday inactive historical shift
+    startTime: "18:00:00",
+    endTime: "20:00:00",
+    isActive: false,
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-01T00:00:00.000Z",
+  },
+  {
+    id: "205",
+    providerId: "10",
+    dayOfWeek: 0, // Sunday inactive
+    startTime: "09:00:00",
+    endTime: "12:00:00",
+    isActive: false,
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-01T00:00:00.000Z",
+  },
+];
+
+function makeSlot(
+  overrides: Partial<ProviderAvailabilitySlot> = {},
+): ProviderAvailabilitySlot {
+  const serviceId = overrides.serviceId ?? "102";
+  const matchedService = SERVICES.find((item) => item.id === serviceId);
+  return {
+    id: "301",
+    providerId: "10",
+    serviceId,
+    slotDate: "2026-10-15",
+    startTime: "14:00:00",
+    endTime: "15:00:00",
+    capacity: 3,
+    bookedCount: 0,
+    status: "OPEN",
+    createdAt: "2026-10-10T00:00:00.000Z",
+    updatedAt: "2026-10-10T00:00:00.000Z",
+    service: matchedService
+      ? {
+          id: matchedService.id,
+          categoryId: matchedService.categoryId,
+          name: matchedService.name,
+          price: matchedService.price,
+          durationMinutes: matchedService.durationMinutes,
+          description: matchedService.description,
+          status: matchedService.status,
+        }
+      : null,
+    ...overrides,
+  };
+}
+
+const SLOTS: readonly ProviderAvailabilitySlot[] = [
+  makeSlot({
+    id: "301",
+    serviceId: "102",
+    slotDate: "2026-10-15",
+    startTime: "14:00:00",
+    endTime: "15:00:00",
+    capacity: 3,
+    bookedCount: 2,
+    status: "OPEN",
+  }),
+  makeSlot({
+    id: "302",
+    serviceId: "101",
+    slotDate: "2026-10-16",
+    startTime: "09:00:00",
+    endTime: "11:00:00",
+    capacity: 2,
+    bookedCount: 0,
+    status: "OPEN",
+  }),
+  makeSlot({
+    id: "303",
+    serviceId: "103",
+    slotDate: "2026-10-16",
+    startTime: "13:00:00",
+    endTime: "14:00:00",
+    capacity: 2,
+    bookedCount: 1,
+    status: "CLOSED",
+  }),
+  makeSlot({
+    id: "304",
+    serviceId: "102",
+    slotDate: "2026-10-15",
+    startTime: "09:00:00",
+    endTime: "10:00:00",
+    capacity: 2,
+    bookedCount: 1,
+    status: "OPEN",
+  }),
+];
+
+test("Asia/Ho_Chi_Minh clock handles UTC midnight boundary, day-of-week 0..6, and time formatting", () => {
+  const utcMidnightBoundary = "2026-10-14T17:00:00.250Z"; // 00:00:00.250 +07:00 on 2026-10-15
+  const clock = captureVietnamClock(utcMidnightBoundary);
+  assert.equal(clock.today, "2026-10-15");
+  assert.equal(clock.hhMm, "00:00");
+  assert.equal(clock.secondsOfDay, 0.25);
+  assert.equal(localDate(utcMidnightBoundary), "2026-10-15");
+
+  assert.equal(getDayOfWeek("2026-10-18"), 0); // Sunday
+  assert.equal(getDayOfWeek("2026-10-19"), 1); // Monday
+  assert.equal(getDayOfWeek("2026-10-15"), 4); // Thursday
+  assert.equal(getDayOfWeek("2026-02-30"), null);
+
+  assert.equal(formatAvailabilityDate("2026-10-15"), "15/10/2026");
+  assert.equal(formatAvailabilityDate("2026-10-15", false), "15/10");
+  assert.equal(formatTimeHhMm("08:30:00"), "08:30");
+  assert.equal(formatTimeHhMm("08:30:15"), "08:30:15");
 });
 
-test("Capacity must be a positive safe integer, and may equal but never undercut held seats", () => {
-  for (const capacity of [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1, 1]) assert.ok(error(update({ ...occupied, capacity })));
-  for (const capacity of [2, 3, 4]) assert.equal(error(update({ ...occupied, capacity })), null);
-  const next = applyAvailabilityCommand(state, update({ ...occupied, capacity: 2 }), now);
-  assert.equal(next.slots.find((slot) => slot.id === occupied.id)?.capacity, 2);
-  assert.equal(next.reservations, state.reservations);
+test("groupWorkingHoursByDay orders Monday..Sunday and separates active vs inactive shifts", () => {
+  const grouped = groupWorkingHoursByDay(WORKING_HOURS);
+  assert.deepEqual(
+    grouped.map((day) => day.dayOfWeek),
+    [...DISPLAY_WEEKDAYS],
+  );
+  assert.equal(grouped[0].label, getDayOfWeekLabel(1));
+  assert.equal(grouped[6].dayOfWeek, 0);
+  const thursday = grouped.find((day) => day.dayOfWeek === 4)!;
+  assert.deepEqual(
+    thursday.active.map((item) => item.id),
+    ["201", "202"],
+  );
+  assert.deepEqual(
+    thursday.inactive.map((item) => item.id),
+    ["204"],
+  );
 });
 
-test("Held slots allow capacity only; service, date, times, closing and deletion are protected", () => {
-  for (const overrides of [{ serviceId: "grooming" }, { date: "2026-10-16" }, { start: "15:00" }, { end: "16:00" }, { open: false }]) assert.ok(error(update({ ...occupied, ...overrides })));
-  for (const type of ["closeSlot", "deleteSlot"] as const) {
-    const next = applyAvailabilityCommand(state, { type, slotId: occupied.id }, now);
-    assert.equal(next.feedback?.outcome, "error");
-    assert.equal(next.slots, state.slots);
-    assert.equal(next.reservations, state.reservations);
+test("Working hours allow adjacent intervals and reject active overlap or overnight ranges", () => {
+  // Adjacent 18:00-20:00 touches active 12:00-18:00 without overlapping.
+  assert.equal(
+    findOverlappingWorkingHour(
+      { dayOfWeek: 4, startTime: "18:00", endTime: "20:00" },
+      WORKING_HOURS,
+    ),
+    null,
+  );
+  // Overlapping 11:30-13:00 conflicts with 08:00-12:00.
+  const overlap = findOverlappingWorkingHour(
+    { dayOfWeek: 4, startTime: "11:30", endTime: "13:00" },
+    WORKING_HOURS,
+  );
+  assert.equal(overlap?.id, "201");
+
+  const overlapErrors = validateWorkingHourDraft(
+    { dayOfWeek: 4, startTime: "11:30", endTime: "13:00" },
+    WORKING_HOURS,
+  );
+  assert.ok(overlapErrors.form);
+  assert.match(overlapErrors.form!, /08:00–12:00/);
+
+  const overnightErrors = validateWorkingHourDraft(
+    { dayOfWeek: 1, startTime: "22:00", endTime: "02:00" },
+    WORKING_HOURS,
+  );
+  assert.ok(overnightErrors.endTime);
+});
+
+test("Working-hour mutation plan reactivates matching inactive rows, blocks empty PATCH, and prevents edit collision with inactive rows", () => {
+  // Adding Thursday 18:00-20:00 matches inactive id=204 -> reactivate via PATCH { isActive: true }.
+  assert.equal(
+    findExactInactiveWorkingHour(
+      { dayOfWeek: 4, startTime: "18:00", endTime: "20:00" },
+      WORKING_HOURS,
+    )?.id,
+    "204",
+  );
+  const reactivatePlan = buildWorkingHourMutationPlan(
+    { dayOfWeek: 4, startTime: "18:00", endTime: "20:00" },
+    WORKING_HOURS,
+  );
+  assert.equal(reactivatePlan?.kind, "reactivate");
+  if (reactivatePlan?.kind === "reactivate") {
+    assert.equal(reactivatePlan.workingHourId, "204");
+    assert.deepEqual(reactivatePlan.input, { isActive: true });
+  }
+
+  // Creating brand new Monday shift -> POST.
+  const createPlan = buildWorkingHourMutationPlan(
+    { dayOfWeek: 1, startTime: "09:00", endTime: "12:00" },
+    WORKING_HOURS,
+  );
+  assert.equal(createPlan?.kind, "create");
+
+  // Editing row 201 with identical values -> no-op null (never sends PATCH {}).
+  const unchangedDraft = workingHourToDraft(WORKING_HOURS[0]);
+  assert.equal(hasWorkingHourDraftChanges(WORKING_HOURS[0], unchangedDraft), false);
+  assert.equal(
+    buildWorkingHourMutationPlan(unchangedDraft, WORKING_HOURS, WORKING_HOURS[0]),
+    null,
+  );
+
+  // Editing row 201 to match existing inactive row 204 (Thursday 18:00-20:00) -> blocked with guidance!
+  const collideInactiveErrors = validateWorkingHourDraft(
+    { dayOfWeek: 4, startTime: "18:00", endTime: "20:00" },
+    WORKING_HOURS,
+    WORKING_HOURS[0],
+  );
+  assert.ok(collideInactiveErrors.form);
+  assert.equal(
+    buildWorkingHourMutationPlan(
+      { dayOfWeek: 4, startTime: "18:00", endTime: "20:00" },
+      WORKING_HOURS,
+      WORKING_HOURS[0],
+    ),
+    null,
+  );
+
+  // Sparse PATCH when editing only endTime of row 201 (08:00-11:30).
+  const sparseUpdate = buildWorkingHourMutationPlan(
+    { dayOfWeek: 4, startTime: "08:00", endTime: "11:30" },
+    WORKING_HOURS,
+    WORKING_HOURS[0],
+  );
+  assert.equal(sparseUpdate?.kind, "update");
+  if (sparseUpdate?.kind === "update") {
+    assert.deepEqual(sparseUpdate.input, { endTime: "11:30" });
+  }
+
+  // Detect future booked slots affected when deactivating Thursday afternoon (202).
+  const affected = findAffectedBookedSlotsForWorkingHourChange(
+    WORKING_HOURS[1],
+    { ...WORKING_HOURS[1], isActive: false },
+    WORKING_HOURS,
+    SLOTS,
+    NOW,
+  );
+  assert.deepEqual(
+    affected.map((item) => item.id),
+    ["301"],
+  );
+});
+
+test("Working-hour unknown reconciliation handles create, update, deactivate, not-found, and lifecycle lock", () => {
+  const createdHour: ProviderWorkingHour = {
+    id: "299",
+    providerId: "10",
+    dayOfWeek: 1,
+    startTime: "09:00:00",
+    endTime: "12:00:00",
+    isActive: true,
+    createdAt: "2026-10-15T03:00:00.000Z",
+    updatedAt: "2026-10-15T03:00:00.000Z",
+  };
+  const preIds = WORKING_HOURS.map((item) => item.id);
+
+  assert.equal(
+    reconcileWorkingHourCreate(
+      { dayOfWeek: 1, startTime: "09:00", endTime: "12:00", isActive: true },
+      preIds,
+      [...WORKING_HOURS, createdHour],
+      "APPROVED",
+    ).outcome,
+    "created",
+  );
+  assert.equal(
+    reconcileWorkingHourCreate(
+      { dayOfWeek: 1, startTime: "09:00", endTime: "12:00", isActive: true },
+      preIds,
+      WORKING_HOURS,
+      "SUSPENDED",
+    ).outcome,
+    "forbidden-lifecycle",
+  );
+  assert.equal(
+    reconcileWorkingHourCreate(
+      { dayOfWeek: 1, startTime: "09:00", endTime: "12:00", isActive: true },
+      preIds,
+      WORKING_HOURS,
+      "APPROVED",
+    ).outcome,
+    "not-created",
+  );
+
+  const deactivatedList = applyLocalWorkingHourMutation(WORKING_HOURS, {
+    kind: "deactivate",
+    workingHourId: "201",
+  });
+  assert.equal(
+    reconcileWorkingHourDeactivate("201", deactivatedList, "APPROVED").outcome,
+    "saved",
+  );
+  assert.equal(
+    reconcileWorkingHourUpdate("999", { isActive: true }, WORKING_HOURS).outcome,
+    "not-found",
+  );
+  assert.equal(
+    reconcileWorkingHourUpdate(
+      "204",
+      { isActive: true },
+      WORKING_HOURS,
+      "REJECTED",
+    ).outcome,
+    "forbidden-lifecycle",
+  );
+});
+
+test("Slot creation validates Vietnam clock, >= durationMinutes, single active interval fit, duplicate check, and midnight-safe suggestion", () => {
+  // suggestSlotEndTime handles valid times and refuses midnight overflow (> 23:59).
+  assert.equal(suggestSlotEndTime("09:00", 90), "10:30");
+  assert.equal(suggestSlotEndTime("23:00", 59), "23:59");
+  assert.equal(suggestSlotEndTime("23:00", 60), null);
+  assert.equal(suggestSlotEndTime("23:30", 90), null);
+
+  // Duration >= service.durationMinutes is ALLOWED (not forced ===), < is REJECTED.
+  assert.equal(slotCoversServiceDuration("09:00", "11:00", 90), true);
+  assert.equal(slotCoversServiceDuration("09:00", "10:30", 90), true);
+  assert.equal(slotCoversServiceDuration("09:00", "10:29", 90), false);
+
+  // Adjacent working intervals (08:00-12:00 and 12:00-18:00) are NOT merged.
+  assert.equal(
+    slotFitsWorkingHours(
+      { slotDate: "2026-10-15", startTime: "11:30", endTime: "12:30" },
+      WORKING_HOURS,
+    ),
+    false,
+  );
+  assert.equal(
+    slotFitsWorkingHours(
+      { slotDate: "2026-10-15", startTime: "12:00", endTime: "13:30" },
+      WORKING_HOURS,
+    ),
+    true,
+  );
+
+  // Exact start instant (and equivalent UTC instant 03:00Z = 10:00+07:00) has started.
+  assert.equal(
+    hasSlotStarted({ slotDate: "2026-10-15", startTime: "10:00" }, "2026-10-15T03:00:00Z"),
+    true,
+  );
+  assert.equal(
+    hasSlotStarted({ slotDate: "2026-10-15", startTime: "10:01" }, "2026-10-15T03:00:00Z"),
+    false,
+  );
+
+  const ctx = {
+    services: SERVICES,
+    workingHours: WORKING_HOURS,
+    slots: SLOTS,
+    now: NOW,
+  };
+
+  // Valid slot longer than service duration (120m > 60m) and partially overlapping another slot of same service (BE only forbids exact duplicate).
+  const validLongSlot = {
+    serviceId: "102",
+    slotDate: "2026-10-15",
+    startTime: "14:30",
+    endTime: "16:30",
+    capacity: "2",
+  };
+  assert.deepEqual(validateSlotDraft(validLongSlot, ctx), {});
+  assert.deepEqual(buildCreateSlotPayload(validLongSlot)?.input, {
+    serviceId: "102",
+    slotDate: "2026-10-15",
+    startTime: "14:30",
+    endTime: "16:30",
+    capacity: 2,
+  });
+
+  // Exact duplicate (serviceId=102, 2026-10-15 14:00-15:00) is rejected.
+  assert.ok(
+    validateSlotDraft(
+      {
+        serviceId: "102",
+        slotDate: "2026-10-15",
+        startTime: "14:00",
+        endTime: "15:00",
+        capacity: "2",
+      },
+      ctx,
+    ).form,
+  );
+
+  // Inactive service rejected on create.
+  assert.ok(
+    validateSlotDraft(
+      {
+        serviceId: "103",
+        slotDate: "2026-10-16",
+        startTime: "10:00",
+        endTime: "11:00",
+        capacity: "2",
+      },
+      ctx,
+    ).serviceId,
+  );
+
+  // Past date and started slot rejected.
+  assert.ok(
+    validateSlotDraft(
+      {
+        serviceId: "102",
+        slotDate: "2026-10-14",
+        startTime: "14:00",
+        endTime: "15:00",
+        capacity: "2",
+      },
+      ctx,
+    ).slotDate,
+  );
+  assert.ok(
+    validateSlotDraft(
+      {
+        serviceId: "102",
+        slotDate: "2026-10-15",
+        startTime: "10:00",
+        endTime: "11:00",
+        capacity: "2",
+      },
+      ctx,
+    ).startTime,
+  );
+});
+
+test("Booked slots lock 4 schedule fields, reject capacity < bookedCount, and emit strictly sparse PATCH (never PATCH {})", () => {
+  const bookedSlot = SLOTS[0]; // bookedCount=2, capacity=3, future
+  const inactiveServiceSlot = SLOTS[2]; // serviceId=103 (INACTIVE), bookedCount=1
+
+  const unchanged = slotToDraft(bookedSlot);
+  assert.equal(hasSlotDraftChanges(bookedSlot, unchanged, NOW), false);
+  assert.deepEqual(buildUpdateSlotPatch(bookedSlot, unchanged, NOW).input, {});
+
+  // Capacity below bookedCount rejected.
+  assert.ok(
+    validateSlotDraft(
+      { ...unchanged, capacity: "1" },
+      {
+        services: SERVICES,
+        workingHours: WORKING_HOURS,
+        slots: SLOTS,
+        editingSlot: bookedSlot,
+        now: NOW,
+      },
+    ).capacity,
+  );
+
+  // Even if caller tampers with draft schedule fields on a booked slot, sparse PATCH sends ONLY capacity!
+  const tamperedDraft = {
+    serviceId: "101",
+    slotDate: "2026-10-16",
+    startTime: "09:00",
+    endTime: "11:00",
+    capacity: "5",
+  };
+  assert.deepEqual(
+    buildUpdateSlotPatch(bookedSlot, tamperedDraft, NOW).input,
+    { capacity: 5 },
+  );
+
+  // Editing capacity on a slot whose service is now INACTIVE omits serviceId and passes validation!
+  const inactiveDraft = { ...slotToDraft(inactiveServiceSlot), capacity: "4" };
+  assert.deepEqual(
+    validateSlotDraft(inactiveDraft, {
+      services: SERVICES,
+      workingHours: WORKING_HOURS,
+      slots: SLOTS,
+      editingSlot: inactiveServiceSlot,
+      now: NOW,
+    }),
+    {},
+  );
+  assert.deepEqual(
+    buildUpdateSlotPatch(inactiveServiceSlot, inactiveDraft, NOW).input,
+    { capacity: 4 },
+  );
+});
+
+test("Reopen rules enforce not-started, duration, and active working hours while flagging inactive service", () => {
+  // Past/started slot cannot reopen.
+  const startedClosed = makeSlot({
+    id: "310",
+    slotDate: "2026-10-15",
+    startTime: "09:00:00",
+    endTime: "10:00:00",
+    status: "CLOSED",
+  });
+  assert.equal(
+    canReopenSlot(startedClosed, SERVICES, WORKING_HOURS, NOW).allowed,
+    false,
+  );
+
+  // Future slot outside active working hours (Sunday) cannot reopen.
+  const sundayClosed = makeSlot({
+    id: "311",
+    slotDate: "2026-10-18",
+    startTime: "09:00:00",
+    endTime: "10:00:00",
+    status: "CLOSED",
+  });
+  assert.equal(
+    canReopenSlot(sundayClosed, SERVICES, WORKING_HOURS, NOW).allowed,
+    false,
+  );
+
+  // Future slot shorter than service duration (45m < 90m for service 101) cannot reopen.
+  const tooShortCancelled = makeSlot({
+    id: "312",
+    serviceId: "101",
+    slotDate: "2026-10-16",
+    startTime: "09:00:00",
+    endTime: "09:45:00",
+    status: "CANCELLED",
+  });
+  assert.equal(
+    canReopenSlot(tooShortCancelled, SERVICES, WORKING_HOURS, NOW).allowed,
+    false,
+  );
+
+  // Valid future CLOSED slot with INACTIVE service is allowed by BE (sparse PATCH) with warning flag.
+  const inactiveFutureDecision = canReopenSlot(
+    SLOTS[2],
+    SERVICES,
+    WORKING_HOURS,
+    NOW,
+  );
+  assert.equal(inactiveFutureDecision.allowed, true);
+  if (inactiveFutureDecision.allowed) {
+    assert.equal(inactiveFutureDecision.serviceInactiveWarning, true);
   }
 });
 
-test("Unoccupied future slots can close, reopen, move, and delete without changing bookings", () => {
-  const closed = applyAvailabilityCommand(state, { type: "closeSlot", slotId: free.id }, now);
-  assert.equal(closed.slots.find((slot) => slot.id === free.id)?.open, false);
-  assert.equal(canAcceptBooking(closed, closed.slots.find((slot) => slot.id === free.id)!, now), false);
-  const reopened = applyAvailabilityCommand(closed, update({ ...free, start: "15:30", end: "16:30", capacity: 1 }), now);
-  assert.equal(reopened.feedback?.outcome, "success");
-  const deleted = applyAvailabilityCommand(reopened, { type: "deleteSlot", slotId: free.id }, now);
-  assert.equal(deleted.slots.some((slot) => slot.id === free.id), false);
-  assert.equal(deleted.reservations, state.reservations);
+test("Slot unknown reconciliation and local fallback merge preserve service metadata cleanly", () => {
+  const preIds = SLOTS.map((item) => item.id);
+  const createdWithoutRelation = makeSlot({
+    id: "399",
+    serviceId: "101",
+    slotDate: "2026-10-16",
+    startTime: "14:00:00",
+    endTime: "16:00:00",
+    capacity: 2,
+    bookedCount: 0,
+    status: "OPEN",
+    service: null,
+  });
+
+  const merged = applyLocalSlotMutation(
+    SLOTS,
+    { kind: "create", slot: createdWithoutRelation },
+    SERVICES,
+  );
+  const hydrated = merged.find((item) => item.id === "399")!;
+  assert.equal(hydrated.service?.name, "Tắm & cắt tỉa");
+  assert.equal(resolveSlotService(hydrated, [])?.name, "Tắm & cắt tỉa");
+
+  assert.equal(
+    reconcileSlotCreate(
+      {
+        serviceId: "101",
+        slotDate: "2026-10-16",
+        startTime: "14:00",
+        endTime: "16:00",
+        capacity: 2,
+      },
+      preIds,
+      merged,
+      "APPROVED",
+    ).outcome,
+    "created",
+  );
+  assert.equal(
+    reconcileSlotCreate(
+      {
+        serviceId: "101",
+        slotDate: "2026-10-16",
+        startTime: "14:00",
+        endTime: "16:00",
+        capacity: 2,
+      },
+      preIds,
+      SLOTS,
+      "REJECTED",
+    ).outcome,
+    "forbidden-lifecycle",
+  );
+
+  const cancelledList = applyLocalSlotMutation(
+    SLOTS,
+    { kind: "cancel", slotId: "301" },
+    SERVICES,
+  );
+  assert.equal(
+    reconcileSlotCancel("301", cancelledList, "APPROVED").outcome,
+    "saved",
+  );
+  assert.equal(
+    reconcileSlotUpdate("999", { capacity: 5 }, SLOTS, "APPROVED").outcome,
+    "not-found",
+  );
 });
 
-test("Full slots automatically reject new bookings and do not count as available; increased capacity reopens seats", () => {
-  const full = state.slots.find((slot) => slot.id === "slot-7")!;
-  assert.equal(canAcceptBooking(state, full, now), false);
-  assert.equal(summarizeAvailability(state, now).open, 4);
-  const next = applyAvailabilityCommand(state, update({ ...full, capacity: 2 }), now);
-  assert.equal(canAcceptBooking(next, next.slots.find((slot) => slot.id === full.id)!, now), true);
+test("summarizeAvailability computes bookable next-7-days slots, held bookings, and active operating days", () => {
+  // Within 7 days of 2026-10-15T10:00+07:00:
+  // - 301: OPEN, future (14:00), booked=2/3, service 102 ACTIVE, fits Thursday 12-18 -> bookable! (+2 held)
+  // - 302: OPEN, future (16th 09-11), booked=0/2, service 101 ACTIVE, fits Friday 09-17 -> bookable! (+0 held)
+  // - 303: CLOSED, future (16th 13-14), booked=1/2 -> not open, (+1 held)
+  // - 304: OPEN, already started (15th 09:00 <= 10:00) -> excluded from upcoming 7 days!
+  assert.equal(isSlotBookableUnderSchedule(SLOTS[0], WORKING_HOURS, SERVICES, NOW), true);
+  assert.equal(isSlotBookableUnderSchedule(SLOTS[1], WORKING_HOURS, SERVICES, NOW), true);
+  assert.equal(isSlotBookableUnderSchedule(SLOTS[2], WORKING_HOURS, SERVICES, NOW), false);
+  assert.equal(isSlotBookableUnderSchedule(SLOTS[3], WORKING_HOURS, SERVICES, NOW), false);
+
+  const summary = summarizeAvailability(WORKING_HOURS, SLOTS, SERVICES, NOW);
+  assert.deepEqual(summary, {
+    openSlotsNext7Days: 2,
+    heldBookingsNext7Days: 3,
+    activeDaysCount: 2,
+    activeShiftsCount: 3,
+  });
 });
 
-test("At the start instant and afterwards, all slot mutations are rejected, including equivalent UTC timestamps", () => {
-  const start = "2026-10-15T07:30:00Z";
-  assert.equal(error(update({ ...occupied, capacity: 4 }), state, "2026-10-15T07:29:59Z"), null);
-  for (const command of [update({ ...occupied, capacity: 4 }), { type: "closeSlot", slotId: occupied.id }, { type: "deleteSlot", slotId: occupied.id }] as AvailabilityCommand[]) assert.ok(error(command, state, start));
-  assert.ok(error(update({ ...state.slots[0], capacity: 10 })));
-  assert.ok(error(create({ start: "09:00", end: "10:00" })));
+const UNKNOWN_AVAILABILITY_ERROR = {
+  code: "NETWORK_ERROR",
+  category: "uncertain",
+  outcome: "unknown",
+  status: null,
+  retryAfterSeconds: null,
+  shouldReconcile: true,
+} as const;
+
+test("R1 & R2 working hours: 503 same-identity abort recovers into uncertain, close/reopen preserves guard, 401/switch purges", () => {
+  const identityA = "gen-1:30:PROVIDER_OWNER";
+  const identityB = "gen-2:31:PROVIDER_OWNER";
+  const draft = { dayOfWeek: 1 as const, startTime: "08:30", endTime: "12:00" };
+  const uncertainAction = {
+    kind: "create" as const,
+    expected: {
+      dayOfWeek: 1 as const,
+      startTime: "08:30",
+      endTime: "12:00",
+      isActive: true as const,
+    },
+    preSubmitIds: WORKING_HOURS.map((h) => h.id),
+  };
+
+  const opened = openWorkingHoursDialogSession(
+    INITIAL_WORKING_HOURS_SESSION,
+    identityA,
+  );
+  const saving = {
+    ...opened,
+    dialog: opened.dialog ? { ...opened.dialog, draft, saving: true } : null,
+  };
+
+  // Same-identity 503 abort releases busy and preserves draft/preSubmitIds in pendingUncertain.
+  const recovered = recoverAbortedWorkingHoursMutation(saving, {
+    attemptIdentity: identityA,
+    liveIdentity: identityA,
+    mode: "create",
+    editingId: null,
+    draft,
+    uncertain: uncertainAction,
+    error: UNKNOWN_AVAILABILITY_ERROR,
+  });
+  assert.equal(recovered.dialog?.saving, false);
+  assert.equal(recovered.dialog?.mutatingRowId, null);
+  assert.equal(recovered.dialog?.reconciling, false);
+  assert.notEqual(recovered.pendingUncertain, null);
+
+  // Close hides dialog only; reopen via button or banner restores pendingUncertain.
+  const closed = closeWorkingHoursDialogSession(recovered);
+  assert.equal(closed.dialogOpen, false);
+  assert.notEqual(closed.pendingUncertain, null);
+
+  const reopened = openWorkingHoursDialogSession(closed, identityA);
+  assert.equal(reopened.dialogOpen, true);
+  assert.equal(reopened.dialog?.uncertain?.kind, "create");
+  assert.deepEqual(reopened.dialog?.draft, draft);
+
+  const reopenedBanner = reopenPendingWorkingHoursSession(closed, identityA);
+  assert.equal(reopenedBanner.dialogOpen, true);
+  assert.equal(reopenedBanner.dialog?.uncertain?.kind, "create");
+
+  // Reconcile abort releases reconciling=false without dropping pendingUncertain.
+  const reconciling = {
+    ...reopened,
+    dialog: reopened.dialog ? { ...reopened.dialog, reconciling: true } : null,
+  };
+  const afterReconcileAbort = recoverAbortedWorkingHoursReconcile(
+    reconciling,
+    identityA,
+    identityA,
+  );
+  assert.equal(afterReconcileAbort.dialog?.reconciling, false);
+  assert.notEqual(afterReconcileAbort.pendingUncertain, null);
+
+  // 401/logout or identity switch purges 100%.
+  assert.deepEqual(
+    recoverAbortedWorkingHoursMutation(saving, {
+      attemptIdentity: identityA,
+      liveIdentity: null,
+      mode: "create",
+      editingId: null,
+      draft,
+      uncertain: uncertainAction,
+      error: UNKNOWN_AVAILABILITY_ERROR,
+    }),
+    INITIAL_WORKING_HOURS_SESSION,
+  );
+  assert.deepEqual(
+    recoverAbortedWorkingHoursReconcile(reconciling, identityA, identityB),
+    INITIAL_WORKING_HOURS_SESSION,
+  );
 });
 
-test("Slot length equals selected service duration; unknown services and malformed dates/times fail", () => {
-  assert.equal(error(create()), null);
-  assert.equal(error(create({ serviceId: "grooming", start: "14:30", end: "16:00" })), null);
-  for (const overrides of [{ serviceId: "missing" }, { end: "16:00" }, { date: "2026-02-30" }, { date: "" }, { start: "24:00" }, { start: "" }, { end: "14:30" }]) assert.ok(error(create(overrides)));
+test("R1 & R2 availability slots: 503 same-identity abort recovers into uncertain, close/reopen preserves guard, 401/switch purges", () => {
+  const identityA = "gen-1:30:PROVIDER_OWNER";
+  const identityB = "gen-2:31:PROVIDER_OWNER";
+  const draft = {
+    serviceId: "102",
+    slotDate: "2026-10-16",
+    startTime: "10:00",
+    endTime: "11:00",
+    capacity: "3",
+  };
+  const uncertainAction = {
+    kind: "create" as const,
+    expected: {
+      serviceId: "102",
+      slotDate: "2026-10-16",
+      startTime: "10:00",
+      endTime: "11:00",
+      capacity: 3,
+    },
+    preSubmitIds: SLOTS.map((s) => s.id),
+  };
+
+  const opened = openCreateSlotDialogSession(
+    INITIAL_SLOT_DIALOG_SESSION,
+    identityA,
+    "2026-10-16",
+    "102",
+  );
+  const saving = {
+    ...opened,
+    editor: opened.editor ? { ...opened.editor, draft, saving: true } : null,
+  };
+
+  const recovered = recoverAbortedSlotMutation(saving, {
+    attemptIdentity: identityA,
+    liveIdentity: identityA,
+    mode: "create",
+    slotId: null,
+    draft,
+    autoEndTime: false,
+    confirmAction: null,
+    uncertain: uncertainAction,
+    error: UNKNOWN_AVAILABILITY_ERROR,
+  });
+  assert.equal(recovered.editor?.saving, false);
+  assert.equal(recovered.editor?.updatingStatus, false);
+  assert.equal(recovered.editor?.reconciling, false);
+  assert.notEqual(recovered.pendingUncertain, null);
+
+  // Close preserves pendingUncertain; create/edit/banner reopen all restore it.
+  const closed = closeSlotDialogSession(recovered);
+  assert.equal(closed.dialogOpen, false);
+  assert.notEqual(closed.pendingUncertain, null);
+
+  const viaCreate = openCreateSlotDialogSession(
+    closed,
+    identityA,
+    "2026-10-17",
+    "101",
+  );
+  assert.equal(viaCreate.dialogOpen, true);
+  assert.equal(viaCreate.editor?.uncertain?.kind, "create");
+  assert.deepEqual(viaCreate.editor?.draft, draft);
+
+  const viaEdit = openEditSlotDialogSession(closed, identityA, SLOTS[0]);
+  assert.equal(viaEdit.dialogOpen, true);
+  assert.equal(viaEdit.editor?.uncertain?.kind, "create");
+
+  const viaBanner = reopenPendingSlotSession(closed, identityA);
+  assert.equal(viaBanner.dialogOpen, true);
+  assert.equal(viaBanner.editor?.uncertain?.kind, "create");
+
+  // Reconcile abort on same identity keeps pendingUncertain & clears reconciling.
+  const reconciling = {
+    ...enterSlotUncertainSession(opened, {
+      attemptIdentity: identityA,
+      mode: "create",
+      slotId: null,
+      draft,
+      autoEndTime: false,
+      confirmAction: null,
+      uncertain: uncertainAction,
+      error: UNKNOWN_AVAILABILITY_ERROR,
+    }),
+    editor: viaCreate.editor ? { ...viaCreate.editor, reconciling: true } : null,
+  };
+  const afterReconcileAbort = recoverAbortedSlotReconcile(
+    reconciling,
+    identityA,
+    identityA,
+  );
+  assert.equal(afterReconcileAbort.editor?.reconciling, false);
+  assert.notEqual(afterReconcileAbort.pendingUncertain, null);
+
+  // 401/logout or identity switch purges 100%.
+  assert.deepEqual(
+    recoverAbortedSlotMutation(saving, {
+      attemptIdentity: identityA,
+      liveIdentity: null,
+      mode: "create",
+      slotId: null,
+      draft,
+      autoEndTime: false,
+      confirmAction: null,
+      uncertain: uncertainAction,
+      error: UNKNOWN_AVAILABILITY_ERROR,
+    }),
+    INITIAL_SLOT_DIALOG_SESSION,
+  );
+  assert.deepEqual(
+    recoverAbortedSlotReconcile(reconciling, identityA, identityB),
+    INITIAL_SLOT_DIALOG_SESSION,
+  );
 });
 
-test("Same-service overlap is blocked, adjacent slots are allowed, and different services have independent capacity", () => {
-  assert.ok(error(create({ start: "14:00", end: "15:00" })));
-  assert.equal(error(create({ start: "15:30", end: "16:30" })), null);
-  assert.equal(error(create({ serviceId: "grooming", start: "14:30", end: "16:00" })), null);
-  assert.equal(error(update({ ...occupied, capacity: 4 })), null); // Excludes itself.
-});
+test("R3 lifecycle boundary on availability: forbidden-lifecycle keeps working-hours and slot pendingUncertain intact across SUSPENDED -> APPROVED", () => {
+  const identity = "gen-1:30:PROVIDER_OWNER";
+  const suspendedError = {
+    code: "PROVIDER_SUSPENDED_FORBIDDEN",
+    category: "lifecycle",
+    outcome: "definite-failure",
+    status: 403,
+    retryAfterSeconds: null,
+    shouldReconcile: false,
+  } as const;
 
-test("Slots must fit one continuous effective interval, including its boundaries and excluding lunch/closed days", () => {
-  assert.equal(error(create({ start: "13:30", end: "14:30" })), null);
-  for (const overrides of [{ date: "2026-10-16", start: "11:30", end: "12:30" }, { date: "2026-10-18", start: "09:00", end: "10:00" }, { start: "17:30", end: "18:30" }]) assert.ok(error(create(overrides)));
-});
+  const whDraft = { dayOfWeek: 1 as const, startTime: "09:00", endTime: "12:00" };
+  const whSession = enterWorkingHoursUncertainSession(
+    openWorkingHoursDialogSession(INITIAL_WORKING_HOURS_SESSION, identity),
+    {
+      attemptIdentity: identity,
+      mode: "create",
+      editingId: null,
+      draft: whDraft,
+      uncertain: {
+        kind: "create",
+        preSubmitIds: WORKING_HOURS.map((h) => h.id),
+        expected: {
+          dayOfWeek: 1,
+          startTime: "09:00",
+          endTime: "12:00",
+          isActive: true,
+        },
+      },
+      error: UNKNOWN_AVAILABILITY_ERROR,
+    },
+  );
+  const whClosed = closeWorkingHoursDialogSession(whSession);
+  const whPreserved = keepWorkingHoursUncertainOnLifecycleLock(
+    whClosed,
+    identity,
+    suspendedError,
+    "Cơ sở đang tạm khóa; giữ nguyên trạng thái đối soát.",
+  );
+  assert.equal(whPreserved.dialogOpen, false);
+  assert.notEqual(whPreserved.pendingUncertain, null);
+  assert.equal(whPreserved.dialog?.uncertain?.kind, "create");
+  assert.equal(whPreserved.dialog?.reconciling, false);
+  // Reactivating to APPROVED and opening dialog still restores pendingUncertain.
+  const whReopened = openWorkingHoursDialogSession(whPreserved, identity);
+  assert.equal(whReopened.dialog?.uncertain?.kind, "create");
+  assert.notEqual(whReopened.pendingUncertain, null);
+  // Late commit arriving even while SUSPENDED resolves as "created".
+  assert.equal(
+    reconcileWorkingHourCreate(
+      { dayOfWeek: 1, startTime: "09:00", endTime: "12:00", isActive: true },
+      WORKING_HOURS.map((h) => h.id),
+      [
+        ...WORKING_HOURS,
+        {
+          id: "299",
+          providerId: "10",
+          dayOfWeek: 1,
+          startTime: "09:00:00",
+          endTime: "12:00:00",
+          isActive: true,
+          createdAt: "2026-10-15T03:00:00.000Z",
+          updatedAt: "2026-10-15T03:00:00.000Z",
+        },
+      ],
+      "SUSPENDED",
+    ).outcome,
+    "created",
+  );
 
-test("Multiple ranges may be unordered or adjacent; overlap, missing endpoints and overnight intervals fail", () => {
-  assert.equal(rangesError([{ start: "13:30", end: "18:00" }, { start: "09:00", end: "12:00" }]), null);
-  assert.equal(rangesError([{ start: "09:00", end: "10:00" }, { start: "10:00", end: "11:00" }]), null);
-  assert.ok(rangesError([{ start: "09:00", end: "11:00" }, { start: "10:00", end: "12:00" }]));
-  assert.ok(rangesError([{ start: "23:00", end: "01:00" }]));
-  assert.ok(rangesError([{ start: "", end: "12:00" }]));
-});
-
-test("Vietnam current date is used at the UTC day boundary and effective dates cannot precede it", () => {
-  const midnight = "2026-10-14T17:00:00Z";
-  assert.equal(localDate(midnight), "2026-10-15");
-  const command: AvailabilityCommand = { type: "saveWeekly", schedule: { effectiveFrom: "2026-10-14", days: state.schedules[0].days } };
-  assert.ok(error(command, state, midnight));
-  assert.equal(error({ ...command, schedule: { ...command.schedule, effectiveFrom: "2026-10-15" } }, state, midnight), null);
-  assert.match(formatAvailabilityDate("2026-10-15"), /15\/10\/2026/);
-  assert.equal(formatAvailabilityDate("2026-10-15", false), "15/10");
-});
-
-test("Weekly versions preserve history, switch exactly on their effective date, and do not generate slots", () => {
-  const days = state.schedules[0].days.map((day) => day.weekday === 1 ? { ...day, ranges: [{ start: "10:00", end: "12:00" }] } : day);
-  const command: AvailabilityCommand = { type: "saveWeekly", schedule: { effectiveFrom: "2026-10-22", days } };
-  const next = applyAvailabilityCommand(state, command, now);
-  assert.equal(next.feedback?.outcome, "success");
-  assert.equal(next.schedules.length, 2);
-  assert.equal(weeklyHours(next, "2026-10-21")[0].ranges[0].start, "09:00");
-  assert.equal(weeklyHours(next, "2026-10-22")[0].ranges[0].start, "10:00");
-  assert.deepEqual(next.schedules[0], state.schedules[0]);
-  assert.equal(next.slots, state.slots);
-  assert.equal(next.reservations, state.reservations);
-});
-
-test("Weekly changes list every affected slot, including unoccupied/closed slots; existing exceptions take precedence", () => {
-  const days = state.schedules[0].days.map((day) => day.weekday === 5 ? { ...day, ranges: [] } : day);
-  const command: AvailabilityCommand = { type: "saveWeekly", schedule: { effectiveFrom: "2026-10-16", days } };
-  assert.match(error(command)!, /slot-5/);
-  assert.match(error(command)!, /slot-6/);
-  const next = applyAvailabilityCommand(state, command, now);
-  assert.equal(next.schedules, state.schedules);
-  const withException = { ...state, exceptions: [...state.exceptions, { id: "friday", date: "2026-10-16", ranges: state.schedules[0].days[4].ranges }] };
-  assert.equal(error(command, withException), null);
-  const closeTuesday = state.schedules[0].days.map((day) => day.weekday === 2 ? { ...day, ranges: [] } : day);
-  assert.match(error({ type: "saveWeekly", schedule: { effectiveFrom: "2026-10-16", days: closeTuesday } })!, /slot-9/);
-});
-
-test("A later weekly version bounds an earlier edit, with no overwrite of future or previous history", () => {
-  const later = applyAvailabilityCommand(state, { type: "saveWeekly", schedule: { effectiveFrom: "2026-10-19", days: state.schedules[0].days } }, now);
-  const days = state.schedules[0].days.map((day) => day.weekday === 1 ? { ...day, ranges: [] } : day);
-  const next = applyAvailabilityCommand(later, { type: "saveWeekly", schedule: { effectiveFrom: "2026-10-16", days } }, now);
-  assert.equal(next.feedback?.outcome, "success");
-  assert.equal(weeklyHours(next, "2026-10-18")[0].ranges.length, 0);
-  assert.equal(weeklyHours(next, "2026-10-19")[0].ranges.length, 2);
-});
-
-test("Date exceptions replace all weekly hours, allow multiple ranges, and enforce one configuration per date", () => {
-  const empty = createAvailabilityMock(true);
-  const next = applyAvailabilityCommand(empty, exception({ ranges: [{ start: "10:00", end: "11:00" }, { start: "16:00", end: "17:00" }] }), now);
-  assert.equal(next.feedback?.outcome, "success");
-  assert.equal(error(create({ date: "2026-10-19", start: "09:00", end: "10:00" }), next) !== null, true);
-  assert.equal(error(create({ date: "2026-10-19", start: "10:00", end: "11:00" }), next), null);
-  assert.ok(error(exception({ id: "duplicate" }), next));
-  assert.deepEqual(effectiveHours(next, "2026-10-20"), state.schedules[0].days[1].ranges);
-});
-
-test("Creating/editing/closing an exception checks all same-day slots, including slots without bookings", () => {
-  const command = exception({ date: "2026-10-16", ranges: [{ start: "09:00", end: "12:00" }] });
-  assert.match(error(command)!, /slot-6/);
-  const blocked = applyAvailabilityCommand(state, exception({ date: "2026-10-16" }), now);
-  assert.equal(blocked.exceptions, state.exceptions);
-  assert.equal(blocked.reservations, state.reservations);
-  const next = applyAvailabilityCommand(state, exception({ date: "2026-10-16", ranges: state.schedules[0].days[4].ranges }), now);
-  assert.equal(next.feedback?.outcome, "success");
-  assert.ok(error({ type: "updateException", exception: { id: "new-exception", date: "2026-10-16", ranges: [] } }, next));
-});
-
-test("Deleting exceptions checks fallback weekly hours; a Sunday slot blocks deletion, while a harmless exception can delete", () => {
-  const empty = createAvailabilityMock(true);
-  const opened = applyAvailabilityCommand(empty, exception({ date: "2026-10-18", ranges: [{ start: "09:00", end: "12:00" }] }), now);
-  const slotted = applyAvailabilityCommand(opened, create({ date: "2026-10-18", start: "09:00", end: "10:00" }), now);
-  const deletion: AvailabilityCommand = { type: "deleteException", exceptionId: "new-exception" };
-  assert.match(error(deletion, slotted)!, /new-slot/);
-  assert.equal(applyAvailabilityCommand(slotted, deletion, now).slots, slotted.slots);
-  const deleted = applyAvailabilityCommand(opened, deletion, now);
-  assert.equal(deleted.feedback?.outcome, "success");
-  assert.deepEqual(effectiveHours(deleted, "2026-10-18"), []);
-});
-
-test("Historical exceptions cannot move, edit, or delete; missing and duplicate IDs fail closed", () => {
-  for (const command of [{ type: "updateException", exception: { ...state.exceptions[0], date: "2026-10-22" } }, { type: "deleteException", exceptionId: state.exceptions[0].id }, { type: "deleteSlot", slotId: "missing" }, { type: "updateSlot", slot: { ...free, id: "missing" } }, { type: "createSlot", slot: free }] as AvailabilityCommand[]) assert.ok(error(command));
-});
-
-test("Save rechecks newly held seats and the start time, not just the state at form opening", () => {
-  const command = update({ ...occupied, capacity: 2 });
-  assert.equal(error(command), null);
-  const newlyHeld = { ...state, reservations: [...state.reservations, { id: "new-hold", slotId: occupied.id, status: "pendingConfirmation" as const }] };
-  assert.equal(applyAvailabilityCommand(newlyHeld, command, now).feedback?.outcome, "error");
-  assert.equal(applyAvailabilityCommand(state, command, "2026-10-15T14:30:00+07:00").feedback?.outcome, "error");
-  const deletion: AvailabilityCommand = { type: "deleteSlot", slotId: free.id };
-  assert.equal(error(deletion), null);
-  const reserved = { ...state, reservations: [...state.reservations, { id: "new", slotId: free.id, status: "confirmed" as const }] };
-  assert.equal(applyAvailabilityCommand(reserved, deletion, now).feedback?.outcome, "error");
-});
-
-test("Simulated failure leaves every data collection unchanged; retry succeeds without mutating source fixtures", () => {
-  const command = create();
-  const failed = applyAvailabilityCommand(state, command, now, true);
-  for (const key of ["slots", "reservations", "schedules", "exceptions"] as const) assert.equal(failed[key], state[key]);
-  const retried = applyAvailabilityCommand(failed, command, now);
-  assert.equal(retried.feedback?.outcome, "success");
-  assert.equal(retried.slots.length, state.slots.length + 1);
-  assert.equal(error(command, retried) !== null, true);
-  assert.equal(createAvailabilityMock().slots.length, state.slots.length);
+  const slotDraft = {
+    serviceId: "101",
+    slotDate: "2026-10-16",
+    startTime: "14:00",
+    endTime: "16:00",
+    capacity: "2",
+  };
+  const slotSession = enterSlotUncertainSession(
+    openCreateSlotDialogSession(
+      INITIAL_SLOT_DIALOG_SESSION,
+      identity,
+      "2026-10-16",
+      "101",
+    ),
+    {
+      attemptIdentity: identity,
+      mode: "create",
+      slotId: null,
+      draft: slotDraft,
+      autoEndTime: false,
+      confirmAction: null,
+      uncertain: {
+        kind: "create",
+        preSubmitIds: SLOTS.map((s) => s.id),
+        expected: {
+          serviceId: "101",
+          slotDate: "2026-10-16",
+          startTime: "14:00",
+          endTime: "16:00",
+          capacity: 2,
+        },
+      },
+      error: UNKNOWN_AVAILABILITY_ERROR,
+    },
+  );
+  const slotClosed = closeSlotDialogSession(slotSession);
+  const slotPreserved = keepSlotUncertainOnLifecycleLock(
+    slotClosed,
+    identity,
+    suspendedError,
+    "Cơ sở đang tạm khóa; giữ nguyên trạng thái đối soát.",
+  );
+  assert.equal(slotPreserved.dialogOpen, false);
+  assert.notEqual(slotPreserved.pendingUncertain, null);
+  assert.equal(slotPreserved.editor?.uncertain?.kind, "create");
+  assert.equal(slotPreserved.editor?.reconciling, false);
+  assert.equal(
+    slotPreserved.editor?.saveError?.code,
+    "PROVIDER_SUSPENDED_FORBIDDEN",
+  );
+  const slotReopened = openCreateSlotDialogSession(
+    slotPreserved,
+    identity,
+    "2026-10-17",
+    "102",
+  );
+  assert.equal(slotReopened.editor?.uncertain?.kind, "create");
+  assert.deepEqual(slotReopened.editor?.draft, slotDraft);
+  // Late slot commit arriving while SUSPENDED resolves as "created".
+  assert.equal(
+    reconcileSlotCreate(
+      {
+        serviceId: "101",
+        slotDate: "2026-10-16",
+        startTime: "14:00",
+        endTime: "16:00",
+        capacity: 2,
+      },
+      SLOTS.map((s) => s.id),
+      [
+        ...SLOTS,
+        {
+          id: "399",
+          providerId: "10",
+          serviceId: "101",
+          slotDate: "2026-10-16",
+          startTime: "14:00:00",
+          endTime: "16:00:00",
+          capacity: 2,
+          bookedCount: 0,
+          status: "OPEN",
+          createdAt: "2026-10-15T03:00:00.000Z",
+          updatedAt: "2026-10-15T03:00:00.000Z",
+          service: null,
+        },
+      ],
+      "SUSPENDED",
+    ).outcome,
+    "created",
+  );
 });
