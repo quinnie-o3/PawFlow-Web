@@ -1,57 +1,85 @@
+import type {
+  DssAlertCode,
+  DssAlertSeverity,
+} from "../provider-workspace/liveApi";
+
 export type MetricTone = "success" | "danger" | "info" | "warning" | "pending";
-export type MetricIconName = "payment" | "calendar" | "notification" | "cards" | "stack" | "chart";
-export type DateRange = { start: string; end: string };
-export type ProviderSummary = { providerName: string; reportingPeriod: string };
-export type PrioritySummary = { title: string; waitingRequests: string; todayAppointments: string };
-export type MetricBreakdownItem = { label: string; value: string; tone: MetricTone };
-export type MetricCardData = {
+
+export type MetricIconName =
+  | "payment"
+  | "calendar"
+  | "notification"
+  | "cards"
+  | "stack"
+  | "chart";
+
+export type DateRange = Readonly<{
+  start: string;
+  end: string;
+}>;
+
+export type DashboardRangePreset = "7d" | "30d" | "90d" | "custom";
+
+export type ProviderSummary = Readonly<{
+  providerName: string | null;
+  reportingPeriod: string;
+}>;
+
+export type PrioritySummary = Readonly<{
+  title: string;
+  todayDate: string;
+  waitingCount: number;
+  todayCount: number;
+  waitingRequests: string;
+  todayAppointments: string;
+  missingActiveServices: boolean;
+  missingUpcomingOpenSlots: boolean;
+}>;
+
+export type MetricBreakdownItem = Readonly<{
+  label: string;
+  value: string;
+  tone: MetricTone;
+}>;
+
+export type MetricCardData = Readonly<{
   id: string;
   title: string;
   value: string;
   description: string;
   icon: MetricIconName;
-  breakdown?: MetricBreakdownItem[];
-};
-export type WeeklyStatusPoint = { week: string; completed: number; other: number };
-export type OperationalAlert = {
-  id: string;
-  title: string;
-  description: string;
-  period: string;
-  serviceScope: string;
-  metric: string;
-  numerator: number;
-  denominator: number;
-  threshold: string;
-  condition: string;
-};
-export type BookingRequest = {
-  id: string;
-  customerName: string;
-  petName: string;
-  serviceName: string;
-  scheduledAt: string;
-  durationMinutes: number;
-  price: number;
-  notes: string;
-  status: "pendingConfirmation";
-};
-// Observed daily sample facts, not an API contract or production metric rules.
-export type DailyDashboardSample = {
-  date: string;
+  breakdown?: readonly MetricBreakdownItem[];
+}>;
+
+export type WeeklyStatusPoint = Readonly<{
+  key: string;
+  label: string;
+  rangeLabel: string;
   completed: number;
-  cancelled: number;
-  noShow: number;
-  pending: number;
-  confirmed: number;
-  rejected: number;
-  paidCompletedRevenue: number;
-  completedServices: Record<string, number>;
-  returningCustomerIds: string[];
-  reviewCount: number;
-  reviewScoreTotal: number;
-  groomingCancelled: number;
-  groomingResolved: number;
-  accepted: number;
-  peakHourAccepted: number;
-};
+  other: number;
+}>;
+
+export type LocalizedDssAlert = Readonly<{
+  id: string;
+  code: DssAlertCode;
+  severity: DssAlertSeverity;
+  severityLabel: string;
+  title: string;
+  summary: string;
+  period: string;
+  scope: string;
+  metric: string;
+  threshold: string;
+  recommendation: string;
+}>;
+
+export type DssAlertLookups = Readonly<{
+  facilityName: string | null;
+  serviceNames: ReadonlyMap<string, string>;
+  customerNames: ReadonlyMap<string, string>;
+}>;
+
+export type SetupHintsCounts = Readonly<{
+  activeServices: number;
+  upcomingOpenSlots: number;
+}>;

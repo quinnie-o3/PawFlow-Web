@@ -600,7 +600,8 @@ test("handleBff attaches Idempotent-Replayed HTTP header and JSON field only on 
     );
     for (const [path, method] of [
       ["bookings", "GET"],
-      ["bookings/provider", "GET"],
+      ["bookings/admin", "GET"],
+      ["bookings/provider/12/cancel", "POST"],
       ["bookings/mine/0", "GET"],
       ["bookings/mine/9223372036854775808", "GET"],
       ["bookings/mine/12", "DELETE"],

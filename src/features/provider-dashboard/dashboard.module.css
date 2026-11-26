@@ -80,6 +80,203 @@
   gap: 16px;
 }
 
+.presetGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.presetButton {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid #e5e2ec;
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.presetButton[aria-pressed="true"] {
+  border-color: var(--dashboard-accent);
+  background: var(--surface-primary);
+  color: var(--dashboard-accent);
+}
+
+.refreshButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid #e5e2ec;
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--accent-hover);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.refreshButton:hover:not(:disabled) {
+  background: var(--surface-primary);
+  border-color: var(--accent-hover);
+}
+
+.refreshButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.severityBadge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.severityWarning {
+  background: rgb(217 130 11 / 18%);
+  color: #8a5300;
+}
+
+.severityInfo {
+  background: rgb(48 37 167 / 14%);
+  color: #3025a7;
+}
+
+.blockCard {
+  min-width: 0;
+  padding: 20px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 5%);
+}
+
+.blockError {
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid rgb(174 57 66 / 35%);
+  border-radius: 12px;
+  background: #fff4f4;
+  color: #8f222b;
+}
+
+.blockError h2,
+.blockError h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.blockError p {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.retryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+  min-height: 36px;
+  padding: 8px 14px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #8f222b;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.retryButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.setupHints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.setupHintPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 16%);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.setupHintPill:hover {
+  background: rgb(255 255 255 / 26%);
+}
+
+.chartGrid {
+  display: grid;
+  gap: 8px;
+  align-items: end;
+  min-width: 0;
+  width: 100%;
+}
+
+.chartColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chartBars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  height: 144px;
+  min-width: 0;
+}
+
+.chartBar {
+  flex: 1 1 0;
+  max-width: 24px;
+  min-width: 6px;
+  border-radius: 4px 4px 0 0;
+}
+
+.chartLabel {
+  width: 100%;
+  text-align: center;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.chartSubLabel {
+  width: 100%;
+  text-align: center;
+  font-size: 10px;
+  line-height: 13px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
 @media (min-width: 1440px) {
   .operationalGrid {
     grid-template-columns: minmax(0, 1fr) 400px;

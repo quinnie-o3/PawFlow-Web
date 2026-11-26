@@ -1,146 +1,512 @@
 "use client";
 
-import { vi, formatMessage } from "@/lib/locale";
-
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { actionLabels, bookingActions, formatBookingDate, scheduledEnd, statusLabels } from "../bookingLogic";
-import { mockNow, mockOwner } from "../data/providerBookingsMock";
-import type { Booking, BookingCommand, BookingLog, BookingStatus, MockBookingsState } from "../types";
+import { useEffect, useId, useRef, type FormEvent } from "react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
+import { formatMessage, vi } from "@/lib/locale";
+import type { ProviderBooking } from "../../provider-workspace/liveApi";
+import {
+  getProviderErrorMessage,
+  type ProviderLifecyclePermissions,
+} from "../../provider-workspace/lifecycle";
+import ProviderWorkspaceDialog from "../../provider-workspace/components/ProviderWorkspaceDialog";
+import {
+  ACTION_TARGET_STATUS,
+  BOOKING_ACTION_LABELS,
+  BOOKING_STATUS_LABELS,
+  evaluateBookingTimeNotice,
+  formatBookingSlotRange,
+  formatBookingTimestamp,
+  formatCalendarDate,
+  formatVndAmount,
+  getAvailableBookingActions,
+} from "../bookingLogic";
+import type {
+  BookingDetailLoadState,
+  BookingDraftState,
+  BookingFeedback,
+  ProviderBookingAction,
+} from "../types";
 import BookingStatusBadge from "./BookingStatusBadge";
 import styles from "../bookings.module.css";
 
 type Props = {
-  booking: Booking;
-  logs: BookingLog[];
-  pending: boolean;
-  feedback: MockBookingsState["feedback"];
-  simulateFailure: boolean;
-  onSubmit: (command: BookingCommand) => void;
+  bookingId: string;
+  facilityName: string;
+  summaryBooking: ProviderBooking | null;
+  detailState: BookingDetailLoadState;
+  permissions: ProviderLifecyclePermissions | null;
+  draftState: BookingDraftState;
+  feedback: BookingFeedback | null;
+  cooldownSeconds: number;
+  locked: boolean;
+  onRetryDetail: () => void;
+  onReloadList: () => void;
+  onBeginAction: (action: ProviderBookingAction) => void;
+  onCancelAction: () => void;
+  onReasonChange: (value: string) => void;
+  onSubmitAction: (action: ProviderBookingAction, reason: string) => void;
+  onReconcileUnknown: () => void;
   onClose: () => void;
 };
 
-export default function BookingDetailsDialog({ booking, logs, pending, feedback, simulateFailure, onSubmit, onClose }: Props) {
-  const ref = useRef<HTMLDialogElement>(null);
-  const titleId = useId();
-  const [target, setTarget] = useState<BookingStatus | null>(null);
-  const [confirmationStatus, setConfirmationStatus] = useState(booking.status);
-  const [reason, setReason] = useState("");
-  const [attested, setAttested] = useState(false);
-  const [validation, setValidation] = useState("");
+export default function BookingDetailsDialog({
+  bookingId,
+  facilityName,
+  summaryBooking,
+  detailState,
+  permissions,
+  draftState,
+  feedback,
+  cooldownSeconds,
+  locked,
+  onRetryDetail,
+  onReloadList,
+  onBeginAction,
+  onCancelAction,
+  onReasonChange,
+  onSubmitAction,
+  onReconcileUnknown,
+  onClose,
+}: Props) {
+  const hintPrefix = useId();
+  const feedbackRef = useRef<HTMLDivElement>(null);
   const confirmationRef = useRef<HTMLHeadingElement>(null);
-  const feedbackRef = useRef<HTMLParagraphElement>(null);
-  const actions = bookingActions(booking, mockOwner, mockNow);
-  // A successful update invalidates the confirmation view immediately.
-  const confirming = target !== null && confirmationStatus === booking.status;
+
+  const busy =
+    draftState.phase === "submitting" || draftState.phase === "reconciling";
+  const booking = detailState.detail ?? summaryBooking;
+  const isDetailReady = detailState.status === "ready" && detailState.detail !== null;
+  const actions = booking
+    ? getAvailableBookingActions(booking, permissions)
+    : [];
+
+  const activeAction =
+    draftState.bookingId === bookingId ? draftState.action : null;
+  const isUnknown =
+    activeAction !== null &&
+    (draftState.phase === "unknown" || draftState.phase === "reconciling");
 
   useEffect(() => {
-    const dialog = ref.current;
-    const trigger = document.activeElement;
-    dialog?.showModal();
-    return () => {
-      dialog?.close();
-      if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus();
-      else document.getElementById("bookings-title")?.focus();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (feedback) feedbackRef.current?.focus();
+    if (feedback) {
+      feedbackRef.current?.focus();
+    }
   }, [feedback]);
 
-  function beginConfirmation(next: BookingStatus) {
-    setTarget(next);
-    setConfirmationStatus(booking.status);
-    setReason("");
-    setAttested(false);
-    setValidation("");
+  const timeNoticeKind =
+    booking && activeAction && draftState.openedAtMs !== null
+      ? evaluateBookingTimeNotice(
+          booking.slot,
+          activeAction,
+          draftState.openedAtMs,
+        )
+      : null;
+
+  const slotRangeText = booking ? formatBookingSlotRange(booking.slot) : "";
+  const timeNoticeMessage =
+    timeNoticeKind === "no-show-before-start"
+      ? formatMessage(vi.provider.bookings.timeNotice.noShowBeforeStart, {
+          slotRange: slotRangeText,
+        })
+      : timeNoticeKind === "complete-before-start"
+        ? formatMessage(vi.provider.bookings.timeNotice.completeBeforeStart, {
+            slotRange: slotRangeText,
+          })
+        : timeNoticeKind === "complete-before-end"
+          ? formatMessage(vi.provider.bookings.timeNotice.completeBeforeEnd, {
+              slotRange: slotRangeText,
+            })
+          : null;
+
+  function handleBeginAction(action: ProviderBookingAction) {
+    onBeginAction(action);
     window.requestAnimationFrame(() => confirmationRef.current?.focus());
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!target || pending) return;
-    if (target === "cancelled" && !reason.trim()) {
-      setValidation(vi.provider.bookings.errors.cancellationReason);
+    if (!activeAction || busy || locked || cooldownSeconds > 0 || isUnknown) {
       return;
     }
-    if (["completed", "noShow"].includes(target) && !attested) {
-      setValidation(vi.provider.bookings.errors.attestation);
-      return;
-    }
-    setValidation("");
-    onSubmit({ bookingId: booking.id, expectedStatus: booking.status, targetStatus: target, reason, confirmedActualOutcome: attested, simulateFailure });
+    onSubmitAction(activeAction, draftState.reason);
   }
 
-  return <dialog ref={ref} className={styles.dialog} aria-labelledby={titleId}
-    onKeyDown={(event) => {
-      if (event.key !== "Tab") return;
-      const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), summary, a[href], [tabindex="0"]'))
-        .filter((element) => element.getClientRects().length > 0);
-      const first = controls[0];
-      const last = controls[controls.length - 1];
-      if (!controls.includes(document.activeElement as HTMLElement) || (event.shiftKey && document.activeElement === first) || (!event.shiftKey && document.activeElement === last)) {
-        event.preventDefault();
-        (event.shiftKey ? last : first)?.focus();
-      }
-    }}
-    onCancel={(event) => { event.preventDefault(); if (!pending) onClose(); }}
-    onClick={(event) => { if (event.target === event.currentTarget && !pending) onClose(); }}>
-    <div className={styles.dialogBody}>
-      <h2 id={titleId}>{formatMessage(vi.provider.bookings.details.title, { bookingId: booking.id })}</h2>
-      <p className={styles.mockLabel}>{vi.provider.bookings.details.mockFacility}</p>
-      <dl className={styles.detailFields}>
-        <dt>{vi.provider.bookings.labels.customer}</dt><dd>{booking.customerName}</dd>
-        <dt>{vi.provider.bookings.labels.pet}</dt><dd>{booking.petName} ({booking.petSpecies})</dd>
-        <dt>{vi.provider.bookings.labels.service}</dt><dd>{booking.serviceName}</dd>
-        <dt>{vi.provider.bookings.labels.dateTime}</dt><dd>{formatBookingDate(booking.scheduledAt, true)}</dd>
-        <dt>{vi.provider.bookings.labels.duration}</dt><dd>{formatMessage(vi.provider.bookings.details.duration, { count: booking.durationMinutes })}</dd>
-        <dt>{vi.provider.bookings.labels.expectedEnd}</dt><dd>{formatBookingDate(new Date(scheduledEnd(booking)).toISOString(), true)}</dd>
-        <dt>{vi.provider.bookings.labels.price}</dt><dd>{booking.price.toLocaleString("vi-VN")} ₫</dd>
-        <dt>{vi.provider.bookings.labels.notes}</dt><dd>{booking.notes || vi.provider.bookings.labels.noNotes}</dd>
-        <dt>{vi.provider.bookings.labels.status}</dt><dd><BookingStatusBadge status={booking.status} /></dd>
-      </dl>
-      <p className={styles.mockLabel}>{formatMessage(vi.provider.bookings.details.clock, { time: formatBookingDate(mockNow, true) })}</p>
+  return (
+    <ProviderWorkspaceDialog
+      title={formatMessage(vi.provider.bookings.details.title, { bookingId })}
+      subtitle={formatMessage(vi.provider.bookings.details.subtitle, {
+        facilityName,
+      })}
+      disableClose={busy}
+      restoreFocusFallbackId="bookings-title"
+      onClose={onClose}
+    >
+      <div className={styles.dialogContent}>
+        {feedback && feedback.bookingId === bookingId && (
+          <div
+            ref={feedbackRef}
+            tabIndex={-1}
+            role={feedback.tone === "error" ? "alert" : "status"}
+            className={
+              feedback.tone === "error"
+                ? styles.error
+                : feedback.tone === "warning"
+                  ? styles.warning
+                  : styles.success
+            }
+          >
+            {feedback.message}
+          </div>
+        )}
 
-      {feedback && <p ref={feedbackRef} tabIndex={-1} className={feedback.outcome === "error" ? styles.error : styles.success} role={feedback.outcome === "error" ? "alert" : "status"}>{feedback.message}</p>}
+        {detailState.status === "loading" && !detailState.detail && (
+          <div className={styles.stateBox} role="status" aria-busy="true">
+            <p>{vi.provider.bookings.details.loading}</p>
+          </div>
+        )}
 
-      {confirming ? <form onSubmit={submit} className={styles.confirmation} aria-busy={pending}>
-        <h3 ref={confirmationRef} tabIndex={-1}>{actionLabels[target]}?</h3>
-        <p>{booking.id} · {booking.customerName} · {booking.petName}</p>
-        <p>{statusLabels[booking.status]} → {statusLabels[target]}</p>
-        {target === "cancelled" && <label className={styles.fieldLabel}>
-          {vi.provider.bookings.confirmation.cancellationReason}<textarea value={reason} onChange={(event) => setReason(event.target.value)} required disabled={pending} rows={3} />
-        </label>}
-        {(target === "completed" || target === "noShow") && <label className={styles.checkboxLabel}>
-          <input type="checkbox" checked={attested} onChange={(event) => setAttested(event.target.checked)} disabled={pending} required />
-          {target === "completed" ? vi.provider.bookings.confirmation.completedAttestation : vi.provider.bookings.confirmation.noShowAttestation}
-        </label>}
-        {validation && <p role="alert" className={styles.error}>{validation}</p>}
-        <button type="submit" className={styles.primaryButton} disabled={pending}>{pending ? vi.provider.bookings.confirmation.pending : vi.provider.bookings.confirmation.submit}</button>
-        <button type="button" className={styles.softButton} disabled={pending} onClick={() => {
-          setTarget(null);
-          window.requestAnimationFrame(() => ref.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus());
-        }}>{vi.provider.bookings.confirmation.back}</button>
-      </form> : <div className={styles.actions}>
-        {actions.map((action) => <div key={action.target}>
-          <button type="button" className={styles.primaryButton} disabled={pending || !!action.disabledReason}
-            aria-describedby={action.disabledReason ? `${titleId}-${action.target}` : undefined}
-            onClick={() => beginConfirmation(action.target)}>{action.label}</button>
-          {action.disabledReason && <p id={`${titleId}-${action.target}`} className={styles.actionHint}>{action.disabledReason}</p>}
-        </div>)}
-        {actions.length === 0 && <p className={styles.actionHint}>{vi.provider.bookings.errors.finalStatus}</p>}
-      </div>}
+        {detailState.status === "not-found" && (
+          <div className={styles.error} role="alert">
+            <h3>{vi.provider.bookings.details.notFoundTitle}</h3>
+            <p>{vi.provider.bookings.details.notFoundDescription}</p>
+            <div className={styles.inlineActions}>
+              <button
+                type="button"
+                className={styles.softButton}
+                disabled={busy || cooldownSeconds > 0}
+                onClick={() => {
+                  onReloadList();
+                  onClose();
+                }}
+              >
+                {vi.provider.bookings.details.reloadList}
+              </button>
+            </div>
+          </div>
+        )}
 
-      {logs.length > 0 && <details className={styles.log}>
-        <summary>{formatMessage(vi.provider.bookings.logs.title, { count: logs.length })}</summary>
-        <ol>{logs.map((entry) => <li key={entry.id}>
-          <p>{statusLabels[entry.previousStatus]} → {statusLabels[entry.nextStatus]} · {entry.outcome === "success" ? vi.provider.bookings.logs.success : vi.provider.bookings.logs.failure}</p>
-          <p>{entry.actor.name} (Provider Owner) · {formatBookingDate(entry.occurredAt, true)}</p>
-          <p>{formatMessage(vi.provider.bookings.logs.reason, { reason: entry.reason || vi.provider.bookings.logs.noReason })}</p>
-          {entry.outcome === "error" && <p>{formatMessage(vi.provider.bookings.logs.failedRequest, { message: entry.message, status: statusLabels[entry.requestedStatus] })}</p>}
-        </li>)}</ol>
-      </details>}
-      <button type="button" className={styles.softButton} disabled={pending} onClick={onClose} autoFocus>{vi.common.actions.close}</button>
-    </div>
-  </dialog>;
+        {detailState.status === "error" && (
+          <div className={styles.error} role="alert">
+            <h3>{vi.provider.bookings.details.errorTitle}</h3>
+            <p>
+              {detailState.error
+                ? getProviderErrorMessage(detailState.error, cooldownSeconds)
+                : vi.provider.workspace.errors.UNKNOWN_ERROR}
+            </p>
+            <div className={styles.inlineActions}>
+              <button
+                type="button"
+                className={styles.softButton}
+                disabled={busy || cooldownSeconds > 0}
+                onClick={onRetryDetail}
+              >
+                <RefreshCw aria-hidden="true" size={14} />
+                {vi.provider.bookings.details.retryDetail}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {booking && detailState.status !== "not-found" && (
+          <>
+            <dl className={styles.detailFields}>
+              <dt>{vi.provider.bookings.labels.status}</dt>
+              <dd>
+                <BookingStatusBadge status={booking.status} />
+              </dd>
+
+              <dt>{vi.provider.bookings.labels.customer}</dt>
+              <dd>
+                <strong>{booking.customer.fullName}</strong>{" "}
+                <span className={styles.mutedInline}>
+                  (#{booking.customer.id})
+                </span>
+                <p className={styles.fieldHint}>
+                  {vi.provider.bookings.details.piiNote}
+                </p>
+              </dd>
+
+              <dt>{vi.provider.bookings.labels.pet}</dt>
+              <dd>
+                <strong>{booking.pet.name}</strong> ({booking.pet.petType.name}
+                {booking.pet.breed ? ` · ${booking.pet.breed}` : ""})
+                <div className={styles.petMeta}>
+                  {booking.pet.birthDate && (
+                    <span>
+                      {formatMessage(
+                        vi.provider.bookings.details.petBirthDate,
+                        { date: formatCalendarDate(booking.pet.birthDate) },
+                      )}
+                    </span>
+                  )}
+                  {booking.pet.weight && (
+                    <span>
+                      {formatMessage(vi.provider.bookings.details.petWeight, {
+                        weight: booking.pet.weight,
+                      })}
+                    </span>
+                  )}
+                </div>
+                <p className={styles.fieldHint}>
+                  {vi.provider.bookings.labels.petHealth}:{" "}
+                  {booking.pet.healthNote ??
+                    vi.provider.bookings.details.noHealthNote}
+                </p>
+              </dd>
+
+              <dt>{vi.provider.bookings.labels.service}</dt>
+              <dd>{booking.service.name}</dd>
+
+              <dt>{vi.provider.bookings.labels.slotTime}</dt>
+              <dd>{slotRangeText}</dd>
+
+              <dt>{vi.provider.bookings.labels.duration}</dt>
+              <dd>
+                {formatMessage(vi.provider.bookings.details.duration, {
+                  count: booking.service.durationMinutes,
+                })}
+                <p className={styles.fieldHint}>
+                  {vi.provider.bookings.details.durationCurrentHint}
+                </p>
+              </dd>
+
+              <dt>{vi.provider.bookings.labels.price}</dt>
+              <dd>
+                <strong>{formatVndAmount(booking.bookedPrice)}</strong>
+                <p className={styles.fieldHint}>
+                  {vi.provider.bookings.details.bookedPriceHint}
+                </p>
+              </dd>
+
+              <dt>{vi.provider.bookings.labels.notes}</dt>
+              <dd>
+                {booking.customerNote || vi.provider.bookings.labels.noNotes}
+              </dd>
+
+              <dt>{vi.provider.bookings.details.createdAt}</dt>
+              <dd>{formatBookingTimestamp(booking.createdAt)}</dd>
+
+              <dt>{vi.provider.bookings.details.updatedAt}</dt>
+              <dd>{formatBookingTimestamp(booking.updatedAt)}</dd>
+            </dl>
+
+            {isDetailReady && activeAction ? (
+              <form
+                onSubmit={handleSubmit}
+                className={styles.confirmation}
+                aria-busy={busy}
+              >
+                <h3 ref={confirmationRef} tabIndex={-1}>
+                  {formatMessage(vi.provider.bookings.confirmation.heading, {
+                    action: BOOKING_ACTION_LABELS[activeAction],
+                  })}
+                </h3>
+                <p className={styles.transitionSummary}>
+                  {formatMessage(vi.provider.bookings.confirmation.transition, {
+                    from: BOOKING_STATUS_LABELS[booking.status],
+                    to: BOOKING_STATUS_LABELS[ACTION_TARGET_STATUS[activeAction]],
+                  })}
+                </p>
+
+                {activeAction === "confirm" && (
+                  <p className={styles.actionHint}>
+                    {vi.provider.bookings.confirmation.confirmHint}
+                  </p>
+                )}
+                {activeAction === "complete" && (
+                  <p className={styles.actionHint}>
+                    {vi.provider.bookings.confirmation.completeHint}
+                  </p>
+                )}
+
+                {timeNoticeMessage && (
+                  <div className={styles.warning} role="note">
+                    <AlertTriangle aria-hidden="true" size={16} />
+                    <span>{timeNoticeMessage}</span>
+                  </div>
+                )}
+
+                {(activeAction === "reject" || activeAction === "no-show") && (
+                  <label className={styles.fieldLabel}>
+                    <span>
+                      {activeAction === "reject"
+                        ? vi.provider.bookings.confirmation.rejectReasonLabel
+                        : vi.provider.bookings.confirmation.noShowReasonLabel}
+                    </span>
+                    <textarea
+                      value={draftState.reason}
+                      onChange={(event) => onReasonChange(event.target.value)}
+                      disabled={busy || isUnknown || locked}
+                      rows={3}
+                      maxLength={500}
+                      placeholder={
+                        activeAction === "reject"
+                          ? vi.provider.bookings.confirmation
+                              .rejectReasonPlaceholder
+                          : vi.provider.bookings.confirmation
+                              .noShowReasonPlaceholder
+                      }
+                    />
+                  </label>
+                )}
+
+                {isUnknown ? (
+                  <div className={styles.warning} role="alert">
+                    <AlertTriangle aria-hidden="true" size={18} />
+                    <div className={styles.warningBody}>
+                      <h4>{vi.provider.bookings.unknown.title}</h4>
+                      <p>{vi.provider.bookings.unknown.description}</p>
+                      {draftState.reconcileError && (
+                        <p className={styles.errorInline}>
+                          {getProviderErrorMessage(
+                            draftState.reconcileError,
+                            cooldownSeconds,
+                          )}
+                        </p>
+                      )}
+                      <div className={styles.inlineActions}>
+                        <button
+                          type="button"
+                          className={styles.primaryButton}
+                          disabled={busy || locked || cooldownSeconds > 0}
+                          onClick={onReconcileUnknown}
+                        >
+                          <RefreshCw aria-hidden="true" size={15} />
+                          {draftState.phase === "reconciling"
+                            ? vi.provider.bookings.unknown.reconciling
+                            : vi.provider.bookings.unknown.reconcileButton}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {draftState.error && (
+                      <p role="alert" className={styles.error}>
+                        {getProviderErrorMessage(
+                          draftState.error,
+                          cooldownSeconds,
+                        )}
+                      </p>
+                    )}
+                    <div className={styles.confirmButtons}>
+                      <button
+                        type="submit"
+                        className={styles.primaryButton}
+                        disabled={busy || locked || cooldownSeconds > 0}
+                      >
+                        {draftState.phase === "submitting"
+                          ? vi.provider.bookings.confirmation.pending
+                          : vi.provider.bookings.confirmation.submit}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.softButton}
+                        disabled={busy}
+                        onClick={onCancelAction}
+                      >
+                        {vi.provider.bookings.confirmation.back}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </form>
+            ) : isDetailReady ? (
+              <div className={styles.actions}>
+                {actions.map((option) => {
+                  const hintId = `${hintPrefix}-${option.action}`;
+                  return (
+                    <div key={option.action} className={styles.actionRow}>
+                      <button
+                        type="button"
+                        className={
+                          option.action === "reject" ||
+                          option.action === "no-show"
+                            ? styles.softButton
+                            : styles.primaryButton
+                        }
+                        disabled={
+                          busy ||
+                          locked ||
+                          cooldownSeconds > 0 ||
+                          Boolean(option.disabledReason)
+                        }
+                        aria-describedby={
+                          option.disabledReason ? hintId : undefined
+                        }
+                        onClick={() => handleBeginAction(option.action)}
+                      >
+                        {option.label}
+                      </button>
+                      {option.disabledReason && (
+                        <p id={hintId} className={styles.actionHint}>
+                          {option.disabledReason}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+                {actions.length === 0 && (
+                  <p className={styles.actionHint}>
+                    {vi.provider.bookings.errors.finalStatus}
+                  </p>
+                )}
+              </div>
+            ) : null}
+
+            {isDetailReady && detailState.detail && (
+              <details className={styles.log} open>
+                <summary>
+                  {formatMessage(vi.provider.bookings.logs.title, {
+                    count: detailState.detail.statusLogs.length,
+                  })}
+                </summary>
+                {detailState.detail.statusLogs.length > 0 ? (
+                  <ol>
+                    {detailState.detail.statusLogs.map((entry) => (
+                      <li key={entry.id}>
+                        <p className={styles.logStatus}>
+                          {entry.oldStatus === null
+                            ? formatMessage(
+                                vi.provider.bookings.logs.initialStatus,
+                                {
+                                  status:
+                                    BOOKING_STATUS_LABELS[entry.newStatus],
+                                },
+                              )
+                            : formatMessage(
+                                vi.provider.bookings.logs.transitionStatus,
+                                {
+                                  from: BOOKING_STATUS_LABELS[entry.oldStatus],
+                                  to: BOOKING_STATUS_LABELS[entry.newStatus],
+                                },
+                              )}
+                        </p>
+                        <p className={styles.logTime}>
+                          <time dateTime={entry.createdAt}>
+                            {formatBookingTimestamp(entry.createdAt)}
+                          </time>{" "}
+                          · Asia/Ho_Chi_Minh
+                        </p>
+                        <p className={styles.logReason}>
+                          {formatMessage(vi.provider.bookings.logs.reason, {
+                            reason:
+                              entry.reason ||
+                              vi.provider.bookings.logs.noReason,
+                          })}
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className={styles.actionHint}>
+                    {vi.provider.bookings.logs.empty}
+                  </p>
+                )}
+              </details>
+            )}
+          </>
+        )}
+      </div>
+    </ProviderWorkspaceDialog>
+  );
 }

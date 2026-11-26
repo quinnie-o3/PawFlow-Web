@@ -1,108 +1,340 @@
-import { vi, formatMessage } from "../../lib/locale";
+import { vi } from "../../lib/locale";
 import { matchesSearch, normalizeSearch } from "../../lib/search";
-import type { Booking, BookingActor, BookingCommand, BookingFilters, BookingStatus, MockBookingsState } from "./types";
+import {
+  isValidCalendarDate,
+  type ProviderApprovalStatus,
+  type ProviderBooking,
+  type ProviderBookingReasonInput,
+  type ProviderBookingSlot,
+  type ProviderBookingStatus,
+} from "../provider-workspace/liveApi";
+import type { ProviderLifecyclePermissions } from "../provider-workspace/lifecycle";
+import type {
+  BookingActionOption,
+  BookingFilters,
+  BookingReconcileOutcome,
+  BookingSummaryItem,
+  BookingTimeNoticeKind,
+  ProviderBookingAction,
+} from "./types";
 
-export const bookingTimeZone = "Asia/Ho_Chi_Minh";
-export const statusLabels: Record<BookingStatus, string> = {
-  pendingConfirmation: vi.provider.bookings.status.pendingConfirmation, confirmed: vi.provider.bookings.status.confirmed, rejected: vi.provider.bookings.status.rejected,
-  cancelled: vi.provider.bookings.status.cancelled, completed: vi.provider.bookings.status.completed, noShow: vi.provider.bookings.status.noShow,
-};
-export const statusOrder: BookingStatus[] = ["pendingConfirmation", "confirmed", "completed", "cancelled", "rejected", "noShow"];
-export const actionLabels: Partial<Record<BookingStatus, string>> = {
-  confirmed: vi.provider.bookings.actions.confirmed, rejected: vi.provider.bookings.actions.rejected, cancelled: vi.provider.bookings.actions.cancelled,
-  completed: vi.provider.bookings.actions.completed, noShow: vi.provider.bookings.actions.noShow,
+export const BOOKING_TIME_ZONE = "Asia/Ho_Chi_Minh";
+
+export const PROVIDER_BOOKING_STATUS_ORDER: readonly ProviderBookingStatus[] = [
+  "PENDING_CONFIRMATION",
+  "CONFIRMED",
+  "COMPLETED",
+  "CANCELLED",
+  "REJECTED",
+  "NO_SHOW",
+] as const;
+
+export const BOOKING_STATUS_LABELS: Readonly<Record<ProviderBookingStatus, string>> = {
+  PENDING_CONFIRMATION: vi.provider.bookings.status.PENDING_CONFIRMATION,
+  CONFIRMED: vi.provider.bookings.status.CONFIRMED,
+  REJECTED: vi.provider.bookings.status.REJECTED,
+  CANCELLED: vi.provider.bookings.status.CANCELLED,
+  COMPLETED: vi.provider.bookings.status.COMPLETED,
+  NO_SHOW: vi.provider.bookings.status.NO_SHOW,
 };
 
-export function formatBookingDate(value: string, includeYear = false) {
+export const BOOKING_ACTION_LABELS: Readonly<Record<ProviderBookingAction, string>> = {
+  confirm: vi.provider.bookings.actions.confirm,
+  reject: vi.provider.bookings.actions.reject,
+  complete: vi.provider.bookings.actions.complete,
+  "no-show": vi.provider.bookings.actions["no-show"],
+};
+
+export const ACTION_TARGET_STATUS: Readonly<
+  Record<ProviderBookingAction, ProviderBookingStatus>
+> = {
+  confirm: "CONFIRMED",
+  reject: "REJECTED",
+  complete: "COMPLETED",
+  "no-show": "NO_SHOW",
+};
+
+export const ACTION_SOURCE_STATUS: Readonly<
+  Record<ProviderBookingAction, ProviderBookingStatus>
+> = {
+  confirm: "PENDING_CONFIRMATION",
+  reject: "PENDING_CONFIRMATION",
+  complete: "CONFIRMED",
+  "no-show": "CONFIRMED",
+};
+
+const LEGACY_STATUS_PARAM_MAP: Readonly<Record<string, ProviderBookingStatus>> = {
+  pendingConfirmation: "PENDING_CONFIRMATION",
+  confirmed: "CONFIRMED",
+  rejected: "REJECTED",
+  cancelled: "CANCELLED",
+  completed: "COMPLETED",
+  noShow: "NO_SHOW",
+  PENDING_CONFIRMATION: "PENDING_CONFIRMATION",
+  CONFIRMED: "CONFIRMED",
+  REJECTED: "REJECTED",
+  CANCELLED: "CANCELLED",
+  COMPLETED: "COMPLETED",
+  NO_SHOW: "NO_SHOW",
+};
+
+/** Accepts both canonical API enums and legacy camelCase query params from older links. */
+export function parseStatusFilterParam(
+  raw: string | null | undefined,
+): ProviderBookingStatus | "all" {
+  if (!raw) return "all";
+  return LEGACY_STATUS_PARAM_MAP[raw.trim()] ?? "all";
+}
+
+export function formatCalendarDate(calendarDate: string): string {
+  const parts = calendarDate.split("-");
+  if (parts.length !== 3) return calendarDate;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+export function formatSlotTimeShort(time: string): string {
+  return time.length >= 5 ? time.slice(0, 5) : time;
+}
+
+export function formatBookingSlotRange(
+  slot: Pick<ProviderBookingSlot, "slotDate" | "startTime" | "endTime">,
+): string {
+  return `${formatCalendarDate(slot.slotDate)} · ${formatSlotTimeShort(slot.startTime)}–${formatSlotTimeShort(slot.endTime)}`;
+}
+
+export function formatBookingTimestamp(iso: string): string {
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return iso;
   const parts = new Intl.DateTimeFormat("vi-VN", {
-    timeZone: bookingTimeZone, day: "2-digit", month: "2-digit",
-    ...(includeYear ? { year: "numeric" as const } : {}), hour: "2-digit", minute: "2-digit",
-  }).formatToParts(new Date(value));
-  const part = (name: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === name)?.value;
-  const date = `${part("day")}/${part("month")}${includeYear ? `/${part("year")}` : ""}`;
-  return `${date} · ${part("hour")}:${part("minute")}`;
+    timeZone: BOOKING_TIME_ZONE,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("day")}/${part("month")}/${part("year")} · ${part("hour")}:${part("minute")}`;
 }
 
-export function filterBookings(bookings: Booking[], filters: BookingFilters) {
-  const query = normalizeSearch(filters.query);
-  return bookings.filter((booking) =>
-    (filters.status === "all" || booking.status === filters.status) &&
-    matchesSearch(query, [booking.id, booking.customerName, booking.petName]));
+/** Parses NUMERIC(12,2) / NUMERIC(18,2) decimal string into exact integer cents via BigInt. */
+export function parseDecimalAmountToCents(amount: string): bigint {
+  const trimmed = amount.trim();
+  const negative = trimmed.startsWith("-");
+  const unsigned = negative ? trimmed.slice(1) : trimmed;
+  const [wholeRaw, fracRaw = ""] = unsigned.split(".");
+  const whole = /^\d+$/.test(wholeRaw) ? BigInt(wholeRaw) : BigInt(0);
+  const paddedFrac = `${fracRaw.replace(/\D/g, "")}00`.slice(0, 2);
+  const cents = whole * BigInt(100) + BigInt(paddedFrac || "0");
+  return negative ? -cents : cents;
 }
 
-export function summarizeBookings(bookings: Booking[]) {
-  return ["pendingConfirmation", "confirmed", "completed"].map((status) => ({
-    status: status as BookingStatus,
-    title: statusLabels[status as BookingStatus],
+export function formatCentsToVnd(cents: bigint): string {
+  const negative = cents < BigInt(0);
+  const abs = negative ? -cents : cents;
+  const whole = abs / BigInt(100);
+  const frac = abs % BigInt(100);
+  const wholeFormatted = whole
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const sign = negative ? "-" : "";
+  if (frac === BigInt(0)) {
+    return `${sign}${wholeFormatted} ₫`;
+  }
+  const fracStr = frac.toString().padStart(2, "0");
+  return `${sign}${wholeFormatted},${fracStr} ₫`;
+}
+
+export function formatVndAmount(decimalString: string): string {
+  return formatCentsToVnd(parseDecimalAmountToCents(decimalString));
+}
+
+export function validateBookingDateFilter(
+  fromDate: string,
+  toDate: string,
+): string | null {
+  if (fromDate && !isValidCalendarDate(fromDate)) {
+    return vi.provider.bookings.filters.invalidDateRange;
+  }
+  if (toDate && !isValidCalendarDate(toDate)) {
+    return vi.provider.bookings.filters.invalidDateRange;
+  }
+  if (fromDate && toDate && fromDate > toDate) {
+    return vi.provider.bookings.filters.invalidDateRange;
+  }
+  return null;
+}
+
+export function filterProviderBookings(
+  bookings: readonly ProviderBooking[],
+  filters: BookingFilters,
+): ProviderBooking[] {
+  const normalizedQuery = normalizeSearch(filters.query);
+  const validFrom =
+    filters.fromDate && isValidCalendarDate(filters.fromDate)
+      ? filters.fromDate
+      : null;
+  const validTo =
+    filters.toDate && isValidCalendarDate(filters.toDate)
+      ? filters.toDate
+      : null;
+  const dateFilterValid = !validFrom || !validTo || validFrom <= validTo;
+
+  return bookings.filter((booking) => {
+    if (filters.status !== "all" && booking.status !== filters.status) {
+      return false;
+    }
+    if (dateFilterValid) {
+      if (validFrom && booking.slot.slotDate < validFrom) return false;
+      if (validTo && booking.slot.slotDate > validTo) return false;
+    }
+    return matchesSearch(normalizedQuery, [
+      booking.id,
+      booking.customer.fullName,
+      booking.pet.name,
+      booking.service.name,
+    ]);
+  });
+}
+
+export function summarizeProviderBookings(
+  bookings: readonly ProviderBooking[],
+): BookingSummaryItem[] {
+  const summaryStatuses: readonly ProviderBookingStatus[] = [
+    "PENDING_CONFIRMATION",
+    "CONFIRMED",
+    "COMPLETED",
+  ];
+  return summaryStatuses.map((status) => ({
+    status,
+    title: BOOKING_STATUS_LABELS[status],
     count: bookings.filter((booking) => booking.status === status).length,
   }));
 }
 
-export function scheduledEnd(booking: Booking) {
-  return new Date(booking.scheduledAt).getTime() + booking.durationMinutes * 60_000;
-}
-
-/** No staff permissions are inferred. Time is injected, never read from the host clock. */
-export function transitionError(booking: Booking, target: BookingStatus, actor: BookingActor, now: string): string | null {
-  if (actor.role !== "providerOwner") return vi.provider.bookings.errors.ownerOnly;
-  if (booking.status === "pendingConfirmation") {
-    return target === "confirmed" || target === "rejected" ? null : vi.provider.bookings.errors.pendingTransition;
+export function getConfirmDisabledReason(
+  permissions: ProviderLifecyclePermissions | null,
+): string | null {
+  if (!permissions) {
+    return vi.provider.bookings.lifecycleLock.UNAVAILABLE;
   }
-  if (booking.status !== "confirmed") return vi.provider.bookings.errors.finalStatus;
-  const time = new Date(now).getTime();
-  const start = new Date(booking.scheduledAt).getTime();
-  if (!Number.isFinite(time) || !Number.isFinite(start) || !Number.isFinite(booking.durationMinutes) || booking.durationMinutes <= 0) {
-    return vi.provider.bookings.errors.invalidTime;
+  if (permissions.canConfirmBookings) return null;
+  const status: Exclude<ProviderApprovalStatus, "APPROVED"> =
+    permissions.status === "APPROVED" ? "PENDING" : permissions.status;
+  return vi.provider.bookings.lifecycleLock[status];
+}
+
+/**
+ * Mirrors backend BookingsService & provider-lifecycle.policy.ts:
+ * - No provider cancel endpoint exists.
+ * - confirm requires PENDING_CONFIRMATION + APPROVED provider.
+ * - reject (PENDING_CONFIRMATION) and complete / no-show (CONFIRMED) remain allowed
+ *   across all 4 lifecycle statuses (wind-down), never hard-locked by client clock.
+ */
+export function getAvailableBookingActions(
+  booking: Pick<ProviderBooking, "status">,
+  permissions: ProviderLifecyclePermissions | null,
+): BookingActionOption[] {
+  if (booking.status === "PENDING_CONFIRMATION") {
+    return [
+      {
+        action: "confirm",
+        targetStatus: "CONFIRMED",
+        label: BOOKING_ACTION_LABELS.confirm,
+        requiresReasonField: false,
+        disabledReason: getConfirmDisabledReason(permissions),
+      },
+      {
+        action: "reject",
+        targetStatus: "REJECTED",
+        label: BOOKING_ACTION_LABELS.reject,
+        requiresReasonField: true,
+        disabledReason: null,
+      },
+    ];
   }
-  switch (target) {
-    case "cancelled": return time < start ? null : vi.provider.bookings.errors.cancelBeforeStart;
-    case "completed": return time >= scheduledEnd(booking) ? null : vi.provider.bookings.errors.completeAfterEnd;
-    case "noShow": return time >= start ? null : vi.provider.bookings.errors.noShowAfterStart;
-    default: return vi.provider.bookings.errors.invalidTransition;
+
+  if (booking.status === "CONFIRMED") {
+    return [
+      {
+        action: "complete",
+        targetStatus: "COMPLETED",
+        label: BOOKING_ACTION_LABELS.complete,
+        requiresReasonField: false,
+        disabledReason: null,
+      },
+      {
+        action: "no-show",
+        targetStatus: "NO_SHOW",
+        label: BOOKING_ACTION_LABELS["no-show"],
+        requiresReasonField: true,
+        disabledReason: null,
+      },
+    ];
   }
+
+  return [];
 }
 
-export function bookingActions(booking: Booking, actor: BookingActor, now: string) {
-  const targets: BookingStatus[] = booking.status === "pendingConfirmation"
-    ? ["confirmed", "rejected"] : booking.status === "confirmed" ? ["completed", "noShow", "cancelled"] : [];
-  return targets.map((target) => ({ target, label: actionLabels[target]!, disabledReason: transitionError(booking, target, actor, now) }));
+export function getSlotBoundsMs(
+  slot: Pick<ProviderBookingSlot, "slotDate" | "startTime" | "endTime">,
+): { startMs: number; endMs: number } | null {
+  const startMs = Date.parse(`${slot.slotDate}T${slot.startTime}+07:00`);
+  const endMs = Date.parse(`${slot.slotDate}T${slot.endTime}+07:00`);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return null;
+  return { startMs, endMs };
 }
 
-export function createMockState(bookings: Booking[]): MockBookingsState {
-  return { bookings: bookings.map((booking) => ({ ...booking })), logs: [], pending: null, feedback: null };
-}
+/**
+ * Advisory time warning in Asia/Ho_Chi_Minh for complete/no-show confirmation.
+ * Never blocks submission so client clock skew cannot lock valid server transitions.
+ */
+export function evaluateBookingTimeNotice(
+  slot: Pick<ProviderBookingSlot, "slotDate" | "startTime" | "endTime">,
+  action: ProviderBookingAction,
+  nowMs: number,
+): BookingTimeNoticeKind {
+  if (!Number.isFinite(nowMs)) return null;
+  const bounds = getSlotBoundsMs(slot);
+  if (!bounds) return null;
 
-/** Resolve against the latest state, rechecking status, role, time, reason, and attestation. */
-export function resolveMockCommand(state: MockBookingsState, command: BookingCommand, actor: BookingActor, now: string): MockBookingsState {
-  const booking = state.bookings.find((item) => item.id === command.bookingId);
-  if (!booking) return { ...state, pending: null, feedback: { bookingId: command.bookingId, outcome: "error", message: vi.provider.bookings.errors.notFound } };
-  const reason = command.reason.trim();
-  let error = booking.status !== command.expectedStatus ? vi.provider.bookings.errors.statusChanged : transitionError(booking, command.targetStatus, actor, now);
-  if (!error && command.targetStatus === "cancelled" && !reason) error = vi.provider.bookings.errors.cancellationReason;
-  if (!error && ["completed", "noShow"].includes(command.targetStatus) && !command.confirmedActualOutcome) error = vi.provider.bookings.errors.attestation;
-  if (!error && command.simulateFailure) error = vi.provider.bookings.errors.simulatedFailure;
-  const outcome = error ? "error" : "success";
-  const message = error ?? formatMessage(vi.provider.bookings.feedback.statusUpdated, { bookingId: booking.id, status: statusLabels[command.targetStatus].toLowerCase() });
-  const nextStatus = error ? booking.status : command.targetStatus;
-  return {
-    bookings: error ? state.bookings : state.bookings.map((item) => item.id === booking.id ? { ...item, status: nextStatus } : item),
-    logs: [...state.logs, {
-      id: state.logs.length + 1, bookingId: booking.id, previousStatus: booking.status, nextStatus,
-      requestedStatus: command.targetStatus, actor: { ...actor }, occurredAt: now, reason, outcome, message,
-    }],
-    pending: null, feedback: { bookingId: booking.id, outcome, message },
-  };
-}
-
-export type MockBookingsAction =
-  | { type: "submit"; command: BookingCommand }
-  | { type: "resolve"; actor: BookingActor; now: string }
-  | { type: "scenario"; bookings: Booking[] };
-
-export function mockBookingsReducer(state: MockBookingsState, action: MockBookingsAction): MockBookingsState {
-  switch (action.type) {
-    case "submit": return state.pending ? state : { ...state, pending: action.command, feedback: null };
-    case "resolve": return state.pending ? resolveMockCommand(state, state.pending, action.actor, action.now) : state;
-    case "scenario": return state.pending ? state : createMockState(action.bookings);
+  if (action === "no-show") {
+    return nowMs < bounds.startMs ? "no-show-before-start" : null;
   }
+  if (action === "complete") {
+    if (nowMs < bounds.startMs) return "complete-before-start";
+    if (nowMs < bounds.endMs) return "complete-before-end";
+  }
+  return null;
+}
+
+export function buildReasonPayload(reason: string): ProviderBookingReasonInput {
+  const trimmed = reason.trim();
+  return trimmed ? { reason: trimmed } : {};
+}
+
+export function reconcileUnknownMutation(
+  serverStatus: ProviderBookingStatus,
+  action: ProviderBookingAction,
+): BookingReconcileOutcome {
+  if (serverStatus === ACTION_TARGET_STATUS[action]) {
+    return "applied";
+  }
+  if (serverStatus === ACTION_SOURCE_STATUS[action]) {
+    return "not-applied";
+  }
+  return "changed-elsewhere";
+}
+
+export function isBookingConflictOrNotFoundCode(code: string): boolean {
+  return (
+    code === "BOOKING_NOT_PENDING" ||
+    code === "BOOKING_NOT_CONFIRMED" ||
+    code === "NO_RESERVED_CAPACITY" ||
+    code === "NO_SHOW_TIME" ||
+    code === "CONFLICT" ||
+    code === "BOOKING_NOT_FOUND"
+  );
 }

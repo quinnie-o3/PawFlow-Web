@@ -1,48 +1,98 @@
-/** Internal mock models, not an API contract. No cross-module synchronization. */
-export type ServiceDuration = { unit: "minutes"; value: number } | { unit: "day"; value: 1 };
-export type ProviderService = {
-  id: string;
-  version: number;
-  name: string;
-  category: string;
-  description: string;
-  price: number;
-  duration: ServiceDuration;
-  active: boolean;
-  completedCount: number;
+import type {
+  ProviderApiErrorInfo,
+  ProviderService,
+  ProviderServiceCategoryRef,
+  ProviderServiceStatus,
+  ServiceCategoryOption,
+} from "../provider-workspace/liveApi";
+
+export type {
+  ProviderApiErrorInfo,
+  ProviderService,
+  ProviderServiceCategoryRef,
+  ProviderServiceStatus,
+  ServiceCategoryOption,
 };
-export type ServiceDraft = {
+
+export type ServiceStatusFilter = "ALL" | ProviderServiceStatus;
+
+export type ServiceFilters = Readonly<{
+  query: string;
+  status: ServiceStatusFilter;
+  /** Empty string selects all categories. */
+  categoryId: string;
+}>;
+
+export type ServiceDraft = Readonly<{
+  categoryId: string;
   name: string;
-  category: string;
-  description: string;
   price: string;
   durationMinutes: string;
-};
-export type ServiceFilters = { query: string; status: "all" | "visible" | "hidden" };
-/** Independent fixtures for proving service edits never rewrite saved bookings/slots. */
-export type ServiceBookingSnapshot = {
-  readonly id: string;
-  readonly serviceId: string;
-  readonly price: number;
-  readonly duration: ServiceDuration;
-  readonly status: "confirmed" | "completed";
-};
-export type ServiceSlotSnapshot = {
-  readonly id: string;
-  readonly serviceId: string;
-  readonly label: string;
-  readonly durationMinutes: number;
-};
-export type ServiceFeedback = { outcome: "success" | "error"; message: string };
-export type ServicesState = {
-  services: ProviderService[];
-  categories: string[];
-  bookings: readonly ServiceBookingSnapshot[];
-  slots: readonly ServiceSlotSnapshot[];
-  feedback: ServiceFeedback | null;
-};
-export type ServiceCommand =
-  | { type: "create"; id: string; draft: ServiceDraft }
-  | { type: "update"; id: string; expectedVersion: number; draft: ServiceDraft }
-  | { type: "setActive"; id: string; expectedVersion: number; active: boolean }
-  | { type: "createCategory"; name: string };
+  description: string;
+}>;
+
+export type ServiceFieldKey = keyof ServiceDraft;
+
+export type ServiceValidationErrors = Partial<Record<ServiceFieldKey, string>>;
+
+export type ServiceCategoryFilterOption = Readonly<{
+  id: string;
+  name: string;
+  inactive: boolean;
+}>;
+
+export type ExpectedCreateServicePayload = Readonly<{
+  categoryId: string;
+  name: string;
+  canonicalPrice: string;
+  durationMinutes: number;
+  description: string | null;
+}>;
+
+export type ExpectedUpdateServicePatch = Readonly<{
+  categoryId?: string;
+  name?: string;
+  canonicalPrice?: string;
+  durationMinutes?: number;
+  description?: string | null;
+  status?: ProviderServiceStatus;
+}>;
+
+export type ServiceUncertainState =
+  | Readonly<{
+      kind: "create";
+      preSubmitIds: readonly string[];
+      expected: ExpectedCreateServicePayload;
+    }>
+  | Readonly<{
+      kind: "update";
+      serviceId: string;
+      expected: ExpectedUpdateServicePatch;
+    }>
+  | Readonly<{
+      kind: "status";
+      serviceId: string;
+      targetStatus: ProviderServiceStatus;
+    }>;
+
+export type ServiceEditorState = Readonly<{
+  identity: string;
+  mode: "create" | "edit";
+  serviceId: string | null;
+  draft: ServiceDraft;
+  errors: ServiceValidationErrors;
+  saving: boolean;
+  updatingStatus: boolean;
+  reconciling: boolean;
+  confirmStatus: ProviderServiceStatus | null;
+  saveError: ProviderApiErrorInfo | null;
+  statusError: ProviderApiErrorInfo | null;
+  uncertain: ServiceUncertainState | null;
+  reconcileNote: string | null;
+  statusFeedback: string | null;
+}>;
+
+export type ServiceFeedback = Readonly<{
+  outcome: "success" | "error";
+  message: string;
+}>;

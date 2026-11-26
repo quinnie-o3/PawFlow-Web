@@ -1,9 +1,9 @@
 import type { MetricCardData, MetricTone } from "../types";
 import {
-  MetricCalendarIcon,
+  CancellationIcon,
   CardsIcon,
   ChartIcon,
-  CancellationIcon,
+  MetricCalendarIcon,
   PaymentIcon,
   StackIcon,
 } from "./icons";
@@ -18,11 +18,11 @@ const metricIcons = {
 };
 
 const breakdownToneClass: Record<MetricTone, string> = {
-  success: "text-[#56cb24]",
-  danger: "text-[#e02d3c]",
-  info: "text-[#001aff]",
+  success: "text-[#16653d]",
+  danger: "text-[#ae3942]",
+  info: "text-[#3025a7]",
   warning: "text-[#6f00c6]",
-  pending: "text-[#e8a8aa]",
+  pending: "text-[#8a5300]",
 };
 
 type MetricCardProps = {
@@ -41,16 +41,20 @@ export default function MetricCard({ metric }: MetricCardProps) {
         <Icon className="h-5 w-5 shrink-0 text-[var(--accent-hover)]" />
       </div>
 
-      <p className={`${metric.id === "popular-service" ? "text-[26px]" : "text-[28px]"} mt-3 font-bold leading-[35px] text-[var(--text-primary)]`}>
+      <p
+        className={`${
+          metric.id === "popular-service" ? "text-[22px] leading-[30px]" : "text-[26px] leading-[34px]"
+        } mt-3 break-words font-bold tabular-nums text-[var(--text-primary)]`}
+      >
         {metric.value}
       </p>
 
       {metric.breakdown ? (
-        <p className="mt-2 flex flex-wrap gap-x-1 gap-y-0.5 text-[11px] font-semibold leading-[15px]">
+        <p className="mt-2 flex flex-wrap gap-x-1.5 gap-y-0.5 text-[11px] font-semibold leading-[16px]">
           {metric.breakdown.map((item, index) => (
             <span key={item.label} className={breakdownToneClass[item.tone]}>
               {index > 0 ? "· " : ""}
-              {item.label} {item.value}
+              {item.label}: {item.value}
             </span>
           ))}
         </p>
