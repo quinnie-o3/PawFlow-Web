@@ -2,6 +2,7 @@ import { vi } from "../../lib/locale";
 import { matchesSearch, normalizeSearch } from "../../lib/search";
 import {
   isValidCalendarDate,
+  type ProviderApiErrorInfo,
   type ProviderApprovalStatus,
   type ProviderBooking,
   type ProviderBookingReasonInput,
@@ -11,6 +12,7 @@ import {
 import type { ProviderLifecyclePermissions } from "../provider-workspace/lifecycle";
 import type {
   BookingActionOption,
+  BookingDraftState,
   BookingFilters,
   BookingReconcileOutcome,
   BookingSummaryItem,
@@ -337,4 +339,101 @@ export function isBookingConflictOrNotFoundCode(code: string): boolean {
     code === "CONFLICT" ||
     code === "BOOKING_NOT_FOUND"
   );
+}
+
+export const EMPTY_BOOKING_DRAFT: BookingDraftState = {
+  identity: null,
+  bookingId: null,
+  action: null,
+  reason: "",
+  openedAtMs: null,
+  phase: "idle",
+  error: null,
+  reconcileError: null,
+};
+
+export type PendingUnknownBookingMap = Readonly<{
+  identity: string | null;
+  byBookingId: Readonly<Record<string, BookingDraftState>>;
+}>;
+
+export const EMPTY_PENDING_UNKNOWN_BOOKINGS: PendingUnknownBookingMap = {
+  identity: null,
+  byBookingId: {},
+};
+
+/**
+ * R1 recovery for provider booking mutations/reconcile aborted while hidden under
+ * <Activity mode="hidden"> on same-identity 503: releases busy phase and moves to
+ * "unknown" preserving action & reason; purges 100% on 401/logout/identity switch.
+ */
+export function recoverAbortedBookingDraft(
+  draft: BookingDraftState,
+  attemptIdentity: string,
+  liveIdentity: string | null,
+  fallbackError: ProviderApiErrorInfo,
+): BookingDraftState {
+  if (liveIdentity !== attemptIdentity) {
+    return EMPTY_BOOKING_DRAFT;
+  }
+  if (draft.identity !== attemptIdentity) return draft;
+  if (draft.phase === "submitting") {
+    return {
+      ...draft,
+      phase: "unknown",
+      error: fallbackError,
+      reconcileError: null,
+    };
+  }
+  if (draft.phase === "reconciling") {
+    return {
+      ...draft,
+      phase: "unknown",
+      reconcileError: null,
+    };
+  }
+  return draft;
+}
+
+export function storePendingUnknownBooking(
+  map: PendingUnknownBookingMap,
+  draft: BookingDraftState,
+): PendingUnknownBookingMap {
+  if (
+    draft.phase !== "unknown" ||
+    !draft.identity ||
+    !draft.bookingId ||
+    !draft.action
+  ) {
+    return map;
+  }
+  const base = map.identity === draft.identity ? map.byBookingId : {};
+  return {
+    identity: draft.identity,
+    byBookingId: { ...base, [draft.bookingId]: draft },
+  };
+}
+
+export function clearPendingUnknownBooking(
+  map: PendingUnknownBookingMap,
+  identity: string | null,
+  bookingId: string | null,
+): PendingUnknownBookingMap {
+  if (!identity || !bookingId || map.identity !== identity) return map;
+  if (!Object.hasOwn(map.byBookingId, bookingId)) return map;
+  const next = { ...map.byBookingId };
+  delete next[bookingId];
+  return { identity, byBookingId: next };
+}
+
+export function getPendingUnknownBooking(
+  map: PendingUnknownBookingMap,
+  identity: string | null,
+  bookingId: string | null,
+): BookingDraftState | null {
+  if (!identity || !bookingId || map.identity !== identity) return null;
+  const found = Object.hasOwn(map.byBookingId, bookingId)
+    ? map.byBookingId[bookingId]
+    : null;
+  return found && found.phase === "unknown" ? found : null;
 }

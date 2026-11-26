@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { isRequestCancelled } from "@/lib/api/errors";
+import { ApiError, isRequestCancelled } from "@/lib/api/errors";
 import { formatMessage, vi } from "@/lib/locale";
+import { snapshot } from "@/features/session/client";
 import {
   classifyProviderError,
   createService,
@@ -16,28 +17,39 @@ import {
 import {
   getProviderErrorMessage,
   getProviderErrorMessageByCode,
+  providerSessionIdentityKey,
 } from "@/features/provider-workspace/lifecycle";
 import { useProviderProfile } from "@/features/provider-workspace/useProviderProfile";
 import ProviderLifecycleBanner from "@/features/provider-workspace/components/ProviderLifecycleBanner";
 import {
+  INITIAL_SERVICE_DIALOG_SESSION,
   applyLocalServiceMutation,
   buildCategoryFilterOptions,
   buildCreateServicePayload,
+  buildServiceEditorFromPending,
   buildUpdateServicePatch,
+  closeServiceDialogSession,
+  enterServiceUncertainSession,
   filterServices,
   hasServiceDraftChanges,
   isServiceCategoryInactive,
+  keepServiceCreateStillUnknown,
+  openCreateServiceDialogSession,
+  openEditServiceDialogSession,
   reconcileServiceCreate,
   reconcileServiceUpdate,
-  serviceToDraft,
+  recoverAbortedServiceMutation,
+  recoverAbortedServiceReconcile,
+  reopenPendingServiceUncertainSession,
   validateServiceDraft,
 } from "../serviceLogic";
 import { useProviderServices } from "../useProviderServices";
 import type {
-  ServiceEditorState,
+  ServiceDialogSessionState,
   ServiceFeedback,
   ServiceFieldKey,
   ServiceFilters,
+  ServiceUncertainState,
 } from "../types";
 import ServiceDialog from "./ServiceDialog";
 import ServicesFeedback from "./ServicesFeedback";
@@ -90,7 +102,8 @@ export default function ProviderServicesPage() {
 
   const [filters, setFilters] = useState<ServiceFilters>(INITIAL_FILTERS);
   const [rawQuery, setRawQuery] = useState("");
-  const [editor, setEditor] = useState<ServiceEditorState | null>(null);
+  const [dialogSession, setDialogSession] =
+    useState<ServiceDialogSessionState>(INITIAL_SERVICE_DIALOG_SESSION);
   const [scopedFeedback, setScopedFeedback] = useState<ScopedFeedback | null>(
     null,
   );
@@ -114,7 +127,7 @@ export default function ProviderServicesPage() {
   }, []);
 
   // Purge all private state asynchronously on 401/logout/identity switch.
-  // Preserve editor draft and uncertain state in memory on same-identity revalidate error.
+  // Preserve editor draft and pendingUncertain in memory on same-identity revalidate error.
   useEffect(() => {
     if (!sessionBoundary.resetPrivateState) return;
     mutationControllerRef.current?.abort();
@@ -123,7 +136,7 @@ export default function ProviderServicesPage() {
     let cancelled = false;
     Promise.resolve().then(() => {
       if (cancelled) return;
-      setEditor(null);
+      setDialogSession(INITIAL_SERVICE_DIALOG_SESSION);
       setScopedFeedback(null);
       setFilters(INITIAL_FILTERS);
       setRawQuery("");
@@ -162,11 +175,19 @@ export default function ProviderServicesPage() {
       : 0;
 
   const activeEditor =
-    editor !== null &&
+    dialogSession.editor !== null &&
     !sessionBoundary.resetPrivateState &&
     sessionBoundary.identity !== null &&
-    editor.identity === sessionBoundary.identity
-      ? editor
+    dialogSession.editor.identity === sessionBoundary.identity
+      ? dialogSession.editor
+      : null;
+
+  const activePendingUncertain =
+    dialogSession.pendingUncertain !== null &&
+    !sessionBoundary.resetPrivateState &&
+    sessionBoundary.identity !== null &&
+    dialogSession.pendingUncertain.identity === sessionBoundary.identity
+      ? dialogSession.pendingUncertain
       : null;
 
   const activeFeedback =
@@ -199,8 +220,9 @@ export default function ProviderServicesPage() {
       : true;
 
   // Unmount <ProviderWorkspaceDialog> whenever private UI is hidden (including same-identity
-  // revalidate error) to release native top-layer backdrop while keeping activeEditor in memory.
+  // revalidate error) to release native top-layer backdrop while keeping pendingUncertain & draft in memory.
   const showDialog =
+    dialogSession.dialogOpen &&
     activeEditor !== null &&
     !sessionBoundary.closeDialog &&
     !sessionBoundary.hidePrivateData &&
@@ -235,23 +257,11 @@ export default function ProviderServicesPage() {
     ) {
       return;
     }
+    const targetIdentity = sessionBoundary.identity;
     setScopedFeedback(null);
-    setEditor({
-      identity: sessionBoundary.identity,
-      mode: "create",
-      serviceId: null,
-      draft: serviceToDraft(),
-      errors: {},
-      saving: false,
-      updatingStatus: false,
-      reconciling: false,
-      confirmStatus: null,
-      saveError: null,
-      statusError: null,
-      uncertain: null,
-      reconcileNote: null,
-      statusFeedback: null,
-    });
+    setDialogSession((current) =>
+      openCreateServiceDialogSession(current, targetIdentity),
+    );
   }
 
   function openEdit(serviceId: string) {
@@ -265,50 +275,58 @@ export default function ProviderServicesPage() {
     }
     const target = servicesState.services.find((item) => item.id === serviceId);
     if (!target) return;
+    const targetIdentity = sessionBoundary.identity;
     setScopedFeedback(null);
-    setEditor({
-      identity: sessionBoundary.identity,
-      mode: "edit",
-      serviceId: target.id,
-      draft: serviceToDraft(target),
-      errors: {},
-      saving: false,
-      updatingStatus: false,
-      reconciling: false,
-      confirmStatus: null,
-      saveError: null,
-      statusError: null,
-      uncertain: null,
-      reconcileNote: null,
-      statusFeedback: null,
-    });
+    setDialogSession((current) =>
+      openEditServiceDialogSession(current, targetIdentity, target),
+    );
+  }
+
+  function reopenPendingUncertain() {
+    if (
+      submittingRef.current ||
+      !profileReady ||
+      sessionBoundary.lockActions ||
+      !sessionBoundary.identity
+    ) {
+      return;
+    }
+    const targetIdentity = sessionBoundary.identity;
+    setDialogSession((current) =>
+      reopenPendingServiceUncertainSession(current, targetIdentity),
+    );
   }
 
   function closeEditor() {
     if (submittingRef.current) return;
-    setEditor(null);
+    setDialogSession((current) => closeServiceDialogSession(current));
   }
 
   function changeDraftField(field: ServiceFieldKey, value: string) {
-    setEditor((current) => {
+    setDialogSession((current) => {
+      const editor = current.editor;
       if (
-        !current ||
-        current.saving ||
-        current.updatingStatus ||
-        current.reconciling ||
-        current.uncertain !== null ||
+        !editor ||
+        editor.saving ||
+        editor.updatingStatus ||
+        editor.reconciling ||
+        editor.uncertain !== null ||
+        current.pendingUncertain !== null ||
         !canManageResources
       ) {
         return current;
       }
-      const nextErrors = { ...current.errors };
+      const nextErrors = { ...editor.errors };
       delete nextErrors[field];
       return {
         ...current,
-        draft: { ...current.draft, [field]: value },
-        errors: nextErrors,
-        saveError: null,
-        reconcileNote: null,
+        editor: {
+          ...editor,
+          draft: { ...editor.draft, [field]: value },
+          errors: nextErrors,
+          saveError: null,
+          reconcileNote: null,
+        },
       };
     });
   }
@@ -321,31 +339,45 @@ export default function ProviderServicesPage() {
     ) {
       return;
     }
-    setEditor((current) => {
+    setDialogSession((current) => {
+      const editor = current.editor;
       if (
-        !current ||
-        current.mode !== "edit" ||
-        current.saving ||
-        current.updatingStatus ||
-        current.reconciling ||
-        current.uncertain !== null
+        !editor ||
+        editor.mode !== "edit" ||
+        editor.saving ||
+        editor.updatingStatus ||
+        editor.reconciling ||
+        editor.uncertain !== null ||
+        current.pendingUncertain !== null
       ) {
         return current;
       }
       return {
         ...current,
-        confirmStatus: targetStatus,
-        statusError: null,
-        statusFeedback: null,
-        reconcileNote: null,
+        editor: {
+          ...editor,
+          confirmStatus: targetStatus,
+          statusError: null,
+          statusFeedback: null,
+          reconcileNote: null,
+        },
       };
     });
   }
 
   function cancelStatusChange() {
     if (submittingRef.current) return;
-    setEditor((current) =>
-      current ? { ...current, confirmStatus: null, statusError: null } : current,
+    setDialogSession((current) =>
+      current.editor
+        ? {
+            ...current,
+            editor: {
+              ...current.editor,
+              confirmStatus: null,
+              statusError: null,
+            },
+          }
+        : current,
     );
   }
 
@@ -393,6 +425,7 @@ export default function ProviderServicesPage() {
       !profile ||
       !canManageResources ||
       activeEditor.uncertain !== null ||
+      activePendingUncertain !== null ||
       cooldownSeconds > 0
     ) {
       return;
@@ -410,8 +443,13 @@ export default function ProviderServicesPage() {
       ["name", "categoryId", "price", "durationMinutes"] as const
     ).find((key) => Boolean(validationErrors[key]));
     if (firstErrorField) {
-      setEditor((current) =>
-        current ? { ...current, errors: validationErrors } : current,
+      setDialogSession((current) =>
+        current.editor
+          ? {
+              ...current,
+              editor: { ...current.editor, errors: validationErrors },
+            }
+          : current,
       );
       window.requestAnimationFrame(() => {
         document.getElementById(`service-field-${firstErrorField}`)?.focus();
@@ -434,21 +472,41 @@ export default function ProviderServicesPage() {
 
     submittingRef.current = true;
     const attemptIdentity = activeEditor.identity;
+    const attemptMode = activeEditor.mode;
+    const attemptServiceId = activeEditor.serviceId;
+    const attemptDraft = activeEditor.draft;
+    const attemptConfirmStatus = activeEditor.confirmStatus;
     const preSubmitIds = servicesState.services.map((item) => item.id);
+    const uncertainSpec: ServiceUncertainState =
+      isEdit && editingService && updatePatch
+        ? {
+            kind: "update",
+            serviceId: editingService.id,
+            expected: updatePatch.expected,
+          }
+        : {
+            kind: "create",
+            preSubmitIds,
+            expected: createPayload!.expected,
+          };
+    const operation = isEdit ? "update-service" : "create-service";
     const controller = new AbortController();
     mutationControllerRef.current?.abort();
     mutationControllerRef.current = controller;
 
-    setEditor((current) =>
-      current && current.identity === attemptIdentity
+    setDialogSession((current) =>
+      current.editor && current.editor.identity === attemptIdentity
         ? {
             ...current,
-            errors: {},
-            saving: true,
-            saveError: null,
-            statusError: null,
-            reconcileNote: null,
-            statusFeedback: null,
+            editor: {
+              ...current.editor,
+              errors: {},
+              saving: true,
+              saveError: null,
+              statusError: null,
+              reconcileNote: null,
+              statusFeedback: null,
+            },
           }
         : current,
     );
@@ -460,10 +518,26 @@ export default function ProviderServicesPage() {
           updatePatch.input,
           { signal: controller.signal },
         );
+        const liveIdentity = providerSessionIdentityKey(snapshot());
         if (
-          controller.signal.aborted ||
+          liveIdentity !== attemptIdentity ||
           currentIdentityRef.current !== attemptIdentity
         ) {
+          return;
+        }
+        if (controller.signal.aborted) {
+          setDialogSession((current) =>
+            recoverAbortedServiceMutation(current, {
+              attemptIdentity,
+              liveIdentity,
+              mode: attemptMode,
+              serviceId: attemptServiceId,
+              draft: attemptDraft,
+              confirmStatus: attemptConfirmStatus,
+              uncertain: uncertainSpec,
+              error: classifyProviderError(new ApiError("network"), operation),
+            }),
+          );
           return;
         }
         const refreshed = await servicesState.reloadServices();
@@ -476,7 +550,7 @@ export default function ProviderServicesPage() {
               servicesState.categories,
             ),
           );
-          setEditor(null);
+          setDialogSession(INITIAL_SERVICE_DIALOG_SESSION);
           setPageFeedback(
             attemptIdentity,
             "success",
@@ -484,7 +558,7 @@ export default function ProviderServicesPage() {
           );
           return;
         }
-        setEditor(null);
+        setDialogSession(INITIAL_SERVICE_DIALOG_SESSION);
         setPageFeedback(
           attemptIdentity,
           "success",
@@ -494,10 +568,26 @@ export default function ProviderServicesPage() {
         const created = await createService(createPayload.input, {
           signal: controller.signal,
         });
+        const liveIdentity = providerSessionIdentityKey(snapshot());
         if (
-          controller.signal.aborted ||
+          liveIdentity !== attemptIdentity ||
           currentIdentityRef.current !== attemptIdentity
         ) {
+          return;
+        }
+        if (controller.signal.aborted) {
+          setDialogSession((current) =>
+            recoverAbortedServiceMutation(current, {
+              attemptIdentity,
+              liveIdentity,
+              mode: attemptMode,
+              serviceId: attemptServiceId,
+              draft: attemptDraft,
+              confirmStatus: attemptConfirmStatus,
+              uncertain: uncertainSpec,
+              error: classifyProviderError(new ApiError("network"), operation),
+            }),
+          );
           return;
         }
         const createdMessage =
@@ -514,7 +604,7 @@ export default function ProviderServicesPage() {
               servicesState.categories,
             ),
           );
-          setEditor(null);
+          setDialogSession(INITIAL_SERVICE_DIALOG_SESSION);
           setPageFeedback(
             attemptIdentity,
             "success",
@@ -522,23 +612,37 @@ export default function ProviderServicesPage() {
           );
           return;
         }
-        setEditor(null);
+        setDialogSession(INITIAL_SERVICE_DIALOG_SESSION);
         setPageFeedback(attemptIdentity, "success", createdMessage);
       }
     } catch (err) {
+      if (isRequestCancelled(err) || controller.signal.aborted) {
+        const liveIdentity = providerSessionIdentityKey(snapshot());
+        setDialogSession((current) =>
+          recoverAbortedServiceMutation(current, {
+            attemptIdentity,
+            liveIdentity,
+            mode: attemptMode,
+            serviceId: attemptServiceId,
+            draft: attemptDraft,
+            confirmStatus: attemptConfirmStatus,
+            uncertain: uncertainSpec,
+            error: classifyProviderError(new ApiError("network"), operation),
+          }),
+        );
+        return;
+      }
       if (
-        isRequestCancelled(err) ||
-        controller.signal.aborted ||
+        providerSessionIdentityKey(snapshot()) !== attemptIdentity ||
         currentIdentityRef.current !== attemptIdentity
       ) {
         return;
       }
 
-      const operation = isEdit ? "update-service" : "create-service";
       const info = classifyProviderError(err, operation);
 
       if (info.outcome === "session-ended") {
-        setEditor(null);
+        setDialogSession(INITIAL_SERVICE_DIALOG_SESSION);
         return;
       }
 
@@ -546,12 +650,12 @@ export default function ProviderServicesPage() {
 
       if (info.code === "PROVIDER_PROFILE_NOT_FOUND") {
         profileState.markNotFound();
-        setEditor(null);
+        setDialogSession(INITIAL_SERVICE_DIALOG_SESSION);
         return;
       }
 
       if (info.code === "SERVICE_NOT_FOUND") {
-        setEditor(null);
+        setDialogSession(INITIAL_SERVICE_DIALOG_SESSION);
         setPageFeedback(
           attemptIdentity,
           "error",
@@ -565,9 +669,12 @@ export default function ProviderServicesPage() {
         info.code === "PROVIDER_REJECTED_FORBIDDEN" ||
         info.code === "PROVIDER_SUSPENDED_FORBIDDEN"
       ) {
-        setEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? { ...current, saving: false, saveError: info }
+        setDialogSession((current) =>
+          current.editor && current.editor.identity === attemptIdentity
+            ? {
+                ...current,
+                editor: { ...current.editor, saving: false, saveError: info },
+              }
             : current,
         );
         void profileState.reload().then((syncResult) => {
@@ -579,15 +686,18 @@ export default function ProviderServicesPage() {
       }
 
       if (info.code === "CATEGORY_NOT_FOUND") {
-        setEditor((current) =>
-          current && current.identity === attemptIdentity
+        setDialogSession((current) =>
+          current.editor && current.editor.identity === attemptIdentity
             ? {
                 ...current,
-                saving: false,
-                saveError: info,
-                errors: {
-                  ...current.errors,
-                  categoryId: getProviderErrorMessage(info),
+                editor: {
+                  ...current.editor,
+                  saving: false,
+                  saveError: info,
+                  errors: {
+                    ...current.editor.errors,
+                    categoryId: getProviderErrorMessage(info),
+                  },
                 },
               }
             : current,
@@ -597,15 +707,18 @@ export default function ProviderServicesPage() {
       }
 
       if (info.code === "SERVICE_DURATION_EXCEEDS_BOOKED_SLOTS") {
-        setEditor((current) =>
-          current && current.identity === attemptIdentity
+        setDialogSession((current) =>
+          current.editor && current.editor.identity === attemptIdentity
             ? {
                 ...current,
-                saving: false,
-                saveError: info,
-                errors: {
-                  ...current.errors,
-                  durationMinutes: getProviderErrorMessage(info),
+                editor: {
+                  ...current.editor,
+                  saving: false,
+                  saveError: info,
+                  errors: {
+                    ...current.editor.errors,
+                    durationMinutes: getProviderErrorMessage(info),
+                  },
                 },
               }
             : current,
@@ -614,42 +727,26 @@ export default function ProviderServicesPage() {
       }
 
       if (info.outcome === "unknown") {
-        setEditor((current) => {
-          if (!current || current.identity !== attemptIdentity) return current;
-          if (isEdit && editingService && updatePatch) {
-            return {
-              ...current,
-              saving: false,
-              saveError: info,
-              uncertain: {
-                kind: "update",
-                serviceId: editingService.id,
-                expected: updatePatch.expected,
-              },
-              reconcileNote: null,
-            };
-          }
-          if (createPayload) {
-            return {
-              ...current,
-              saving: false,
-              saveError: info,
-              uncertain: {
-                kind: "create",
-                preSubmitIds,
-                expected: createPayload.expected,
-              },
-              reconcileNote: null,
-            };
-          }
-          return { ...current, saving: false, saveError: info };
-        });
+        setDialogSession((current) =>
+          enterServiceUncertainSession(current, {
+            attemptIdentity,
+            mode: attemptMode,
+            serviceId: attemptServiceId,
+            draft: attemptDraft,
+            confirmStatus: attemptConfirmStatus,
+            uncertain: uncertainSpec,
+            error: info,
+          }),
+        );
         return;
       }
 
-      setEditor((current) =>
-        current && current.identity === attemptIdentity
-          ? { ...current, saving: false, saveError: info }
+      setDialogSession((current) =>
+        current.editor && current.editor.identity === attemptIdentity
+          ? {
+              ...current,
+              editor: { ...current.editor, saving: false, saveError: info },
+            }
           : current,
       );
     } finally {
@@ -671,6 +768,7 @@ export default function ProviderServicesPage() {
       !profile ||
       !canManageResources ||
       activeEditor.uncertain !== null ||
+      activePendingUncertain !== null ||
       cooldownSeconds > 0
     ) {
       return;
@@ -686,19 +784,30 @@ export default function ProviderServicesPage() {
 
     submittingRef.current = true;
     const attemptIdentity = activeEditor.identity;
+    const attemptDraft = activeEditor.draft;
+    const operation =
+      targetStatus === "INACTIVE" ? "deactivate-service" : "update-service";
+    const uncertainSpec: ServiceUncertainState = {
+      kind: "status",
+      serviceId,
+      targetStatus,
+    };
     const controller = new AbortController();
     mutationControllerRef.current?.abort();
     mutationControllerRef.current = controller;
 
-    setEditor((current) =>
-      current && current.identity === attemptIdentity
+    setDialogSession((current) =>
+      current.editor && current.editor.identity === attemptIdentity
         ? {
             ...current,
-            updatingStatus: true,
-            statusError: null,
-            saveError: null,
-            reconcileNote: null,
-            statusFeedback: null,
+            editor: {
+              ...current.editor,
+              updatingStatus: true,
+              statusError: null,
+              saveError: null,
+              reconcileNote: null,
+              statusFeedback: null,
+            },
           }
         : current,
     );
@@ -714,10 +823,26 @@ export default function ProviderServicesPage() {
         );
       }
 
+      const liveIdentity = providerSessionIdentityKey(snapshot());
       if (
-        controller.signal.aborted ||
+        liveIdentity !== attemptIdentity ||
         currentIdentityRef.current !== attemptIdentity
       ) {
+        return;
+      }
+      if (controller.signal.aborted) {
+        setDialogSession((current) =>
+          recoverAbortedServiceMutation(current, {
+            attemptIdentity,
+            liveIdentity,
+            mode: "edit",
+            serviceId,
+            draft: attemptDraft,
+            confirmStatus: targetStatus,
+            uncertain: uncertainSpec,
+            error: classifyProviderError(new ApiError("network"), operation),
+          }),
+        );
         return;
       }
 
@@ -756,33 +881,49 @@ export default function ProviderServicesPage() {
         ? successMessage
         : `${successMessage} ${vi.provider.services.feedback.refreshWarning}`;
 
-      setEditor((current) =>
-        current && current.identity === attemptIdentity
+      setDialogSession((current) =>
+        current.editor && current.editor.identity === attemptIdentity
           ? {
               ...current,
-              updatingStatus: false,
-              confirmStatus: null,
-              statusError: null,
-              statusFeedback: fullFeedback,
+              editor: {
+                ...current.editor,
+                updatingStatus: false,
+                confirmStatus: null,
+                statusError: null,
+                statusFeedback: fullFeedback,
+              },
             }
           : current,
       );
       setPageFeedback(attemptIdentity, "success", fullFeedback);
     } catch (err) {
+      if (isRequestCancelled(err) || controller.signal.aborted) {
+        const liveIdentity = providerSessionIdentityKey(snapshot());
+        setDialogSession((current) =>
+          recoverAbortedServiceMutation(current, {
+            attemptIdentity,
+            liveIdentity,
+            mode: "edit",
+            serviceId,
+            draft: attemptDraft,
+            confirmStatus: targetStatus,
+            uncertain: uncertainSpec,
+            error: classifyProviderError(new ApiError("network"), operation),
+          }),
+        );
+        return;
+      }
       if (
-        isRequestCancelled(err) ||
-        controller.signal.aborted ||
+        providerSessionIdentityKey(snapshot()) !== attemptIdentity ||
         currentIdentityRef.current !== attemptIdentity
       ) {
         return;
       }
 
-      const operation =
-        targetStatus === "INACTIVE" ? "deactivate-service" : "update-service";
       const info = classifyProviderError(err, operation);
 
       if (info.outcome === "session-ended") {
-        setEditor(null);
+        setDialogSession(INITIAL_SERVICE_DIALOG_SESSION);
         return;
       }
 
@@ -790,12 +931,12 @@ export default function ProviderServicesPage() {
 
       if (info.code === "PROVIDER_PROFILE_NOT_FOUND") {
         profileState.markNotFound();
-        setEditor(null);
+        setDialogSession(INITIAL_SERVICE_DIALOG_SESSION);
         return;
       }
 
       if (info.code === "SERVICE_NOT_FOUND") {
-        setEditor(null);
+        setDialogSession(INITIAL_SERVICE_DIALOG_SESSION);
         setPageFeedback(
           attemptIdentity,
           "error",
@@ -809,13 +950,16 @@ export default function ProviderServicesPage() {
         info.code === "PROVIDER_REJECTED_FORBIDDEN" ||
         info.code === "PROVIDER_SUSPENDED_FORBIDDEN"
       ) {
-        setEditor((current) =>
-          current && current.identity === attemptIdentity
+        setDialogSession((current) =>
+          current.editor && current.editor.identity === attemptIdentity
             ? {
                 ...current,
-                updatingStatus: false,
-                confirmStatus: null,
-                statusError: info,
+                editor: {
+                  ...current.editor,
+                  updatingStatus: false,
+                  confirmStatus: null,
+                  statusError: info,
+                },
               }
             : current,
         );
@@ -828,27 +972,30 @@ export default function ProviderServicesPage() {
       }
 
       if (info.outcome === "unknown") {
-        setEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
-                updatingStatus: false,
-                statusError: info,
-                uncertain: {
-                  kind: "status",
-                  serviceId,
-                  targetStatus,
-                },
-                reconcileNote: null,
-              }
-            : current,
+        setDialogSession((current) =>
+          enterServiceUncertainSession(current, {
+            attemptIdentity,
+            mode: "edit",
+            serviceId,
+            draft: attemptDraft,
+            confirmStatus: targetStatus,
+            uncertain: uncertainSpec,
+            error: info,
+          }),
         );
         return;
       }
 
-      setEditor((current) =>
-        current && current.identity === attemptIdentity
-          ? { ...current, updatingStatus: false, statusError: info }
+      setDialogSession((current) =>
+        current.editor && current.editor.identity === attemptIdentity
+          ? {
+              ...current,
+              editor: {
+                ...current.editor,
+                updatingStatus: false,
+                statusError: info,
+              },
+            }
           : current,
       );
     } finally {
@@ -860,37 +1007,54 @@ export default function ProviderServicesPage() {
   }
 
   async function handleReconcile() {
+    const pending = activePendingUncertain;
+    const uncertain = pending?.uncertain ?? activeEditor?.uncertain ?? null;
+    const attemptIdentity = pending?.identity ?? activeEditor?.identity ?? null;
     if (
       submittingRef.current ||
       sessionBoundary.lockActions ||
-      !activeEditor?.uncertain ||
+      !uncertain ||
+      !attemptIdentity ||
       cooldownSeconds > 0
     ) {
       return;
     }
 
     submittingRef.current = true;
-    const attemptIdentity = activeEditor.identity;
-    const uncertain = activeEditor.uncertain;
 
-    setEditor((current) =>
-      current && current.identity === attemptIdentity
-        ? {
-            ...current,
-            reconciling: true,
-            saveError: null,
-            statusError: null,
-            reconcileNote: null,
-          }
-        : current,
-    );
+    setDialogSession((current) => {
+      const baseEditor =
+        current.editor && current.editor.identity === attemptIdentity
+          ? current.editor
+          : current.pendingUncertain &&
+              current.pendingUncertain.identity === attemptIdentity
+            ? buildServiceEditorFromPending(current.pendingUncertain)
+            : null;
+      if (!baseEditor) return current;
+      return {
+        ...current,
+        editor: {
+          ...baseEditor,
+          reconciling: true,
+          saveError: null,
+          statusError: null,
+          reconcileNote: null,
+        },
+      };
+    });
 
     try {
       const [listResult, profileResult] = await Promise.all([
         servicesState.reloadServices(),
         profileState.reload(),
       ]);
-      if (currentIdentityRef.current !== attemptIdentity) return;
+      const liveIdentity = providerSessionIdentityKey(snapshot());
+      if (
+        liveIdentity !== attemptIdentity ||
+        currentIdentityRef.current !== attemptIdentity
+      ) {
+        return;
+      }
 
       if (
         (!profileResult.ok &&
@@ -902,32 +1066,41 @@ export default function ProviderServicesPage() {
           (listResult.error.outcome === "session-ended" ||
             listResult.error.code === "PROVIDER_PROFILE_NOT_FOUND"))
       ) {
-        setEditor(null);
+        setDialogSession(INITIAL_SERVICE_DIALOG_SESSION);
         return;
       }
 
       if (!listResult.ok) {
         if (listResult.aborted) {
-          setEditor((current) =>
-            current && current.identity === attemptIdentity
-              ? { ...current, reconciling: false }
-              : current,
+          setDialogSession((current) =>
+            recoverAbortedServiceReconcile(
+              current,
+              attemptIdentity,
+              liveIdentity,
+            ),
           );
           return;
         }
         startCooldown(listResult.error.retryAfterSeconds);
-        setEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
-                reconciling: false,
-                saveError:
-                  uncertain.kind === "status" ? null : listResult.error,
-                statusError:
-                  uncertain.kind === "status" ? listResult.error : null,
-              }
-            : current,
-        );
+        setDialogSession((current) => ({
+          ...current,
+          pendingUncertain:
+            current.pendingUncertain &&
+            current.pendingUncertain.identity === attemptIdentity
+              ? { ...current.pendingUncertain, error: listResult.error }
+              : current.pendingUncertain,
+          editor:
+            current.editor && current.editor.identity === attemptIdentity
+              ? {
+                  ...current.editor,
+                  reconciling: false,
+                  saveError:
+                    uncertain.kind === "status" ? null : listResult.error,
+                  statusError:
+                    uncertain.kind === "status" ? listResult.error : null,
+                }
+              : current.editor,
+        }));
         return;
       }
 
@@ -943,7 +1116,7 @@ export default function ProviderServicesPage() {
           approvalStatus,
         );
         if (result.outcome === "created") {
-          setEditor(null);
+          setDialogSession(INITIAL_SERVICE_DIALOG_SESSION);
           setPageFeedback(
             attemptIdentity,
             "success",
@@ -952,29 +1125,36 @@ export default function ProviderServicesPage() {
           return;
         }
         if (result.outcome === "forbidden-lifecycle") {
-          setEditor((current) =>
-            current && current.identity === attemptIdentity
-              ? {
-                  ...current,
-                  reconciling: false,
-                  uncertain: null,
-                  saveError: lifecycleErrorInfo(result.approvalStatus),
-                  reconcileNote: null,
-                }
-              : current,
-          );
-          return;
-        }
-        setEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
+          setDialogSession((current) => {
+            const baseEditor =
+              current.editor && current.editor.identity === attemptIdentity
+                ? current.editor
+                : current.pendingUncertain &&
+                    current.pendingUncertain.identity === attemptIdentity
+                  ? buildServiceEditorFromPending(current.pendingUncertain)
+                  : null;
+            if (!baseEditor) return INITIAL_SERVICE_DIALOG_SESSION;
+            return {
+              dialogOpen: true,
+              pendingUncertain: null,
+              editor: {
+                ...baseEditor,
                 reconciling: false,
                 uncertain: null,
-                saveError: null,
-                reconcileNote: vi.provider.services.dialog.reconcileNotCreated,
-              }
-            : current,
+                saveError: lifecycleErrorInfo(result.approvalStatus),
+                reconcileNote: null,
+              },
+            };
+          });
+          return;
+        }
+        // R3: absence in GET /services/mine never proves POST stopped; keep pendingUncertain locked!
+        setDialogSession((current) =>
+          keepServiceCreateStillUnknown(
+            current,
+            attemptIdentity,
+            vi.provider.services.dialog.reconcileStillUnknown,
+          ),
         );
         return;
       }
@@ -987,7 +1167,7 @@ export default function ProviderServicesPage() {
           approvalStatus,
         );
         if (result.outcome === "saved") {
-          setEditor(null);
+          setDialogSession(INITIAL_SERVICE_DIALOG_SESSION);
           setPageFeedback(
             attemptIdentity,
             "success",
@@ -996,7 +1176,7 @@ export default function ProviderServicesPage() {
           return;
         }
         if (result.outcome === "not-found") {
-          setEditor(null);
+          setDialogSession(INITIAL_SERVICE_DIALOG_SESSION);
           setPageFeedback(
             attemptIdentity,
             "error",
@@ -1005,30 +1185,50 @@ export default function ProviderServicesPage() {
           return;
         }
         if (result.outcome === "forbidden-lifecycle") {
-          setEditor((current) =>
-            current && current.identity === attemptIdentity
-              ? {
-                  ...current,
-                  reconciling: false,
-                  uncertain: null,
-                  saveError: lifecycleErrorInfo(result.approvalStatus),
-                  reconcileNote: null,
-                }
-              : current,
-          );
-          return;
-        }
-        setEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
+          setDialogSession((current) => {
+            const baseEditor =
+              current.editor && current.editor.identity === attemptIdentity
+                ? current.editor
+                : current.pendingUncertain &&
+                    current.pendingUncertain.identity === attemptIdentity
+                  ? buildServiceEditorFromPending(current.pendingUncertain)
+                  : null;
+            if (!baseEditor) return INITIAL_SERVICE_DIALOG_SESSION;
+            return {
+              dialogOpen: true,
+              pendingUncertain: null,
+              editor: {
+                ...baseEditor,
                 reconciling: false,
                 uncertain: null,
-                saveError: null,
-                reconcileNote: vi.provider.services.dialog.reconcileNotSaved,
-              }
-            : current,
-        );
+                saveError: lifecycleErrorInfo(result.approvalStatus),
+                reconcileNote: null,
+              },
+            };
+          });
+          return;
+        }
+        setDialogSession((current) => {
+          const baseEditor =
+            current.editor && current.editor.identity === attemptIdentity
+              ? current.editor
+              : current.pendingUncertain &&
+                  current.pendingUncertain.identity === attemptIdentity
+                ? buildServiceEditorFromPending(current.pendingUncertain)
+                : null;
+          if (!baseEditor) return INITIAL_SERVICE_DIALOG_SESSION;
+          return {
+            dialogOpen: true,
+            pendingUncertain: null,
+            editor: {
+              ...baseEditor,
+              reconciling: false,
+              uncertain: null,
+              saveError: null,
+              reconcileNote: vi.provider.services.dialog.reconcileNotSaved,
+            },
+          };
+        });
         return;
       }
 
@@ -1049,23 +1249,31 @@ export default function ProviderServicesPage() {
           uncertain.targetStatus === "ACTIVE" && categoryInactive
             ? vi.provider.services.feedback.serviceShownWithInactiveCategory
             : vi.provider.services.feedback.reconciledStatus;
-        setEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
-                reconciling: false,
-                uncertain: null,
-                confirmStatus: null,
-                statusError: null,
-                statusFeedback: message,
-              }
-            : current,
-        );
+        setDialogSession((current) => {
+          if (!current.dialogOpen) return INITIAL_SERVICE_DIALOG_SESSION;
+          const baseEditor =
+            current.editor && current.editor.identity === attemptIdentity
+              ? current.editor
+              : null;
+          if (!baseEditor) return INITIAL_SERVICE_DIALOG_SESSION;
+          return {
+            dialogOpen: true,
+            pendingUncertain: null,
+            editor: {
+              ...baseEditor,
+              reconciling: false,
+              uncertain: null,
+              confirmStatus: null,
+              statusError: null,
+              statusFeedback: message,
+            },
+          };
+        });
         setPageFeedback(attemptIdentity, "success", message);
         return;
       }
       if (statusResult.outcome === "not-found") {
-        setEditor(null);
+        setDialogSession(INITIAL_SERVICE_DIALOG_SESSION);
         setPageFeedback(
           attemptIdentity,
           "error",
@@ -1074,32 +1282,52 @@ export default function ProviderServicesPage() {
         return;
       }
       if (statusResult.outcome === "forbidden-lifecycle") {
-        setEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
-                reconciling: false,
-                uncertain: null,
-                confirmStatus: null,
-                statusError: lifecycleErrorInfo(statusResult.approvalStatus),
-                reconcileNote: null,
-              }
-            : current,
-        );
-        return;
-      }
-      setEditor((current) =>
-        current && current.identity === attemptIdentity
-          ? {
-              ...current,
+        setDialogSession((current) => {
+          const baseEditor =
+            current.editor && current.editor.identity === attemptIdentity
+              ? current.editor
+              : current.pendingUncertain &&
+                  current.pendingUncertain.identity === attemptIdentity
+                ? buildServiceEditorFromPending(current.pendingUncertain)
+                : null;
+          if (!baseEditor) return INITIAL_SERVICE_DIALOG_SESSION;
+          return {
+            dialogOpen: true,
+            pendingUncertain: null,
+            editor: {
+              ...baseEditor,
               reconciling: false,
               uncertain: null,
-              statusError: null,
-              reconcileNote:
-                vi.provider.services.dialog.reconcileStatusNotSaved,
-            }
-          : current,
-      );
+              confirmStatus: null,
+              statusError: lifecycleErrorInfo(statusResult.approvalStatus),
+              reconcileNote: null,
+            },
+          };
+        });
+        return;
+      }
+      setDialogSession((current) => {
+        const baseEditor =
+          current.editor && current.editor.identity === attemptIdentity
+            ? current.editor
+            : current.pendingUncertain &&
+                current.pendingUncertain.identity === attemptIdentity
+              ? buildServiceEditorFromPending(current.pendingUncertain)
+              : null;
+        if (!baseEditor) return INITIAL_SERVICE_DIALOG_SESSION;
+        return {
+          dialogOpen: true,
+          pendingUncertain: null,
+          editor: {
+            ...baseEditor,
+            reconciling: false,
+            uncertain: null,
+            statusError: null,
+            reconcileNote:
+              vi.provider.services.dialog.reconcileStatusNotSaved,
+          },
+        };
+      });
     } finally {
       submittingRef.current = false;
     }
@@ -1214,6 +1442,70 @@ export default function ProviderServicesPage() {
                     cooldownSeconds,
                   )}
                 </p>
+              )}
+
+              {!showDialog && activePendingUncertain && (
+                <section
+                  className={styles.pendingUncertainBanner}
+                  role="alert"
+                  aria-live="polite"
+                >
+                  <h2>{vi.provider.services.dialog.pendingBannerTitle}</h2>
+                  <p>
+                    {activePendingUncertain.uncertain.kind === "create"
+                      ? vi.provider.services.dialog
+                          .pendingCreateBannerDescription
+                      : activePendingUncertain.uncertain.kind === "update"
+                        ? vi.provider.services.dialog
+                            .pendingUpdateBannerDescription
+                        : vi.provider.services.dialog
+                            .pendingStatusBannerDescription}
+                  </p>
+                  {activePendingUncertain.reconcileNote && (
+                    <p role="status">{activePendingUncertain.reconcileNote}</p>
+                  )}
+                  {activePendingUncertain.error && (
+                    <p>
+                      {getProviderErrorMessage(
+                        activePendingUncertain.error,
+                        cooldownSeconds,
+                      )}
+                    </p>
+                  )}
+                  <div className={styles.pendingUncertainActions}>
+                    <button
+                      type="button"
+                      className={styles.primaryButton}
+                      disabled={
+                        Boolean(activeEditor?.reconciling) ||
+                        sessionBoundary.lockActions ||
+                        cooldownSeconds > 0
+                      }
+                      onClick={() => void handleReconcile()}
+                    >
+                      <RefreshCw
+                        aria-hidden="true"
+                        focusable="false"
+                        size={14}
+                        className={styles.inlineIcon}
+                      />{" "}
+                      {activeEditor?.reconciling
+                        ? vi.provider.services.dialog.reconciling
+                        : vi.provider.services.dialog.reconcileAction}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.softButton}
+                      disabled={
+                        Boolean(activeEditor?.reconciling) ||
+                        sessionBoundary.lockActions
+                      }
+                      onClick={reopenPendingUncertain}
+                    >
+                      {vi.provider.services.dialog.reviewRequest}
+                    </button>
+                  </div>
+                </section>
               )}
 
               {!showDialog && (

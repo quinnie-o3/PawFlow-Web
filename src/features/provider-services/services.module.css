@@ -94,6 +94,11 @@
 .warningBox h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
 .warningBox p { margin: 0; }
 .warningBoxActions { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+.pendingUncertainBanner { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 1px solid rgb(180 112 0 / 42%); border-radius: 12px; background: #fffaf0; color: #7a4900; font-size: 13px; overflow-wrap: anywhere; }
+.pendingUncertainBanner h2 { font-size: 15px; font-weight: 700; margin: 0; }
+.pendingUncertainBanner p { margin: 0; }
+.pendingUncertainActions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+.pendingUncertainActions .primaryButton, .pendingUncertainActions .softButton { width: auto; min-height: 38px; padding: 8px 14px; font-size: 13px; }
 .readonlyNotice { margin-bottom: 14px; padding: 12px; border: 1px solid rgb(120 53 60 / 30%); border-radius: var(--radius-sm); background: #f8f2f3; color: #6e1d25; font-size: 12px; font-weight: 600; }
 .inlineRetryRow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 4px; }
 .inlineRetryButton { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: #3025a7; font-size: 12px; font-weight: 600; cursor: pointer; }

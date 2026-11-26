@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isRequestCancelled } from "@/lib/api/errors";
+import { ApiError, isRequestCancelled } from "@/lib/api/errors";
 import { formatMessage, vi } from "@/lib/locale";
+import { snapshot } from "../session/client";
 import {
   classifyProviderError,
   completeProviderBooking,
@@ -15,14 +16,24 @@ import {
   type ProviderBooking,
   type ProviderBookingDetail,
 } from "../provider-workspace/liveApi";
-import { getProviderErrorMessage } from "../provider-workspace/lifecycle";
+import {
+  getProviderErrorMessage,
+  providerSessionIdentityKey,
+} from "../provider-workspace/lifecycle";
 import { useProviderProfile } from "../provider-workspace/useProviderProfile";
 import {
   ACTION_SOURCE_STATUS,
   BOOKING_STATUS_LABELS,
+  EMPTY_BOOKING_DRAFT,
+  EMPTY_PENDING_UNKNOWN_BOOKINGS,
   buildReasonPayload,
+  clearPendingUnknownBooking,
+  getPendingUnknownBooking,
   isBookingConflictOrNotFoundCode,
   reconcileUnknownMutation,
+  recoverAbortedBookingDraft,
+  storePendingUnknownBooking,
+  type PendingUnknownBookingMap,
 } from "./bookingLogic";
 import type {
   BookingDetailLoadState,
@@ -49,16 +60,7 @@ const EMPTY_DETAIL: BookingDetailLoadState = {
   error: null,
 };
 
-const EMPTY_DRAFT: BookingDraftState = {
-  identity: null,
-  bookingId: null,
-  action: null,
-  reason: "",
-  openedAtMs: null,
-  phase: "idle",
-  error: null,
-  reconcileError: null,
-};
+const EMPTY_DRAFT: BookingDraftState = EMPTY_BOOKING_DRAFT;
 
 type ScopedSelection = Readonly<{
   identity: string | null;
@@ -116,6 +118,8 @@ export function useProviderBookings() {
   const [detailState, setDetailState] =
     useState<BookingDetailLoadState>(EMPTY_DETAIL);
   const [draftState, setDraftState] = useState<BookingDraftState>(EMPTY_DRAFT);
+  const [pendingUnknownState, setPendingUnknownState] =
+    useState<PendingUnknownBookingMap>(EMPTY_PENDING_UNKNOWN_BOOKINGS);
   const [feedbackState, setFeedbackState] =
     useState<ScopedFeedback>(EMPTY_FEEDBACK);
   const [dateFilterState, setDateFilterState] =
@@ -125,6 +129,9 @@ export function useProviderBookings() {
   const listControllerRef = useRef<AbortController | null>(null);
   const detailControllerRef = useRef<AbortController | null>(null);
   const mutationControllerRef = useRef<AbortController | null>(null);
+  const pendingUnknownRef = useRef<PendingUnknownBookingMap>(
+    EMPTY_PENDING_UNKNOWN_BOOKINGS,
+  );
   const listRequestIdRef = useRef(0);
   const detailRequestIdRef = useRef(0);
   const submittingRef = useRef(false);
@@ -133,10 +140,23 @@ export function useProviderBookings() {
   const lockActionsRef = useRef(sessionBoundary.lockActions);
 
   useEffect(() => {
+    pendingUnknownRef.current = pendingUnknownState;
+  }, [pendingUnknownState]);
+
+  useEffect(() => {
     currentIdentityRef.current = identity;
     canFetchRef.current = canFetchPrivate;
     lockActionsRef.current = sessionBoundary.lockActions;
   }, [identity, canFetchPrivate, sessionBoundary.lockActions]);
+
+  useEffect(() => {
+    return () => {
+      detailControllerRef.current?.abort();
+      detailControllerRef.current = null;
+      mutationControllerRef.current?.abort();
+      mutationControllerRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (cooldownSeconds <= 0) return;
@@ -179,6 +199,7 @@ export function useProviderBookings() {
       setSelectionState(EMPTY_SELECTION);
       setDetailState(EMPTY_DETAIL);
       setDraftState(EMPTY_DRAFT);
+      setPendingUnknownState(EMPTY_PENDING_UNKNOWN_BOOKINGS);
       setFeedbackState(EMPTY_FEEDBACK);
       setDateFilterState(EMPTY_DATE_FILTERS);
       setCooldownSeconds(0);
@@ -479,8 +500,15 @@ export function useProviderBookings() {
       if (!targetIdentity || lockActionsRef.current) return;
       setSelectionState({ identity: targetIdentity, bookingId });
       setFeedbackState(EMPTY_FEEDBACK);
-      setDraftState((current) =>
-        current.identity === targetIdentity && current.bookingId === bookingId
+      const preservedUnknown = getPendingUnknownBooking(
+        pendingUnknownRef.current,
+        targetIdentity,
+        bookingId,
+      );
+      setDraftState((current) => {
+        if (preservedUnknown) return preservedUnknown;
+        return current.identity === targetIdentity &&
+          current.bookingId === bookingId
           ? current
           : {
               identity: targetIdentity,
@@ -491,8 +519,8 @@ export function useProviderBookings() {
               phase: "idle",
               error: null,
               reconcileError: null,
-            },
-      );
+            };
+      });
       void fetchBookingDetail(bookingId);
     },
     [fetchBookingDetail],
@@ -504,7 +532,10 @@ export function useProviderBookings() {
     detailControllerRef.current = null;
     setSelectionState(EMPTY_SELECTION);
     setDetailState(EMPTY_DETAIL);
-    setDraftState(EMPTY_DRAFT);
+    // R2: preserve any unknown draft in pendingUnknownState; only clear non-unknown active draft.
+    setDraftState((current) =>
+      current.phase === "unknown" ? current : EMPTY_DRAFT,
+    );
   }, []);
 
   const beginAction = useCallback((bookingId: string, action: ProviderBookingAction) => {
@@ -615,10 +646,39 @@ export function useProviderBookings() {
           );
         }
 
+        const liveIdentity = providerSessionIdentityKey(snapshot());
         if (
-          controller.signal.aborted ||
+          liveIdentity !== targetIdentity ||
           currentIdentityRef.current !== targetIdentity
         ) {
+          return;
+        }
+        if (controller.signal.aborted) {
+          const fallbackError = classifyProviderError(
+            new ApiError("network"),
+            operation,
+          );
+          const recovered: BookingDraftState = {
+            identity: targetIdentity,
+            bookingId,
+            action,
+            reason,
+            openedAtMs: Date.now(),
+            phase: "unknown",
+            error: fallbackError,
+            reconcileError: null,
+          };
+          setDraftState((current) =>
+            recoverAbortedBookingDraft(
+              current,
+              targetIdentity,
+              liveIdentity,
+              fallbackError,
+            ),
+          );
+          setPendingUnknownState((map) =>
+            storePendingUnknownBooking(map, recovered),
+          );
           return;
         }
 
@@ -629,6 +689,9 @@ export function useProviderBookings() {
                 bookings: mergeUpdatedBooking(current.bookings, updated),
               }
             : current,
+        );
+        setPendingUnknownState((map) =>
+          clearPendingUnknownBooking(map, targetIdentity, bookingId),
         );
         setDraftState({
           identity: targetIdentity,
@@ -657,9 +720,42 @@ export function useProviderBookings() {
           fetchBookingsList("refresh"),
         ]);
       } catch (err) {
+        if (isRequestCancelled(err) || controller.signal.aborted) {
+          const liveIdentity = providerSessionIdentityKey(snapshot());
+          const fallbackError = classifyProviderError(
+            new ApiError("network"),
+            operation,
+          );
+          if (liveIdentity !== targetIdentity) {
+            setDraftState(EMPTY_DRAFT);
+            setPendingUnknownState(EMPTY_PENDING_UNKNOWN_BOOKINGS);
+            return;
+          }
+          const recoveredSnapshot: BookingDraftState = {
+            identity: targetIdentity,
+            bookingId,
+            action,
+            reason,
+            openedAtMs: Date.now(),
+            phase: "unknown",
+            error: fallbackError,
+            reconcileError: null,
+          };
+          setDraftState((current) =>
+            recoverAbortedBookingDraft(
+              current,
+              targetIdentity,
+              liveIdentity,
+              fallbackError,
+            ),
+          );
+          setPendingUnknownState((map) =>
+            storePendingUnknownBooking(map, recoveredSnapshot),
+          );
+          return;
+        }
         if (
-          isRequestCancelled(err) ||
-          controller.signal.aborted ||
+          providerSessionIdentityKey(snapshot()) !== targetIdentity ||
           currentIdentityRef.current !== targetIdentity
         ) {
           return;
@@ -669,11 +765,22 @@ export function useProviderBookings() {
 
         if (info.outcome === "session-ended") {
           setDraftState(EMPTY_DRAFT);
+          setPendingUnknownState(EMPTY_PENDING_UNKNOWN_BOOKINGS);
           return;
         }
 
         if (info.outcome === "unknown") {
           // NEVER auto-retry POST; preserve reason draft and require explicit server reconciliation.
+          const unknownSnapshot: BookingDraftState = {
+            identity: targetIdentity,
+            bookingId,
+            action,
+            reason,
+            openedAtMs: Date.now(),
+            phase: "unknown",
+            error: info,
+            reconcileError: null,
+          };
           setDraftState((current) => ({
             identity: targetIdentity,
             bookingId,
@@ -684,6 +791,9 @@ export function useProviderBookings() {
             error: info,
             reconcileError: null,
           }));
+          setPendingUnknownState((map) =>
+            storePendingUnknownBooking(map, unknownSnapshot),
+          );
           return;
         }
 
@@ -818,11 +928,34 @@ export function useProviderBookings() {
         reloadProfile(),
       ]);
 
-      if (currentIdentityRef.current !== targetIdentity) return;
+      const liveIdentity = providerSessionIdentityKey(snapshot());
+      if (
+        liveIdentity !== targetIdentity ||
+        currentIdentityRef.current !== targetIdentity
+      ) {
+        return;
+      }
 
       if (!detailResult.ok) {
-        if (detailResult.aborted) return;
+        if (detailResult.aborted) {
+          const fallbackError = classifyProviderError(
+            new ApiError("network"),
+            "get-booking",
+          );
+          setDraftState((current) =>
+            recoverAbortedBookingDraft(
+              current,
+              targetIdentity,
+              liveIdentity,
+              current.error ?? fallbackError,
+            ),
+          );
+          return;
+        }
         if (detailResult.notFound) {
+          setPendingUnknownState((map) =>
+            clearPendingUnknownBooking(map, targetIdentity, targetBookingId),
+          );
           setDraftState({
             identity: targetIdentity,
             bookingId: targetBookingId,
@@ -850,6 +983,18 @@ export function useProviderBookings() {
           phase: "unknown",
           reconcileError: detailResult.error,
         }));
+        setPendingUnknownState((map) => {
+          const existing = getPendingUnknownBooking(
+            map,
+            targetIdentity,
+            targetBookingId,
+          );
+          if (!existing) return map;
+          return storePendingUnknownBooking(map, {
+            ...existing,
+            reconcileError: detailResult.error,
+          });
+        });
         return;
       }
 
@@ -858,6 +1003,9 @@ export function useProviderBookings() {
         targetAction,
       );
       const statusLabel = BOOKING_STATUS_LABELS[detailResult.detail.status];
+      setPendingUnknownState((map) =>
+        clearPendingUnknownBooking(map, targetIdentity, targetBookingId),
+      );
 
       if (outcome === "applied") {
         setDraftState({

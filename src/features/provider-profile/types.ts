@@ -42,6 +42,15 @@ export type ProfileUncertainSubmit = Readonly<{
   payload: UpdateProviderProfileInput;
 }>;
 
+export type PendingProfileUncertain = Readonly<{
+  identity: string;
+  section: ProfileEditSection;
+  draft: ProfileFormValues;
+  uncertain: ProfileUncertainSubmit;
+  saveError: ProviderApiErrorInfo | null;
+  reconcileNote: string | null;
+}>;
+
 export type ProfileEditorState = Readonly<{
   identity: string;
   section: ProfileEditSection;
@@ -52,6 +61,12 @@ export type ProfileEditorState = Readonly<{
   saveError: ProviderApiErrorInfo | null;
   uncertain: ProfileUncertainSubmit | null;
   reconcileNote: string | null;
+}>;
+
+export type ProfileDialogSessionState = Readonly<{
+  dialogOpen: boolean;
+  editor: ProfileEditorState | null;
+  pendingUncertain: PendingProfileUncertain | null;
 }>;
 
 export type ProfileReconcileOutcome = "saved" | "suspended" | "not-saved";

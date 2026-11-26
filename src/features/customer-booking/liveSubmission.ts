@@ -1,6 +1,7 @@
 import type { BackendRole } from "../../lib/api/identity";
 import type { CustomerPet } from "../customer-pets/types";
 import type { Provider, Service } from "../public-catalog/api";
+import type { LiveCancelState } from "./liveCancel";
 import {
   bookingRequestFingerprint,
   isValidIdempotencyKey,
@@ -1003,4 +1004,103 @@ export function availableDatesForSlots(
     dates.add(selectedSlot.slotDate);
   }
   return Array.from(dates).sort();
+}
+
+export type LiveCancelDialogSession = Readonly<{
+  dialogOpen: boolean;
+  cancelState: LiveCancelState;
+}>;
+
+export function createInitialCancelDialogSession(): LiveCancelDialogSession {
+  return {
+    dialogOpen: false,
+    cancelState: { phase: "idle" },
+  };
+}
+
+/**
+ * R1 recovery for customer booking cancel / reconcile aborted while hidden under
+ * <Activity mode="hidden"> on same-identity 503: releases in-flight phase and
+ * moves to "unknown" preserving reason & bookingId; purges 100% on 401/logout/switch.
+ */
+export function recoverAbortedCancelState(
+  state: LiveCancelState,
+  currentIdentity: string | null,
+  failedAt: number,
+): LiveCancelState {
+  if (state.phase === "idle") return state;
+  if (currentIdentity === null || state.identity !== currentIdentity) {
+    return { phase: "idle" };
+  }
+  if (state.phase === "submitting") {
+    return {
+      phase: "unknown",
+      bookingId: state.bookingId,
+      identity: state.identity,
+      reason: state.reason,
+      error: {
+        code: "NETWORK_ERROR",
+        category: "uncertain",
+        outcome: "unknown",
+        status: null,
+        retryAfterSeconds: null,
+        shouldRefreshBookings: true,
+      },
+      failedAt,
+      cooldownUntil: null,
+      reconcileError: null,
+    };
+  }
+  if (state.phase === "reconciling") {
+    return {
+      phase: "unknown",
+      bookingId: state.bookingId,
+      identity: state.identity,
+      reason: state.reason,
+      error: state.originalError,
+      failedAt: state.failedAt,
+      cooldownUntil: null,
+      reconcileError: null,
+    };
+  }
+  return state;
+}
+
+/**
+ * R2 guard for customer booking cancel dialog: closing while in "unknown" phase
+ * hides the dialog UI only while preserving unknown cancel state & reason.
+ */
+export function closeCancelDialogSession(
+  session: LiveCancelDialogSession,
+): LiveCancelDialogSession {
+  const { cancelState } = session;
+  if (
+    cancelState.phase === "submitting" ||
+    cancelState.phase === "reconciling"
+  ) {
+    return session;
+  }
+  if (cancelState.phase === "unknown") {
+    return {
+      dialogOpen: false,
+      cancelState,
+    };
+  }
+  return {
+    dialogOpen: false,
+    cancelState: { phase: "idle" },
+  };
+}
+
+export function shouldRestoreUnknownCancelOnOpen(
+  state: LiveCancelState,
+  identity: string | null,
+  bookingId: string,
+): boolean {
+  return (
+    identity !== null &&
+    state.phase === "unknown" &&
+    state.identity === identity &&
+    state.bookingId === bookingId
+  );
 }

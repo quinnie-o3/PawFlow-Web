@@ -75,6 +75,17 @@ export type ServiceUncertainState =
       targetStatus: ProviderServiceStatus;
     }>;
 
+export type PendingServiceUncertain = Readonly<{
+  identity: string;
+  mode: "create" | "edit";
+  serviceId: string | null;
+  draft: ServiceDraft;
+  confirmStatus: ProviderServiceStatus | null;
+  uncertain: ServiceUncertainState;
+  error: ProviderApiErrorInfo | null;
+  reconcileNote: string | null;
+}>;
+
 export type ServiceEditorState = Readonly<{
   identity: string;
   mode: "create" | "edit";
@@ -90,6 +101,12 @@ export type ServiceEditorState = Readonly<{
   uncertain: ServiceUncertainState | null;
   reconcileNote: string | null;
   statusFeedback: string | null;
+}>;
+
+export type ServiceDialogSessionState = Readonly<{
+  dialogOpen: boolean;
+  editor: ServiceEditorState | null;
+  pendingUncertain: PendingServiceUncertain | null;
 }>;
 
 export type ServiceFeedback = Readonly<{

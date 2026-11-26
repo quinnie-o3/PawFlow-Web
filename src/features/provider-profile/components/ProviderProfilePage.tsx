@@ -2,24 +2,36 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Pencil, RefreshCw } from "lucide-react";
-import { isRequestCancelled } from "@/lib/api/errors";
+import { ApiError, isRequestCancelled } from "@/lib/api/errors";
 import { vi } from "@/lib/locale";
+import { snapshot } from "@/features/session/client";
 import {
   classifyProviderError,
   updateProviderProfile,
 } from "@/features/provider-workspace/liveApi";
+import {
+  getProviderErrorMessage,
+  providerSessionIdentityKey,
+} from "@/features/provider-workspace/lifecycle";
 import { useProviderProfile } from "@/features/provider-workspace/useProviderProfile";
 import {
+  INITIAL_PROFILE_DIALOG_SESSION,
+  buildProfileEditorFromPending,
   buildProfileUpdatePatch,
+  closeProfileDialogSession,
+  enterProfileUncertainSession,
   hasProfileDraftChanges,
+  openProfileEditorSession,
   profileSectionFields,
-  profileToFormValues,
   reconcileProfileUpdate,
+  recoverAbortedProfileReconcile,
+  recoverAbortedProfileSave,
+  reopenPendingProfileUncertainSession,
 } from "../profileLogic";
 import { validateProfileDraft } from "../profileValidation";
 import type {
+  ProfileDialogSessionState,
   ProfileEditSection,
-  ProfileEditorState,
   ProfileFormValues,
 } from "../types";
 import ProfileApproval from "./ProfileApproval";
@@ -38,7 +50,8 @@ export default function ProviderProfilePage() {
   const profileState = useProviderProfile();
   const { sessionBoundary, owner, status, profile, permissions } = profileState;
 
-  const [editor, setEditor] = useState<ProfileEditorState | null>(null);
+  const [dialogSession, setDialogSession] =
+    useState<ProfileDialogSessionState>(INITIAL_PROFILE_DIALOG_SESSION);
   const [feedback, setFeedback] = useState<ScopedFeedback | null>(null);
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState(0);
@@ -60,7 +73,7 @@ export default function ProviderProfilePage() {
   }, []);
 
   // On 401/logout/identity switch, abort in-flight mutations and purge drafts asynchronously.
-  // On same-identity revalidate error (resetPrivateState === false), keep draft in memory.
+  // On same-identity revalidate error (resetPrivateState === false), keep draft and pendingUncertain in memory.
   useEffect(() => {
     if (!sessionBoundary.resetPrivateState) return;
     mutationControllerRef.current?.abort();
@@ -70,7 +83,7 @@ export default function ProviderProfilePage() {
     let cancelled = false;
     Promise.resolve().then(() => {
       if (cancelled) return;
-      setEditor(null);
+      setDialogSession(INITIAL_PROFILE_DIALOG_SESSION);
       setFeedback(null);
       setCooldownUntil(null);
     });
@@ -107,11 +120,19 @@ export default function ProviderProfilePage() {
       : 0;
 
   const activeEditor =
-    editor !== null &&
+    dialogSession.editor !== null &&
     !sessionBoundary.resetPrivateState &&
     sessionBoundary.identity !== null &&
-    editor.identity === sessionBoundary.identity
-      ? editor
+    dialogSession.editor.identity === sessionBoundary.identity
+      ? dialogSession.editor
+      : null;
+
+  const activePendingUncertain =
+    dialogSession.pendingUncertain !== null &&
+    !sessionBoundary.resetPrivateState &&
+    sessionBoundary.identity !== null &&
+    dialogSession.pendingUncertain.identity === sessionBoundary.identity
+      ? dialogSession.pendingUncertain
       : null;
 
   const activeFeedback =
@@ -142,6 +163,7 @@ export default function ProviderProfilePage() {
   // Unmount <dialog> whenever private data must be hidden (including revalidate error)
   // so native top-layer backdrop & scroll lock never obscure retrySession() or leak PII.
   const showDialog =
+    dialogSession.dialogOpen &&
     activeEditor !== null &&
     !sessionBoundary.closeDialog &&
     !sessionBoundary.hidePrivateData &&
@@ -150,6 +172,8 @@ export default function ProviderProfilePage() {
 
   function openEditor(section: ProfileEditSection) {
     if (
+      submittingRef.current ||
+      reconcilingRef.current ||
       !profile ||
       !canUpdateProfile ||
       sessionBoundary.lockActions ||
@@ -157,44 +181,57 @@ export default function ProviderProfilePage() {
     ) {
       return;
     }
+    const targetIdentity = sessionBoundary.identity;
     setFeedback(null);
-    setEditor({
-      identity: sessionBoundary.identity,
-      section,
-      draft: profileToFormValues(profile),
-      errors: {},
-      saving: false,
-      reconciling: false,
-      saveError: null,
-      uncertain: null,
-      reconcileNote: null,
-    });
+    setDialogSession((current) =>
+      openProfileEditorSession(current, targetIdentity, section, profile),
+    );
+  }
+
+  function reopenPendingUncertain() {
+    if (
+      submittingRef.current ||
+      reconcilingRef.current ||
+      sessionBoundary.lockActions ||
+      !sessionBoundary.identity
+    ) {
+      return;
+    }
+    const targetIdentity = sessionBoundary.identity;
+    setDialogSession((current) =>
+      reopenPendingProfileUncertainSession(current, targetIdentity),
+    );
   }
 
   function closeEditor() {
     if (submittingRef.current || reconcilingRef.current) return;
-    setEditor(null);
+    setDialogSession((current) => closeProfileDialogSession(current));
   }
 
   function changeDraftField(field: keyof ProfileFormValues, value: string) {
-    setEditor((current) => {
+    setDialogSession((current) => {
+      const editor = current.editor;
       if (
-        !current ||
-        current.saving ||
-        current.reconciling ||
-        current.uncertain !== null ||
-        !profileSectionFields(current.section).includes(field)
+        !editor ||
+        editor.saving ||
+        editor.reconciling ||
+        editor.uncertain !== null ||
+        current.pendingUncertain !== null ||
+        !profileSectionFields(editor.section).includes(field)
       ) {
         return current;
       }
-      const nextErrors = { ...current.errors };
+      const nextErrors = { ...editor.errors };
       delete nextErrors[field];
       return {
         ...current,
-        draft: { ...current.draft, [field]: value },
-        errors: nextErrors,
-        saveError: null,
-        reconcileNote: null,
+        editor: {
+          ...editor,
+          draft: { ...editor.draft, [field]: value },
+          errors: nextErrors,
+          saveError: null,
+          reconcileNote: null,
+        },
       };
     });
   }
@@ -216,6 +253,7 @@ export default function ProviderProfilePage() {
       !profile ||
       !canUpdateProfile ||
       activeEditor.uncertain !== null ||
+      activePendingUncertain !== null ||
       cooldownSeconds > 0
     ) {
       return;
@@ -229,8 +267,10 @@ export default function ProviderProfilePage() {
       Object.keys(validationErrors) as (keyof ProfileFormValues)[]
     ).find((key) => Boolean(validationErrors[key]));
     if (firstErrorField) {
-      setEditor((current) =>
-        current ? { ...current, errors: validationErrors } : current,
+      setDialogSession((current) =>
+        current.editor
+          ? { ...current, editor: { ...current.editor, errors: validationErrors } }
+          : current,
       );
       window.requestAnimationFrame(() => {
         document.getElementById(`profile-${firstErrorField}`)?.focus();
@@ -247,18 +287,23 @@ export default function ProviderProfilePage() {
 
     submittingRef.current = true;
     const attemptIdentity = activeEditor.identity;
+    const attemptSection = activeEditor.section;
+    const attemptDraft = activeEditor.draft;
     const controller = new AbortController();
     mutationControllerRef.current?.abort();
     mutationControllerRef.current = controller;
 
-    setEditor((current) =>
-      current && current.identity === attemptIdentity
+    setDialogSession((current) =>
+      current.editor && current.editor.identity === attemptIdentity
         ? {
             ...current,
-            errors: {},
-            saving: true,
-            saveError: null,
-            reconcileNote: null,
+            editor: {
+              ...current.editor,
+              errors: {},
+              saving: true,
+              saveError: null,
+              reconcileNote: null,
+            },
           }
         : current,
     );
@@ -267,22 +312,55 @@ export default function ProviderProfilePage() {
       const updated = await updateProviderProfile(patch, {
         signal: controller.signal,
       });
+      const liveIdentity = providerSessionIdentityKey(snapshot());
       if (
-        controller.signal.aborted ||
+        liveIdentity !== attemptIdentity ||
         currentIdentityRef.current !== attemptIdentity
       ) {
         return;
       }
+      if (controller.signal.aborted) {
+        setDialogSession((current) =>
+          recoverAbortedProfileSave(current, {
+            attemptIdentity,
+            liveIdentity,
+            section: attemptSection,
+            draft: attemptDraft,
+            payload: patch,
+            error: classifyProviderError(
+              new ApiError("network"),
+              "update-profile",
+            ),
+          }),
+        );
+        return;
+      }
       profileState.applyProfile(updated);
-      setEditor(null);
+      setDialogSession(INITIAL_PROFILE_DIALOG_SESSION);
       setFeedback({
         identity: attemptIdentity,
         message: vi.provider.profile.feedback.saved,
       });
     } catch (err) {
+      if (isRequestCancelled(err) || controller.signal.aborted) {
+        const liveIdentity = providerSessionIdentityKey(snapshot());
+        setDialogSession((current) =>
+          recoverAbortedProfileSave(current, {
+            attemptIdentity,
+            liveIdentity,
+            section: attemptSection,
+            draft: attemptDraft,
+            payload: patch,
+            error: classifyProviderError(
+              new ApiError("network"),
+              "update-profile",
+            ),
+          }),
+        );
+        return;
+      }
       if (
-        isRequestCancelled(err) ||
-        controller.signal.aborted ||
+        providerSessionIdentityKey(snapshot()) !== attemptIdentity ||
         currentIdentityRef.current !== attemptIdentity
       ) {
         return;
@@ -290,7 +368,7 @@ export default function ProviderProfilePage() {
 
       const info = classifyProviderError(err, "update-profile");
       if (info.outcome === "session-ended") {
-        setEditor(null);
+        setDialogSession(INITIAL_PROFILE_DIALOG_SESSION);
         return;
       }
 
@@ -298,14 +376,17 @@ export default function ProviderProfilePage() {
 
       if (info.code === "PROVIDER_PROFILE_NOT_FOUND") {
         profileState.markNotFound();
-        setEditor(null);
+        setDialogSession(INITIAL_PROFILE_DIALOG_SESSION);
         return;
       }
 
       if (info.code === "PROVIDER_SUSPENDED_READONLY") {
-        setEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? { ...current, saving: false, saveError: info }
+        setDialogSession((current) =>
+          current.editor && current.editor.identity === attemptIdentity
+            ? {
+                ...current,
+                editor: { ...current.editor, saving: false, saveError: info },
+              }
             : current,
         );
         void profileState.reload().then((syncResult) => {
@@ -318,23 +399,24 @@ export default function ProviderProfilePage() {
 
       if (info.outcome === "unknown") {
         // Never auto-retry PATCH when server outcome is unknown; preserve draft for explicit GET reconcile.
-        setEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
-                saving: false,
-                saveError: info,
-                uncertain: { payload: patch },
-                reconcileNote: null,
-              }
-            : current,
+        setDialogSession((current) =>
+          enterProfileUncertainSession(current, {
+            attemptIdentity,
+            section: attemptSection,
+            draft: attemptDraft,
+            payload: patch,
+            error: info,
+          }),
         );
         return;
       }
 
-      setEditor((current) =>
-        current && current.identity === attemptIdentity
-          ? { ...current, saving: false, saveError: info }
+      setDialogSession((current) =>
+        current.editor && current.editor.identity === attemptIdentity
+          ? {
+              ...current,
+              editor: { ...current.editor, saving: false, saveError: info },
+            }
           : current,
       );
     } finally {
@@ -346,41 +428,62 @@ export default function ProviderProfilePage() {
   }
 
   async function handleReconcile() {
+    const pending = activePendingUncertain;
+    const uncertainPayload =
+      pending?.uncertain.payload ?? activeEditor?.uncertain?.payload ?? null;
+    const attemptIdentity =
+      pending?.identity ?? activeEditor?.identity ?? null;
     if (
       reconcilingRef.current ||
       submittingRef.current ||
       sessionBoundary.lockActions ||
-      !activeEditor?.uncertain ||
+      !uncertainPayload ||
+      !attemptIdentity ||
       cooldownSeconds > 0
     ) {
       return;
     }
 
     reconcilingRef.current = true;
-    const attemptIdentity = activeEditor.identity;
-    const sentPayload = activeEditor.uncertain.payload;
 
-    setEditor((current) =>
-      current && current.identity === attemptIdentity
-        ? {
-            ...current,
-            reconciling: true,
-            saveError: null,
-            reconcileNote: null,
-          }
-        : current,
-    );
+    setDialogSession((current) => {
+      const baseEditor =
+        current.editor && current.editor.identity === attemptIdentity
+          ? current.editor
+          : current.pendingUncertain &&
+              current.pendingUncertain.identity === attemptIdentity
+            ? buildProfileEditorFromPending(current.pendingUncertain)
+            : null;
+      if (!baseEditor) return current;
+      return {
+        ...current,
+        editor: {
+          ...baseEditor,
+          reconciling: true,
+          saveError: null,
+          reconcileNote: null,
+        },
+      };
+    });
 
     try {
       const result = await profileState.reload();
-      if (currentIdentityRef.current !== attemptIdentity) return;
+      const liveIdentity = providerSessionIdentityKey(snapshot());
+      if (
+        liveIdentity !== attemptIdentity ||
+        currentIdentityRef.current !== attemptIdentity
+      ) {
+        return;
+      }
 
       if (!result.ok) {
         if (result.aborted) {
-          setEditor((current) =>
-            current && current.identity === attemptIdentity
-              ? { ...current, reconciling: false }
-              : current,
+          setDialogSession((current) =>
+            recoverAbortedProfileReconcile(
+              current,
+              attemptIdentity,
+              liveIdentity,
+            ),
           );
           return;
         }
@@ -388,21 +491,28 @@ export default function ProviderProfilePage() {
           result.error.outcome === "session-ended" ||
           result.error.code === "PROVIDER_PROFILE_NOT_FOUND"
         ) {
-          setEditor(null);
+          setDialogSession(INITIAL_PROFILE_DIALOG_SESSION);
           return;
         }
         startCooldown(result.error.retryAfterSeconds);
-        setEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? { ...current, reconciling: false, saveError: result.error }
-            : current,
-        );
+        setDialogSession((current) => ({
+          ...current,
+          pendingUncertain:
+            current.pendingUncertain &&
+            current.pendingUncertain.identity === attemptIdentity
+              ? { ...current.pendingUncertain, saveError: result.error }
+              : current.pendingUncertain,
+          editor:
+            current.editor && current.editor.identity === attemptIdentity
+              ? { ...current.editor, reconciling: false, saveError: result.error }
+              : current.editor,
+        }));
         return;
       }
 
-      const outcome = reconcileProfileUpdate(sentPayload, result.profile);
+      const outcome = reconcileProfileUpdate(uncertainPayload, result.profile);
       if (outcome === "saved") {
-        setEditor(null);
+        setDialogSession(INITIAL_PROFILE_DIALOG_SESSION);
         setFeedback({
           identity: attemptIdentity,
           message: vi.provider.profile.feedback.reconciledSaved,
@@ -411,38 +521,58 @@ export default function ProviderProfilePage() {
       }
 
       if (outcome === "suspended") {
-        setEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
-                reconciling: false,
-                uncertain: null,
-                saveError: {
-                  code: "PROVIDER_SUSPENDED_READONLY",
-                  category: "lifecycle",
-                  outcome: "definite-failure",
-                  status: 403,
-                  retryAfterSeconds: null,
-                  shouldReconcile: false,
-                },
-                reconcileNote: null,
-              }
-            : current,
-        );
+        setDialogSession((current) => {
+          const baseEditor =
+            current.editor && current.editor.identity === attemptIdentity
+              ? current.editor
+              : current.pendingUncertain &&
+                  current.pendingUncertain.identity === attemptIdentity
+                ? buildProfileEditorFromPending(current.pendingUncertain)
+                : null;
+          if (!baseEditor) return INITIAL_PROFILE_DIALOG_SESSION;
+          return {
+            dialogOpen: true,
+            pendingUncertain: null,
+            editor: {
+              ...baseEditor,
+              reconciling: false,
+              uncertain: null,
+              saveError: {
+                code: "PROVIDER_SUSPENDED_READONLY",
+                category: "lifecycle",
+                outcome: "definite-failure",
+                status: 403,
+                retryAfterSeconds: null,
+                shouldReconcile: false,
+              },
+              reconcileNote: null,
+            },
+          };
+        });
         return;
       }
 
-      setEditor((current) =>
-        current && current.identity === attemptIdentity
-          ? {
-              ...current,
-              reconciling: false,
-              uncertain: null,
-              saveError: null,
-              reconcileNote: vi.provider.profile.dialog.reconcileNotSaved,
-            }
-          : current,
-      );
+      setDialogSession((current) => {
+        const baseEditor =
+          current.editor && current.editor.identity === attemptIdentity
+            ? current.editor
+            : current.pendingUncertain &&
+                current.pendingUncertain.identity === attemptIdentity
+              ? buildProfileEditorFromPending(current.pendingUncertain)
+              : null;
+        if (!baseEditor) return INITIAL_PROFILE_DIALOG_SESSION;
+        return {
+          dialogOpen: true,
+          pendingUncertain: null,
+          editor: {
+            ...baseEditor,
+            reconciling: false,
+            uncertain: null,
+            saveError: null,
+            reconcileNote: vi.provider.profile.dialog.reconcileNotSaved,
+          },
+        };
+      });
     } finally {
       reconcilingRef.current = false;
     }
@@ -520,6 +650,52 @@ export default function ProviderProfilePage() {
               {activeFeedback}
             </p>
           )}
+
+          {status === "ready" &&
+            profile &&
+            activePendingUncertain !== null &&
+            !showDialog && (
+              <section className={styles.uncertainBox} role="alert">
+                <strong>{vi.provider.profile.dialog.pendingBannerTitle}</strong>
+                <p>{vi.provider.profile.dialog.pendingBannerDescription}</p>
+                {activePendingUncertain.saveError && (
+                  <p>
+                    {getProviderErrorMessage(
+                      activePendingUncertain.saveError,
+                      cooldownSeconds,
+                    )}
+                  </p>
+                )}
+                <div className={styles.sectionActions}>
+                  <button
+                    type="button"
+                    className={styles.primaryButton}
+                    disabled={
+                      Boolean(activeEditor?.reconciling) ||
+                      sessionBoundary.lockActions ||
+                      cooldownSeconds > 0
+                    }
+                    onClick={() => void handleReconcile()}
+                  >
+                    <RefreshCw aria-hidden="true" size={14} />
+                    {activeEditor?.reconciling
+                      ? vi.provider.profile.dialog.reconciling
+                      : vi.provider.profile.dialog.reconcileAction}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.outlineButton}
+                    disabled={
+                      Boolean(activeEditor?.reconciling) ||
+                      sessionBoundary.lockActions
+                    }
+                    onClick={reopenPendingUncertain}
+                  >
+                    {vi.provider.profile.dialog.reviewRequest}
+                  </button>
+                </div>
+              </section>
+            )}
 
           <ProfileApproval
             status={status}

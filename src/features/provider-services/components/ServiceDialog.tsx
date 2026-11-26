@@ -122,7 +122,7 @@ export default function ServiceDialog({
         </div>
       )}
 
-      {editor.reconcileNote && (
+      {editor.reconcileNote && !hasUncertain && (
         <p className={styles.success} role="status">
           {editor.reconcileNote}
         </p>
@@ -135,9 +135,12 @@ export default function ServiceDialog({
       )}
 
       {hasUncertain && (
-        <section className={styles.warningBox} aria-live="polite">
+        <section className={styles.warningBox} role="alert" aria-live="polite">
           <h3>{dialogLocale.uncertainTitle}</h3>
           <p>{uncertainDescription}</p>
+          {editor.reconcileNote && (
+            <p role="status">{editor.reconcileNote}</p>
+          )}
           <div className={styles.warningBoxActions}>
             <button
               type="button"

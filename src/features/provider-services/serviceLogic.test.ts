@@ -5,21 +5,30 @@ import type {
   ServiceCategoryOption,
 } from "../provider-workspace/liveApi";
 import {
+  INITIAL_SERVICE_DIALOG_SESSION,
   SERVICE_DURATION_MAX,
   SERVICE_NAME_MAX,
   applyLocalServiceMutation,
   buildCategoryFilterOptions,
   buildCreateServicePayload,
   buildUpdateServicePatch,
+  closeServiceDialogSession,
+  enterServiceUncertainSession,
   filterServices,
   formatDuration,
   formatPrice,
   hasServiceDraftChanges,
   isServiceCategoryInactive,
+  keepServiceCreateStillUnknown,
+  openCreateServiceDialogSession,
+  openEditServiceDialogSession,
   parseDurationMinutesInput,
   parsePriceInput,
   reconcileServiceCreate,
   reconcileServiceUpdate,
+  recoverAbortedServiceMutation,
+  recoverAbortedServiceReconcile,
+  reopenPendingServiceUncertainSession,
   serviceToDraft,
   validateServiceDraft,
 } from "./serviceLogic";
@@ -94,33 +103,47 @@ test("Name validation enforces trimmed 1..200 character bounds", () => {
   );
 });
 
-test("Price parsing accepts 0..9999999999.99 with <=2 decimals and aligns with liveApi float precision", () => {
-  assert.deepEqual(parsePriceInput("0"), { numeric: 0, canonical: "0.00" });
-  assert.deepEqual(parsePriceInput("0.00"), { numeric: 0, canonical: "0.00" });
+test("Price parsing accepts 0..9999999999.99 with <=2 decimals via string + BigInt without float drift", () => {
+  assert.deepEqual(parsePriceInput("0"), {
+    canonical: "0.00",
+    cents: BigInt(0),
+  });
+  assert.deepEqual(parsePriceInput("0.00"), {
+    canonical: "0.00",
+    cents: BigInt(0),
+  });
   assert.deepEqual(parsePriceInput(" 150000 "), {
-    numeric: 150000,
     canonical: "150000.00",
+    cents: BigInt(15000000),
   });
   assert.deepEqual(parsePriceInput("0090000.5"), {
-    numeric: 90000.5,
     canonical: "90000.50",
+    cents: BigInt(9000050),
   });
   assert.deepEqual(parsePriceInput("19.99"), {
-    numeric: 19.99,
     canonical: "19.99",
+    cents: BigInt(1999),
+  });
+  assert.deepEqual(parsePriceInput("9999999999.95"), {
+    canonical: "9999999999.95",
+    cents: BigInt("999999999995"),
   });
   assert.deepEqual(parsePriceInput("9999999999.99"), {
-    numeric: 9999999999.99,
     canonical: "9999999999.99",
+    cents: BigInt("999999999999"),
   });
 
-  // Edge near-ceiling float64 precision drift rejected cleanly before liveApi.ts.
-  assert.equal(parsePriceInput("9999999999.95"), null);
-  assert.ok(
+  // Near-ceiling values previously broken by float64 rounding now pass exact BigInt validation.
+  assert.equal(
     validateServiceDraft(
       makeDraft({ price: "9999999999.95" }),
       ACTIVE_CATEGORIES,
     ).price,
+    undefined,
+  );
+  assert.deepEqual(
+    buildCreateServicePayload(makeDraft({ price: "9999999999.95" }))?.input.price,
+    "9999999999.95",
   );
 
   for (const invalid of [
@@ -131,6 +154,7 @@ test("Price parsing accepts 0..9999999999.99 with <=2 decimals and aligns with l
     "10000000000",
     "10000000000.00",
     "10.123",
+    "12.345",
     ".5",
     "90.000 ₫",
     "9,000",
@@ -230,7 +254,7 @@ test("Create requires active category; edit permits keeping unchanged INACTIVE c
     inactiveCategoryService,
     draftKeepingCategory,
   );
-  assert.deepEqual(patch.input, { price: 300000 });
+  assert.deepEqual(patch.input, { price: "300000.00" });
   assert.deepEqual(patch.expected, { canonicalPrice: "300000.00" });
 
   // Switching to another non-active category is rejected; switching to an active category succeeds.
@@ -264,7 +288,7 @@ test("Create payload and sparse update patch handle description trim->null and p
     input: {
       categoryId: "1",
       name: "Cắt móng",
-      price: 0,
+      price: "0.00",
       durationMinutes: 15,
       description: null,
     },
@@ -299,9 +323,15 @@ test("Create payload and sparse update patch handle description trim->null and p
     hasServiceDraftChanges(existing, { ...unchanged, price: "" }),
     true,
   );
+  // Valid near-ceiling BigInt price change produces exact canonical string patch.
   assert.equal(
     hasServiceDraftChanges(existing, { ...unchanged, price: "9999999999.95" }),
     true,
+  );
+  assert.deepEqual(
+    buildUpdateServicePatch(existing, { ...unchanged, price: "9999999999.95" })
+      .input,
+    { price: "9999999999.95" },
   );
 
   // Clearing an existing description sends explicit null.
@@ -388,7 +418,7 @@ test("Category filter options and service filtering combine status, categoryId a
   );
 });
 
-test("reconcileServiceCreate detects newly created service without duplicating and ignores pre-existing matches", () => {
+test("reconcileServiceCreate returns still-unknown until a matching new ID appears and detects lifecycle lock", () => {
   const expected = {
     categoryId: "1",
     name: "Tắm spa",
@@ -406,10 +436,10 @@ test("reconcileServiceCreate detects newly created service without duplicating a
     status: "ACTIVE",
   });
 
-  // Same fields already existed before submit -> NOT a confirmation of the new POST.
+  // Same fields already existed before submit -> stays still-unknown (never unlocks blind duplicate POST).
   assert.deepEqual(
     reconcileServiceCreate(expected, ["101"], [preExisting], "APPROVED"),
-    { outcome: "not-created" },
+    { outcome: "still-unknown" },
   );
 
   // New ID not in preSubmitIds with exact normalized fields -> created!
@@ -428,14 +458,14 @@ test("reconcileServiceCreate detects newly created service without duplicating a
     assert.equal(created.service.id, "205");
   }
 
-  // Partial mismatch (different price) -> not-created.
+  // Partial mismatch (different price) -> still-unknown (wait and re-check).
   const mismatch = makeService({
     ...newlyCreated,
     price: "190000.00",
   });
   assert.deepEqual(
     reconcileServiceCreate(expected, ["101"], [mismatch], "APPROVED"),
-    { outcome: "not-created" },
+    { outcome: "still-unknown" },
   );
 
   // Provider became REJECTED or SUSPENDED while request outcome was unknown.
@@ -521,4 +551,235 @@ test("applyLocalServiceMutation hydrates missing category on POST/PATCH fallback
     afterDeactivate.find((item) => item.id === "101")?.status,
     "INACTIVE",
   );
+});
+
+const UNKNOWN_SERVICE_ERROR = {
+  code: "NETWORK_ERROR",
+  category: "uncertain",
+  outcome: "unknown",
+  status: null,
+  retryAfterSeconds: null,
+  shouldReconcile: true,
+} as const;
+
+test("R1: 503 same-identity abort releases busy flags into uncertain state; 401/logout/identity switch purges 100%", () => {
+  const identityA = "gen-1:30:PROVIDER_OWNER";
+  const identityB = "gen-2:31:PROVIDER_OWNER";
+  const draft = makeDraft({ name: "Spa VIP", price: "9999999999.95" });
+  const payload = buildCreateServicePayload(draft)!;
+
+  const opened = openCreateServiceDialogSession(
+    INITIAL_SERVICE_DIALOG_SESSION,
+    identityA,
+  );
+  const submitting = {
+    ...opened,
+    editor: opened.editor
+      ? { ...opened.editor, draft, saving: true }
+      : null,
+  };
+
+  // Same-identity 503 hides <Activity> and aborts fetch -> clears busy & enters uncertain (never unlocks blind POST).
+  const recovered = recoverAbortedServiceMutation(submitting, {
+    attemptIdentity: identityA,
+    liveIdentity: identityA,
+    mode: "create",
+    serviceId: null,
+    draft,
+    confirmStatus: null,
+    uncertain: {
+      kind: "create",
+      expected: payload.expected,
+      preSubmitIds: ["101"],
+    },
+    error: UNKNOWN_SERVICE_ERROR,
+  });
+  assert.equal(recovered.editor?.saving, false);
+  assert.equal(recovered.editor?.updatingStatus, false);
+  assert.equal(recovered.editor?.reconciling, false);
+  assert.deepEqual(recovered.editor?.draft, draft);
+  assert.equal(recovered.pendingUncertain?.identity, identityA);
+  assert.equal(recovered.editor?.uncertain?.kind, "create");
+
+  // Reconcile GET aborted under same-identity 503 releases reconciling=false without dropping pendingUncertain.
+  const reconciling = {
+    ...recovered,
+    editor: recovered.editor ? { ...recovered.editor, reconciling: true } : null,
+  };
+  const recoveredReconcile = recoverAbortedServiceReconcile(
+    reconciling,
+    identityA,
+    identityA,
+  );
+  assert.equal(recoveredReconcile.editor?.reconciling, false);
+  assert.notEqual(recoveredReconcile.pendingUncertain, null);
+
+  // 401/logout (liveIdentity=null) or account switch purges 100% of draft/uncertain immediately.
+  assert.deepEqual(
+    recoverAbortedServiceMutation(submitting, {
+      attemptIdentity: identityA,
+      liveIdentity: null,
+      mode: "create",
+      serviceId: null,
+      draft,
+      confirmStatus: null,
+      uncertain: {
+        kind: "create",
+        expected: payload.expected,
+        preSubmitIds: ["101"],
+      },
+      error: UNKNOWN_SERVICE_ERROR,
+    }),
+    INITIAL_SERVICE_DIALOG_SESSION,
+  );
+  assert.deepEqual(
+    recoverAbortedServiceReconcile(reconciling, identityA, identityB),
+    INITIAL_SERVICE_DIALOG_SESSION,
+  );
+});
+
+test("R2: closing dialog via X/Esc preserves pendingUncertain and blocks duplicate POST on reopen/add/edit until reconciled or identity switch", () => {
+  const identityA = "gen-1:30:PROVIDER_OWNER";
+  const identityB = "gen-2:31:PROVIDER_OWNER";
+  const draft = makeDraft({ name: "Gói tắm thảo dược", price: "220000" });
+  const payload = buildCreateServicePayload(draft)!;
+
+  const opened = openCreateServiceDialogSession(
+    INITIAL_SERVICE_DIALOG_SESSION,
+    identityA,
+  );
+  const uncertain = enterServiceUncertainSession(opened, {
+    attemptIdentity: identityA,
+    mode: "create",
+    serviceId: null,
+    draft,
+    confirmStatus: null,
+    uncertain: {
+      kind: "create",
+      expected: payload.expected,
+      preSubmitIds: ["101"],
+    },
+    error: UNKNOWN_SERVICE_ERROR,
+  });
+
+  // Closing while idle+uncertain hides dialog UI ONLY and preserves pendingUncertain.
+  const closed = closeServiceDialogSession(uncertain);
+  assert.equal(closed.dialogOpen, false);
+  assert.notEqual(closed.pendingUncertain, null);
+  assert.equal(closed.pendingUncertain?.draft.name, "Gói tắm thảo dược");
+
+  // Clicking "Thêm dịch vụ" restores exact pendingUncertain session instead of blank create form.
+  const reopenedViaAdd = openCreateServiceDialogSession(closed, identityA);
+  assert.equal(reopenedViaAdd.dialogOpen, true);
+  assert.equal(reopenedViaAdd.editor?.uncertain?.kind, "create");
+  assert.equal(reopenedViaAdd.editor?.draft.name, "Gói tắm thảo dược");
+  assert.notEqual(reopenedViaAdd.pendingUncertain, null);
+
+  // Clicking Edit on another service also restores pendingUncertain until reconciled.
+  const reopenedViaEdit = openEditServiceDialogSession(
+    closed,
+    identityA,
+    makeService({ id: "101", name: "Dịch vụ khác" }),
+  );
+  assert.equal(reopenedViaEdit.dialogOpen, true);
+  assert.equal(reopenedViaEdit.editor?.uncertain?.kind, "create");
+  assert.equal(reopenedViaEdit.editor?.draft.name, "Gói tắm thảo dược");
+
+  // Banner "Xem lại yêu cầu" restores dialog cleanly.
+  const reopenedViaBanner = reopenPendingServiceUncertainSession(
+    closed,
+    identityA,
+  );
+  assert.equal(reopenedViaBanner.dialogOpen, true);
+  assert.equal(reopenedViaBanner.editor?.uncertain?.kind, "create");
+
+  // Switching identity discards stale pendingUncertain immediately.
+  const switched = openCreateServiceDialogSession(closed, identityB);
+  assert.equal(switched.dialogOpen, true);
+  assert.equal(switched.pendingUncertain, null);
+  assert.equal(switched.editor?.uncertain, null);
+  assert.equal(switched.editor?.identity, identityB);
+});
+
+test("R3: POST /services timeout -> GET #1 still-unknown stays locked -> late backend commit -> GET #2 confirms created with 0 duplicates", () => {
+  const identity = "gen-1:30:PROVIDER_OWNER";
+  const draft = makeDraft({
+    name: "Tắm spa siêu cấp",
+    price: "9999999999.95",
+    durationMinutes: "60",
+    description: null as unknown as string,
+  });
+  const cleanDraft: ServiceDraft = { ...draft, description: "" };
+  const payload = buildCreateServicePayload(cleanDraft)!;
+  const preExisting = makeService({ id: "101" });
+
+  // Step 1: POST /services times out at BFF 8s -> enters uncertain with preSubmitIds=["101"].
+  const session = enterServiceUncertainSession(
+    openCreateServiceDialogSession(INITIAL_SERVICE_DIALOG_SESSION, identity),
+    {
+      attemptIdentity: identity,
+      mode: "create",
+      serviceId: null,
+      draft: cleanDraft,
+      confirmStatus: null,
+      uncertain: {
+        kind: "create",
+        expected: payload.expected,
+        preSubmitIds: [preExisting.id],
+      },
+      error: UNKNOWN_SERVICE_ERROR,
+    },
+  );
+
+  // Step 2: GET #1 arrives before late backend commit finishes -> MUST return still-unknown & keep locked.
+  const firstCheck = reconcileServiceCreate(
+    payload.expected,
+    [preExisting.id],
+    [preExisting],
+    "APPROVED",
+  );
+  assert.deepEqual(firstCheck, { outcome: "still-unknown" });
+
+  const afterFirstCheck = keepServiceCreateStillUnknown(
+    session,
+    identity,
+    "Chưa thấy dịch vụ mới trên máy chủ. Đợi vài giây rồi kiểm tra lại.",
+  );
+  assert.equal(afterFirstCheck.editor?.reconciling, false);
+  assert.notEqual(afterFirstCheck.pendingUncertain, null);
+  assert.equal(afterFirstCheck.editor?.uncertain?.kind, "create");
+  assert.match(afterFirstCheck.editor?.reconcileNote ?? "", /Chưa thấy dịch vụ mới/);
+
+  // Close & reopen between checks keeps reconcileNote and duplicate-POST lock intact.
+  const closedThenReopened = reopenPendingServiceUncertainSession(
+    closeServiceDialogSession(afterFirstCheck),
+    identity,
+  );
+  assert.notEqual(closedThenReopened.pendingUncertain, null);
+  assert.match(
+    closedThenReopened.editor?.reconcileNote ?? "",
+    /Chưa thấy dịch vụ mới/,
+  );
+
+  // Step 3: Late POST commit lands on backend; GET #2 sees new ID=299 -> resolves cleanly as created (0 duplicates).
+  const lateCommitted = makeService({
+    id: "299",
+    categoryId: payload.expected.categoryId,
+    name: payload.expected.name,
+    price: payload.expected.canonicalPrice,
+    durationMinutes: payload.expected.durationMinutes,
+    description: payload.expected.description,
+    status: "ACTIVE",
+  });
+  const secondCheck = reconcileServiceCreate(
+    payload.expected,
+    [preExisting.id],
+    [preExisting, lateCommitted],
+    "APPROVED",
+  );
+  assert.equal(secondCheck.outcome, "created");
+  if (secondCheck.outcome === "created") {
+    assert.equal(secondCheck.service.id, "299");
+    assert.equal(secondCheck.service.price, "9999999999.95");
+  }
 });

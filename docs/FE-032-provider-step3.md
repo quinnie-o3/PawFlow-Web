@@ -4,26 +4,26 @@ Ngày thực thi: 26/11/2026 (`Asia/Ho_Chi_Minh`). **Đủ điều kiện chuy�
 
 ## Bản kiểm và môi trường QA cô lập
 
-- **Web (`PawFlow-Web`):** nhánh `provider-dashboard-live`, nền `HEAD` = `f4ea5733e74664ade1763bf17e159807195b224a` (cộng dồn Cụm 4A trên `origin/dev` = `789400b65f9656b51e935f87c8bafae1de3c24de`), gồm 103 file runtime/test thay đổi (`73 M`, `15 D`, `15` mới; đã bao gồm dọn 1 import thừa ở `SlotDialog.tsx` và 5 file vá tối thiểu được duyệt trong Bước 3).
+- **Web (`PawFlow-Web`):** nhánh `provider-dashboard-live` / `booking-api-reliability` (PR #26), nền Cụm 4A `f4ea5733e74664ade1763bf17e159807195b224a` trên `origin/dev` = `789400b65f9656b51e935f87c8bafae1de3c24de`, kế thừa commit Step 3 `d3eac6e551b97029544234a5a46a00c497e9f94e` và bổ sung commit thứ 3 cộng dồn xử lý kiểm toán PR #26 (`R1`, `R2`, `R3`, `Y1`); tổng cộng 105 file runtime/test thay đổi so với `f4ea5733` (`75 M`, `15 D`, `15` mới; cộng 3 file tài liệu `docs/FE-032-provider-*` = 108 file diff).
 - **API (`PawFlow-API`):** nhánh `dev`, `HEAD` = `origin/dev` = `d0f48b03f75e6c13132d40b6c2e597480a23a439`, working tree sạch (`git status --short` rỗng, không chỉnh sửa bất kỳ file nào trong `PawFlow-API`).
-- **Manifest cuối:** [FE-032-provider-step3-manifest.json](FE-032-provider-step3-manifest.json) — **479 file** runtime/test (`479` file nền `f4ea5733` trừ `15` file mock/cũ đã xóa cộng `15` file mới của `FE-032`, loại trừ `docs/`, Markdown, `.agent/`, `.geminiignore` và thư mục build/tạm), `runtimeTestFingerprint` = `ecd21a1ef2edd27a85beeeef8c18d39519b9c39b99553f959899122ca0873e8b`.
+- **Manifest cuối:** [FE-032-provider-step3-manifest.json](FE-032-provider-step3-manifest.json) — **479 file** runtime/test (`479` file nền `f4ea5733` trừ `15` file mock/cũ đã xóa cộng `15` file mới của `FE-032`, loại trừ `docs/`, Markdown, `.agent/`, `.geminiignore` và thư mục build/tạm), `runtimeTestFingerprint` cập nhật sau commit thứ 3 = `9fd9c8179d9a86d5d3cc379ed3daa38c63d15ea2fcbfb185428b02e0e2338884` (fingerprint gốc tại commit `d3eac6e5`: `ecd21a1ef2edd27a85beeeef8c18d39519b9c39b99553f959899122ca0873e8b`).
 - **PostgreSQL 15 cô lập:** Container Docker tạm `pawflow-qa-pg-provider-20261126` (`postgres:15-alpine`, `--memory=512m`, `--tmpfs /var/lib/postgresql/data:rw,size=384m`, bind `127.0.0.1:5439`, `TZ=Asia/Ho_Chi_Minh`). Chỉ tạo và thao tác trên DB tạm `pawflow_qa_provider_20261126`; chạy đủ **17 TypeORM migrations** của `PawFlow-API` (từ `dist/database/migrations/*.js`, không đọc bất kỳ file `.env*` nào) và chuỗi BFF (`001_sessions.sql` → `002_login_rotation.sql` → `check.sql`); cấp quyền tối thiểu cho role `qa_bff_runtime` (chỉ `CONNECT`, `USAGE` schema `pawflow_bff`, DML trên `pawflow_bff.sessions`) và xác minh `scripts/bff-db.mjs check` bằng chính role này. Không chạm `pet_care_db` hay 2 container dừng sẵn (`pawflow-bff-qa-20261123`, `oracle-db`).
 - **Stack production & đồng hồ:** Node `v22.19.0`, Next `16.3.8`, `PawFlow-API` `dist/main.js` (`127.0.0.1:3076`, `TZ=Asia/Ho_Chi_Minh`, `CORS_ORIGINS=https://127.0.0.1:34480`, `TURNSTILE_MODE=enforce`, `TURNSTILE_CHECK_ACTION=true`, `AUTH_RATE_LIMIT=enabled`, `API_RATE_LIMIT=enabled`), Next production `next start` (`127.0.0.1:3080`, `NODE_ENV=production`, `TZ=Asia/Ho_Chi_Minh`, bản QA build với `NEXT_PUBLIC_API_URL=https://127.0.0.1:34476/api` không bị Mixed Content) sau proxy TLS loopback tự ký (`https://127.0.0.1:34480` → Web, `https://127.0.0.1:34476` → API) bảo toàn cookie `__Host-pawflow-session` (`HttpOnly; Path=/; SameSite=Lax; Secure`).
 - **Trình duyệt & tài nguyên 8GB RAM:** 1 tiến trình Playwright Chromium headless (`1.65.1`, cache `chromium-1255` ngoài repo) chạy **tuần tự** 3 viewport `1440×1000` → `768×1024` → `390×844`, đóng context sau mỗi nhóm.
 - **Dọn dẹp hậu kiểm đã xác nhận (`EXIT` trap):** `DROP DATABASE pawflow_qa_provider_20261126` (`0` bản ghi còn lại trong `pg_database`), `docker rm -f pawflow-qa-pg-provider-20261126`, xóa sạch 3 đường dẫn tạm `/tmp/pawflow-qa-provider-20261126-*`, giải phóng toàn bộ 6 cổng QA (`3075`, `3076`, `3080`, `5439`, `34476`, `34480`), bảo toàn nguyên vẹn tiến trình ngoài phạm vi (`node` PID `35189` ở `:3000`, `nginx` PID `98778`/`98815` ở `:8080`) và 2 container dừng sẵn.
 - **Bundle bằng chứng ngoài repo:** `QA-provider-dashboard-live-step3-20261126/` (gồm `api-pg-results.json`, `browser-3vp-results.json`, các log lỗi gốc trước khi vá `api-pg-initial-defect-run.json`, `browser-3vp-initial-defect-run.json`, `browser-3vp-harness-fail-2.json`, `fixtures.json`, `logs/` đã lọc sạch secret/token/cookie và 22 ảnh PNG 3 viewport trong `screenshots/`).
 
-## Tổng hợp kết quả thực chạy tươi (sau vá)
+## Tổng hợp kết quả kiểm chứng
 
-| Nhóm kiểm thử | Kết quả | Nguồn bằng chứng (chạy tươi 26/11/2026) |
+| Nhóm kiểm thử | Kết quả | Nguồn bằng chứng & phạm vi chạy tươi |
 | --- | --- | --- |
-| API + PostgreSQL 15 thật (qua `PawFlow-API` `d0f48b03` & BFF thật) | **10/10 nhóm đạt** | `api-pg-results.json` (`API-01`..`API-10`) |
-| Production Chromium tuần tự 3 viewport & Fault Injection | **10/10 nhóm đạt**, **0 `pageerror`** | `browser-3vp-results.json` (`BR-01`..`BR-10`), 22 PNG `screenshots/*.png` |
-| Provider workspace & modules unit/contract suite | **91/91 đạt** | `node scripts/test-provider.mjs` |
-| Customer booking unit/contract regression | **54/54 đạt** | `node scripts/test-booking.mjs` |
-| Account/Pet/Session/Turnstile regression | **96/96 đạt** | `npm run test:account-session` |
-| Search/Public catalog regression | **67/67 đạt** | `node scripts/test-search.mjs` |
-| Lint, Production Build, TypeScript & Diff whitespace | **4/4 cổng exit 0** (`0 warnings`) | `npm run lint`, `NEXT_PUBLIC_API_URL=http://localhost:8000/api npm run build` (32/32 route, không làm bẩn `next-env.d.ts`/`tsconfig.json`), `npx tsc --noEmit`, `git diff --check` |
+| API + PostgreSQL 15 thật (qua `PawFlow-API` `d0f48b03` & BFF thật) | **10/10 nhóm đạt** | `api-pg-results.json` (`API-01`..`API-10`) — chạy tươi tại commit `d3eac6e5`, kế thừa (không chạy lại ở commit vá cục bộ thứ 3) |
+| Production Chromium tuần tự 3 viewport & Fault Injection | **10/10 nhóm đạt**, **0 `pageerror`** | `browser-3vp-results.json` (`BR-01`..`BR-10`), 22 PNG `screenshots/*.png` — chạy tươi tại commit `d3eac6e5`, kế thừa (không chạy lại ở commit vá cục bộ thứ 3) |
+| Provider workspace & modules unit/contract suite | **100/100 đạt** (+9 test hồi quy kiểm toán) | `node scripts/test-provider.mjs` — chạy tươi cho commit thứ 3 |
+| Customer booking unit/contract regression | **55/55 đạt** (+1 test hồi quy R1/R2 hủy lịch) | `node scripts/test-booking.mjs` — chạy tươi cho commit thứ 3 |
+| Account/Pet/Session/Turnstile regression | **96/96 đạt** | `npm run test:account-session` — chạy tươi cho commit thứ 3 |
+| Search/Public catalog regression | **67/67 đạt** | `node scripts/test-search.mjs` — chạy tươi cho commit thứ 3 |
+| Lint, Production Build, TypeScript & Diff whitespace | **4/4 cổng exit 0** (`0 warnings`) | `npm run lint`, `NEXT_PUBLIC_API_URL=http://localhost:8000/api npm run build` (32/32 route, không làm bẩn `next-env.d.ts`/`tsconfig.json`), `npx tsc --noEmit`, `git diff --check` — chạy tươi cho commit thứ 3 |
 
 ## Chi tiết 10 nhóm API + PostgreSQL 15 thật
 
@@ -85,11 +85,31 @@ Toàn bộ log lỗi gốc trước khi sửa được bảo lưu nguyên vẹn 
   - Cloudflare Turnstile: backend bật `TURNSTILE_MODE=enforce` nhưng trỏ về HTTP Siteverify simulator cục bộ (kiểm secret, hostname, action, one-use token) và browser dùng widget stub — **không phải Cloudflare Siteverify thật**.
   - `BR-04` (`503` `/api/bff/bookings/provider`), `BR-05` (`drop-after-upstream` & `drop-before-upstream` trên 4 mutation), `BR-07` (`503` `/api/bff/session`) dùng fault injection chủ động ở proxy HTTPS loopback cục bộ để tái hiện rớt mạng và lỗi phiên.
   - `API-09`/`API-10`/`BR-02` sử dụng dữ liệu tổng hợp trên PostgreSQL 15 thật nhằm kích hoạt đồng thời 6 KPI và đủ 5 mã cảnh báo DSS.
-- **Giới hạn ngoài phạm vi chưa nghiệm thu trong lượt này:**
+- **Giới hạn ngoài phạm vi & giới hạn Backend sẵn có được ghi nhận minh bạch:**
+  - **`Y2` (giới hạn sẵn có phía Backend đang khóa, không sửa trong PR #26):** `PawFlow-API/src/dashboard/dashboard.service.ts:311` (`getHalfOpenPeriod`) cắt ranh giới kỳ thống kê theo `${from}T00:00:00.000Z` / `${addDays(to, 1)}T00:00:00.000Z` (UTC `00:00Z`) thay vì `00:00:00+07:00` (`Asia/Ho_Chi_Minh`). Giao diện giữ nguyên gửi tham số `from`/`to` (`YYYY-MM-DD`) theo đúng hợp đồng hiện hữu của Backend `d0f48b03`.
   - `FE-033` (Staff/Admin live dashboards) và `FE-034` (Notification inbox, review response, complaint live APIs).
   - Cloudflare Siteverify thật, SMTP thật, hạ tầng deployment/ingress/TLS/DB staging hoặc production nhiều instance.
   - Trình duyệt Safari, Firefox, thiết bị di động vật lý và kiểm toán screen reader đầy đủ.
 
+## Bản vá kiểm toán PR #26 (Commit thứ 3 cộng dồn — R1, R2, R3, Y1)
+
+Thực hiện trên nền commit `d3eac6e551b97029544234a5a46a00c497e9f94e` trong phạm vi whitelist khóa chặt (**26 file sửa**, **0 file vùng cấm bị chạm**, không sửa `src/features/session/*`, `src/lib/server/bff/handler.ts` hay `PawFlow-API`):
+
+1. **Vá Đèn Đỏ `R1` — Phiên `503` cùng `identity` dưới `<Activity mode="hidden">` không còn làm treo cờ bận hay mất dấu `unknown`:**
+   - Sửa đồng bộ tại `ProviderProfilePage.tsx`, `ProviderServicesPage.tsx`, `ProviderAvailabilityPage.tsx`, `useProviderBookings.ts` và luồng hủy lịch khách `LiveBookingsPage.tsx` (`liveSubmission.ts`), cùng các pure state helpers tại `profileLogic.ts`, `serviceLogic.ts`, `availabilityLogic.ts`, `bookingLogic.ts`.
+   - Khi mutation hoặc lượt đối soát `GET` bị `abort()` do `<Activity>` ẩn cây con lúc revalidate `503` cùng `identity`: luôn giải phóng `submittingRef.current = false` và mọi cờ bận (`saving`/`updatingStatus`/`mutatingRowId`/`reconciling`/`phase`), giữ nguyên draft + payload/`preSubmitIds`/`targetId` và chuyển thẳng sang trạng thái `uncertain` / `"unknown"` đòi đối soát `GET` (tuyệt đối không mở lại gửi mù). Khi `401`/logout/đổi `identity`: xóa sạch 100% trạng thái riêng tư.
+   - Đã kiểm tra chỉ-đọc `LiveBookingPanel.tsx`: chỉ mount trên route công khai `/providers/[id]` (`PublicProviderDetail.tsx`), nơi `SessionProvider` giữ `<Activity mode="visible">` khi `503`, nên không chịu ảnh hưởng của `R1`.
+2. **Vá Đèn Đỏ `R2` — Đóng hộp thoại (`Đóng`/`X`/`Esc`) không làm mất `pendingUncertain`:**
+   - Tách `pendingUncertain` (gắn chặt `identity`) độc lập khỏi `dialogOpen` tại Services, Profile, Availability (Weekly Hours + Slots), Provider Bookings và luồng khách hủy lịch (`LiveBookingsPage.tsx`).
+   - Khi đóng dialog trong trạng thái chưa rõ kết quả (`!busy && pendingUncertain !== null`), chỉ ẩn hiển thị dialog, giữ nguyên `pendingUncertain`, hiển thị banner cảnh báo trên trang kèm nút **"Kiểm tra lại với máy chủ"** và **"Xem lại yêu cầu"**. Khi bấm thêm mới/sửa/mở lại dialog, khôi phục nguyên trạng phiên `pendingUncertain` cũ và chặn gửi mutation mới cho tới khi đối soát xong hoặc đổi `identity`.
+3. **Vá Đèn Đỏ `R3` — Chặn kết luận quá sớm `"not-created"` khi `GET /services/mine` chưa thấy bản ghi mới:**
+   - `reconcileServiceCreate` (`serviceLogic.ts`) trả `"created"` khi tìm thấy ID mới (`!preSubmitIds.has(id)`) khớp payload chuẩn hóa, `"forbidden-lifecycle"` khi cơ sở sang `REJECTED`/`SUSPENDED`, và **`"still-unknown"`** khi chưa thấy bản ghi khớp — giữ nguyên `pendingUncertain`, tiếp tục khóa nút gửi `POST` lặp và hướng dẫn người dùng chờ ít giây rồi bấm **"Kiểm tra lại với máy chủ"** để bắt commit muộn an toàn (0 tạo trùng).
+4. **Vá Đèn Vàng `Y1` — Giá dạng chuỗi thập phân chuẩn + `BigInt` xuyên suốt Frontend:**
+   - Đã đối chiếu chỉ-đọc `PawFlow-API/src/services/dto/{create-service.dto.ts,update-service.dto.ts}` và `src/lib/server/bff/handler.ts` xác nhận BFF & Backend chấp nhận hợp lệ chuỗi thập phân chuẩn (không cần sửa `handler.ts`).
+   - Loại bỏ hoàn toàn ép `Number` và kiểm tra sai số float64 trong `serviceLogic.ts` và `liveApi.ts`; giữ `price` dạng chuỗi `"0.00"`..`"9999999999.99"` kiểm bằng regex `/^\d+(?:\.\d{1,2})?$/` + `BigInt` phần xu (`BigInt(0)`..`BigInt("999999999999")`). Chấp nhận chính xác `"9999999999.95"` và `"9999999999.99"`, từ chối `"10000000000.00"`, `"-1"`, `"12.345"`.
+5. **Kiểm chứng tươi cho Commit thứ 3:**
+   - Bổ sung 10 test hồi quy chuyên biệt (`+9` trong `scripts/test-provider.mjs` → `100/100`; `+1` trong `scripts/test-booking.mjs` → `55/55`), chạy tươi trọn bộ 7 cổng kiểm (`test-provider`, `test-booking`, `test:account-session` `96/96`, `test-search` `67/67`, `npm run lint` 0 warnings, `npm run build` 32/32 routes, `npx tsc --noEmit && git diff --check`) và đồng bộ `runtimeTestFingerprint` = `9fd9c8179d9a86d5d3cc379ed3daa38c63d15ea2fcbfb185428b02e0e2338884` trong [FE-032-provider-step3-manifest.json](FE-032-provider-step3-manifest.json). Lưu ý minh bạch: 2 nhóm E2E PostgreSQL 15 + Production Chromium 3 viewport (`API-01..10`, `BR-01..10`) kế thừa từ bản kiểm tươi tại commit `d3eac6e5` và không chạy lại trong commit vá mục tiêu này.
+
 ## Điều kiện sẵn sàng Bước 4
 
-Toàn bộ 103 file runtime/test của `FE-032`, 3 file hồ sơ `docs/FE-032-provider-*` và 7 cổng kiểm cuối đều sạch và khớp tuyệt đối `runtimeTestFingerprint` tại [FE-032-provider-step3-manifest.json](FE-032-provider-step3-manifest.json). Sẵn sàng chuyển sang Bước 4 để rà soát `git status`/`git diff`, commit trên nhánh `provider-dashboard-live` và push cộng dồn (chưa thực hiện ở Bước 3).
+Toàn bộ 105 file runtime/test của `FE-032` (cộng dồn commit vá kiểm toán PR #26), 3 file hồ sơ `docs/FE-032-provider-*` và 7 cổng kiểm cuối đều sạch và khớp tuyệt đối `runtimeTestFingerprint` tại [FE-032-provider-step3-manifest.json](FE-032-provider-step3-manifest.json). Sẵn sàng commit cộng dồn và push fast-forward lên nhánh `origin/booking-api-reliability` (PR #26).

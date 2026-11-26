@@ -2,6 +2,7 @@ import { formatMessage, vi } from "../../lib/locale";
 import {
   normalizeOptionalText,
   type DayOfWeek,
+  type ProviderApiErrorInfo,
   type ProviderProfile,
   type ProviderService,
   type ProviderWorkingHour,
@@ -12,7 +13,10 @@ import type {
   LiveServicesSummary,
   LiveWorkingHourGroup,
   LiveWorkingHoursSummary,
+  PendingProfileUncertain,
+  ProfileDialogSessionState,
   ProfileEditSection,
+  ProfileEditorState,
   ProfileFormValues,
   ProfileReconcileOutcome,
 } from "./types";
@@ -282,5 +286,167 @@ export function summarizeLiveWorkingHours(
     openDaysCount,
     activeIntervalCount,
     groups,
+  };
+}
+
+export const INITIAL_PROFILE_DIALOG_SESSION: ProfileDialogSessionState = {
+  dialogOpen: false,
+  editor: null,
+  pendingUncertain: null,
+};
+
+export function buildProfileEditorFromPending(
+  pending: PendingProfileUncertain,
+): ProfileEditorState {
+  return {
+    identity: pending.identity,
+    section: pending.section,
+    draft: pending.draft,
+    errors: {},
+    saving: false,
+    reconciling: false,
+    saveError: pending.saveError,
+    uncertain: pending.uncertain,
+    reconcileNote: pending.reconcileNote,
+  };
+}
+
+export function enterProfileUncertainSession(
+  state: ProfileDialogSessionState,
+  params: Readonly<{
+    attemptIdentity: string;
+    section: ProfileEditSection;
+    draft: ProfileFormValues;
+    payload: UpdateProviderProfileInput;
+    error: ProviderApiErrorInfo;
+  }>,
+): ProfileDialogSessionState {
+  const pending: PendingProfileUncertain = {
+    identity: params.attemptIdentity,
+    section: params.section,
+    draft: params.draft,
+    uncertain: { payload: params.payload },
+    saveError: params.error,
+    reconcileNote: null,
+  };
+  const baseEditor =
+    state.editor && state.editor.identity === params.attemptIdentity
+      ? state.editor
+      : buildProfileEditorFromPending(pending);
+  return {
+    dialogOpen: state.dialogOpen,
+    pendingUncertain: pending,
+    editor: {
+      ...baseEditor,
+      section: params.section,
+      draft: params.draft,
+      saving: false,
+      reconciling: false,
+      saveError: params.error,
+      uncertain: { payload: params.payload },
+      reconcileNote: null,
+    },
+  };
+}
+
+export function recoverAbortedProfileSave(
+  state: ProfileDialogSessionState,
+  params: Readonly<{
+    attemptIdentity: string;
+    liveIdentity: string | null;
+    section: ProfileEditSection;
+    draft: ProfileFormValues;
+    payload: UpdateProviderProfileInput;
+    error: ProviderApiErrorInfo;
+  }>,
+): ProfileDialogSessionState {
+  if (params.liveIdentity !== params.attemptIdentity) {
+    return INITIAL_PROFILE_DIALOG_SESSION;
+  }
+  return enterProfileUncertainSession(state, params);
+}
+
+export function recoverAbortedProfileReconcile(
+  state: ProfileDialogSessionState,
+  attemptIdentity: string,
+  liveIdentity: string | null,
+): ProfileDialogSessionState {
+  if (liveIdentity !== attemptIdentity) {
+    return INITIAL_PROFILE_DIALOG_SESSION;
+  }
+  return {
+    ...state,
+    editor:
+      state.editor && state.editor.identity === attemptIdentity
+        ? { ...state.editor, reconciling: false }
+        : state.editor,
+  };
+}
+
+export function closeProfileDialogSession(
+  state: ProfileDialogSessionState,
+): ProfileDialogSessionState {
+  if (state.editor && (state.editor.saving || state.editor.reconciling)) {
+    return state;
+  }
+  if (state.pendingUncertain !== null) {
+    return {
+      dialogOpen: false,
+      editor: state.editor ?? buildProfileEditorFromPending(state.pendingUncertain),
+      pendingUncertain: state.pendingUncertain,
+    };
+  }
+  return INITIAL_PROFILE_DIALOG_SESSION;
+}
+
+export function openProfileEditorSession(
+  state: ProfileDialogSessionState,
+  identity: string,
+  section: ProfileEditSection,
+  profile: ProviderProfile,
+): ProfileDialogSessionState {
+  if (
+    state.pendingUncertain !== null &&
+    state.pendingUncertain.identity === identity
+  ) {
+    return {
+      dialogOpen: true,
+      editor: buildProfileEditorFromPending(state.pendingUncertain),
+      pendingUncertain: state.pendingUncertain,
+    };
+  }
+  return {
+    dialogOpen: true,
+    pendingUncertain: null,
+    editor: {
+      identity,
+      section,
+      draft: profileToFormValues(profile),
+      errors: {},
+      saving: false,
+      reconciling: false,
+      saveError: null,
+      uncertain: null,
+      reconcileNote: null,
+    },
+  };
+}
+
+export function reopenPendingProfileUncertainSession(
+  state: ProfileDialogSessionState,
+  identity: string,
+): ProfileDialogSessionState {
+  if (
+    state.pendingUncertain === null ||
+    state.pendingUncertain.identity !== identity
+  ) {
+    return state;
+  }
+  const existing =
+    state.editor && state.editor.identity === identity ? state.editor : null;
+  return {
+    dialogOpen: true,
+    pendingUncertain: state.pendingUncertain,
+    editor: existing ?? buildProfileEditorFromPending(state.pendingUncertain),
   };
 }

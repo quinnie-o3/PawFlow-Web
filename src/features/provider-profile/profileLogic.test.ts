@@ -6,13 +6,20 @@ import type {
   ProviderWorkingHour,
 } from "../provider-workspace/liveApi";
 import {
+  INITIAL_PROFILE_DIALOG_SESSION,
   buildProfileUpdatePatch,
+  closeProfileDialogSession,
+  enterProfileUncertainSession,
   formatCompactTime,
   formatProfileRating,
   formatProfileTimestamp,
   hasProfileDraftChanges,
+  openProfileEditorSession,
   profileToFormValues,
   reconcileProfileUpdate,
+  recoverAbortedProfileReconcile,
+  recoverAbortedProfileSave,
+  reopenPendingProfileUncertainSession,
   summarizeLiveServices,
   summarizeLiveWorkingHours,
 } from "./profileLogic";
@@ -325,5 +332,138 @@ describe("Live services & working hours summary helpers and formatting", () => {
       formatProfileTimestamp("2026-10-01T02:00:00.000Z"),
       "01/10/2026 09:00",
     );
+  });
+});
+
+describe("R1 & R2: 503 same-identity abort recovery and persistent uncertain guard across dialog close/reopen", () => {
+  const UNKNOWN_ERROR = {
+    code: "NETWORK_ERROR",
+    category: "uncertain",
+    outcome: "unknown",
+    status: null,
+    retryAfterSeconds: null,
+    shouldReconcile: true,
+  } as const;
+
+  it("releases saving/reconciling into uncertain on same-identity 503 abort and purges on 401/logout/switch", () => {
+    const identityA = "gen-1:30:PROVIDER_OWNER";
+    const identityB = "gen-2:31:PROVIDER_OWNER";
+    const editedDraft = draft({ businessName: "PawCare Đổi Tên" });
+    const payload = { businessName: "PawCare Đổi Tên" };
+
+    const opened = openProfileEditorSession(
+      INITIAL_PROFILE_DIALOG_SESSION,
+      identityA,
+      "facility",
+      BASE_PROFILE,
+    );
+    const saving = {
+      ...opened,
+      editor: opened.editor
+        ? { ...opened.editor, draft: editedDraft, saving: true }
+        : null,
+    };
+
+    const recovered = recoverAbortedProfileSave(saving, {
+      attemptIdentity: identityA,
+      liveIdentity: identityA,
+      section: "facility",
+      draft: editedDraft,
+      payload,
+      error: UNKNOWN_ERROR,
+    });
+    assert.equal(recovered.editor?.saving, false);
+    assert.equal(recovered.editor?.reconciling, false);
+    assert.deepEqual(recovered.editor?.draft, editedDraft);
+    assert.deepEqual(recovered.pendingUncertain?.uncertain.payload, payload);
+
+    const reconciling = {
+      ...recovered,
+      editor: recovered.editor
+        ? { ...recovered.editor, reconciling: true }
+        : null,
+    };
+    const recoveredReconcile = recoverAbortedProfileReconcile(
+      reconciling,
+      identityA,
+      identityA,
+    );
+    assert.equal(recoveredReconcile.editor?.reconciling, false);
+    assert.notEqual(recoveredReconcile.pendingUncertain, null);
+
+    // 401/logout or identity switch purges 100%.
+    assert.deepEqual(
+      recoverAbortedProfileSave(saving, {
+        attemptIdentity: identityA,
+        liveIdentity: null,
+        section: "facility",
+        draft: editedDraft,
+        payload,
+        error: UNKNOWN_ERROR,
+      }),
+      INITIAL_PROFILE_DIALOG_SESSION,
+    );
+    assert.deepEqual(
+      recoverAbortedProfileReconcile(reconciling, identityA, identityB),
+      INITIAL_PROFILE_DIALOG_SESSION,
+    );
+  });
+
+  it("preserves pendingUncertain across close/reopen and blocks opening a fresh edit form until reconciled", () => {
+    const identityA = "gen-1:30:PROVIDER_OWNER";
+    const identityB = "gen-2:31:PROVIDER_OWNER";
+    const editedDraft = draft({ businessName: "PawCare Đổi Tên" });
+    const payload = { businessName: "PawCare Đổi Tên" };
+
+    const uncertain = enterProfileUncertainSession(
+      openProfileEditorSession(
+        INITIAL_PROFILE_DIALOG_SESSION,
+        identityA,
+        "facility",
+        BASE_PROFILE,
+      ),
+      {
+        attemptIdentity: identityA,
+        section: "facility",
+        draft: editedDraft,
+        payload,
+        error: UNKNOWN_ERROR,
+      },
+    );
+
+    const closed = closeProfileDialogSession(uncertain);
+    assert.equal(closed.dialogOpen, false);
+    assert.notEqual(closed.pendingUncertain, null);
+
+    // Clicking Edit on another section restores the pending uncertain request instead of discarding it.
+    const reopenedViaOtherSection = openProfileEditorSession(
+      closed,
+      identityA,
+      "contact",
+      BASE_PROFILE,
+    );
+    assert.equal(reopenedViaOtherSection.dialogOpen, true);
+    assert.equal(reopenedViaOtherSection.editor?.section, "facility");
+    assert.deepEqual(reopenedViaOtherSection.editor?.draft, editedDraft);
+    assert.notEqual(reopenedViaOtherSection.editor?.uncertain, null);
+
+    // Banner reopen button restores the exact pending uncertain session.
+    const reopenedBanner = reopenPendingProfileUncertainSession(
+      closed,
+      identityA,
+    );
+    assert.equal(reopenedBanner.dialogOpen, true);
+    assert.notEqual(reopenedBanner.editor?.uncertain, null);
+
+    // Identity switch clears stale pendingUncertain.
+    const switched = openProfileEditorSession(
+      closed,
+      identityB,
+      "contact",
+      BASE_PROFILE,
+    );
+    assert.equal(switched.pendingUncertain, null);
+    assert.equal(switched.editor?.section, "contact");
+    assert.equal(switched.editor?.uncertain, null);
   });
 });

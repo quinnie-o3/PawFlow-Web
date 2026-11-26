@@ -332,7 +332,8 @@ export type UpdateWorkingHourInput = Readonly<{
 export type CreateServiceInput = Readonly<{
   categoryId: string;
   name: string;
-  price: number;
+  /** Canonical NUMERIC(12,2) decimal string ("0.00" .. "9999999999.99"). */
+  price: string;
   durationMinutes: number;
   description?: string | null;
 }>;
@@ -340,7 +341,8 @@ export type CreateServiceInput = Readonly<{
 export type UpdateServiceInput = Readonly<{
   categoryId?: string;
   name?: string;
-  price?: number;
+  /** Canonical NUMERIC(12,2) decimal string ("0.00" .. "9999999999.99"). */
+  price?: string;
   durationMinutes?: number;
   description?: string | null;
   status?: ProviderServiceStatus;
@@ -528,8 +530,11 @@ const NUMERIC_PRICE_PATTERN = /^\d{1,10}\.\d{2}$/;
 const NUMERIC_REVENUE_PATTERN = /^\d{1,18}\.\d{2}$/;
 const NUMERIC_RATING_PATTERN = /^[0-5](?:\.\d{1,2})?$/;
 const NUMERIC_WEIGHT_PATTERN = /^\d{1,4}(?:\.\d{1,2})?$/;
+const PRICE_DECIMAL_INPUT_PATTERN = /^\d+(?:\.\d{1,2})?$/;
 const MAX_INT32 = 2147483647;
-const MAX_PRICE = 9999999999.99;
+const MAX_PRICE_CENTS = BigInt("999999999999");
+const BIGINT_ZERO = BigInt(0);
+const BIGINT_HUNDRED = BigInt(100);
 
 const KNOWN_ERROR_CODES = new Set<ProviderApiErrorCode>([
   "INVALID_INPUT",
@@ -1611,16 +1616,23 @@ function isValidNullableStringOptional(value: unknown): boolean {
   return value === undefined || value === null || typeof value === "string";
 }
 
-function isValidPriceNumber(value: unknown): value is number {
-  if (
-    typeof value !== "number" ||
-    !Number.isFinite(value) ||
-    value < 0 ||
-    value > MAX_PRICE
-  ) {
-    return false;
-  }
-  return Math.abs(Math.round(value * 100) - value * 100) < 1e-6;
+/**
+ * Validates and normalizes service price strictly as a canonical decimal string
+ * ("0.00" .. "9999999999.99") using regex + BigInt cents — never IEEE-754 floats.
+ */
+export function normalizeServicePriceInput(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!PRICE_DECIMAL_INPUT_PATTERN.test(trimmed)) return null;
+  const dotIndex = trimmed.indexOf(".");
+  const rawInt = dotIndex === -1 ? trimmed : trimmed.slice(0, dotIndex);
+  const rawFrac = dotIndex === -1 ? "" : trimmed.slice(dotIndex + 1);
+  const normalizedInt = rawInt.replace(/^0+(?=\d)/, "");
+  if (normalizedInt.length > 10) return null;
+  const paddedFrac = rawFrac.padEnd(2, "0");
+  const cents = BigInt(normalizedInt) * BIGINT_HUNDRED + BigInt(paddedFrac);
+  if (cents < BIGINT_ZERO || cents > MAX_PRICE_CENTS) return null;
+  return `${normalizedInt}.${paddedFrac}`;
 }
 
 function isValidPositiveInt32(value: unknown): value is number {
@@ -2003,10 +2015,11 @@ export function createProviderWorkspaceApi(
     options: { signal?: AbortSignal } = {},
   ): Promise<ProviderService> {
     throwIfCancelled(options.signal);
+    const normalizedPrice = normalizeServicePriceInput(input.price);
     if (
       !validId(input.categoryId) ||
       typeof input.name !== "string" ||
-      !isValidPriceNumber(input.price) ||
+      normalizedPrice === null ||
       !isValidPositiveInt32(input.durationMinutes) ||
       !isValidNullableStringOptional(input.description)
     ) {
@@ -2020,7 +2033,7 @@ export function createProviderWorkspaceApi(
     const body: Record<string, unknown> = {
       categoryId: input.categoryId,
       name: trimmedName,
-      price: input.price,
+      price: normalizedPrice,
       durationMinutes: input.durationMinutes,
       ...(input.description !== undefined
         ? { description: normalizeOptionalText(input.description) }
@@ -2070,10 +2083,11 @@ export function createProviderWorkspaceApi(
       body.name = trimmed;
     }
     if (input.price !== undefined) {
-      if (!isValidPriceNumber(input.price)) {
+      const normalizedPrice = normalizeServicePriceInput(input.price);
+      if (normalizedPrice === null) {
         throw invalidInputError("update-service");
       }
-      body.price = input.price;
+      body.price = normalizedPrice;
     }
     if (input.durationMinutes !== undefined) {
       if (!isValidPositiveInt32(input.durationMinutes)) {

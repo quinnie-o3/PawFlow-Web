@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { RefreshCw } from "lucide-react";
-import { isRequestCancelled } from "@/lib/api/errors";
+import { AlertTriangle, RefreshCw } from "lucide-react";
+import { ApiError, isRequestCancelled } from "@/lib/api/errors";
 import { formatMessage, vi } from "@/lib/locale";
+import { snapshot } from "@/features/session/client";
 import {
   classifyProviderError,
   createAvailabilitySlot,
@@ -21,27 +22,44 @@ import {
 import {
   getProviderErrorMessage,
   getProviderErrorMessageByCode,
+  providerSessionIdentityKey,
 } from "@/features/provider-workspace/lifecycle";
 import { useProviderProfile } from "@/features/provider-workspace/useProviderProfile";
 import ProviderLifecycleBanner from "@/features/provider-workspace/components/ProviderLifecycleBanner";
 import {
+  INITIAL_SLOT_DIALOG_SESSION,
+  INITIAL_WORKING_HOURS_SESSION,
   applyLocalSlotMutation,
   applyLocalWorkingHourMutation,
   buildCreateSlotPayload,
+  buildSlotEditorFromPending,
   buildUpdateSlotPatch,
   buildWorkingHourMutationPlan,
+  buildWorkingHoursDialogFromPending,
   canReopenSlot,
+  closeSlotDialogSession,
+  closeWorkingHoursDialogSession,
+  enterSlotUncertainSession,
+  enterWorkingHoursUncertainSession,
   formatTimeHhMm,
   getDayOfWeekLabel,
   groupWorkingHoursByDay,
   localDate,
+  openCreateSlotDialogSession,
+  openEditSlotDialogSession,
+  openWorkingHoursDialogSession,
   reconcileSlotCancel,
   reconcileSlotCreate,
   reconcileSlotUpdate,
   reconcileWorkingHourCreate,
   reconcileWorkingHourDeactivate,
   reconcileWorkingHourUpdate,
-  slotToDraft,
+  recoverAbortedSlotMutation,
+  recoverAbortedSlotReconcile,
+  recoverAbortedWorkingHoursMutation,
+  recoverAbortedWorkingHoursReconcile,
+  reopenPendingSlotSession,
+  reopenPendingWorkingHoursSession,
   suggestSlotEndTime,
   summarizeAvailability,
   validateSlotDraft,
@@ -51,11 +69,13 @@ import {
 import { useProviderAvailability } from "../useProviderAvailability";
 import type {
   AvailabilityFeedback as AvailabilityFeedbackData,
-  SlotEditorState,
+  SlotDialogSessionState,
   SlotFieldKey,
   SlotStatusAction,
+  SlotUncertainAction,
   WorkingHourFieldKey,
-  WorkingHoursDialogState,
+  WorkingHourUncertainAction,
+  WorkingHoursDialogSessionState,
 } from "../types";
 import AvailabilityFeedback from "./AvailabilityFeedback";
 import AvailabilitySummary from "./AvailabilitySummary";
@@ -103,9 +123,11 @@ export default function ProviderAvailabilityPage() {
   });
 
   const [nowIso, setNowIso] = useState(() => new Date().toISOString());
-  const [workingDialog, setWorkingDialog] =
-    useState<WorkingHoursDialogState | null>(null);
-  const [slotEditor, setSlotEditor] = useState<SlotEditorState | null>(null);
+  const [workingSession, setWorkingSession] =
+    useState<WorkingHoursDialogSessionState>(INITIAL_WORKING_HOURS_SESSION);
+  const [slotSession, setSlotSession] = useState<SlotDialogSessionState>(
+    INITIAL_SLOT_DIALOG_SESSION,
+  );
   const [slotsDialogIdentity, setSlotsDialogIdentity] = useState<string | null>(
     null,
   );
@@ -141,7 +163,7 @@ export default function ProviderAvailabilityPage() {
   }, []);
 
   // Purge all private dialog/draft state asynchronously on 401/logout/identity switch.
-  // Keep workingDialog, slotEditor, and uncertain states in memory on same-identity revalidate error.
+  // Keep workingSession, slotSession, and pendingUncertain states in memory on same-identity revalidate error.
   useEffect(() => {
     if (!sessionBoundary.resetPrivateState) return;
     mutationControllerRef.current?.abort();
@@ -150,8 +172,8 @@ export default function ProviderAvailabilityPage() {
     let cancelled = false;
     Promise.resolve().then(() => {
       if (cancelled) return;
-      setWorkingDialog(null);
-      setSlotEditor(null);
+      setWorkingSession(INITIAL_WORKING_HOURS_SESSION);
+      setSlotSession(INITIAL_SLOT_DIALOG_SESSION);
       setSlotsDialogIdentity(null);
       setScopedFeedback(null);
       setCooldownUntil(null);
@@ -189,19 +211,35 @@ export default function ProviderAvailabilityPage() {
       : 0;
 
   const activeWorkingDialog =
-    workingDialog !== null &&
+    workingSession.dialog !== null &&
     !sessionBoundary.resetPrivateState &&
     sessionBoundary.identity !== null &&
-    workingDialog.identity === sessionBoundary.identity
-      ? workingDialog
+    workingSession.dialog.identity === sessionBoundary.identity
+      ? workingSession.dialog
+      : null;
+
+  const activePendingWorkingUncertain =
+    workingSession.pendingUncertain !== null &&
+    !sessionBoundary.resetPrivateState &&
+    sessionBoundary.identity !== null &&
+    workingSession.pendingUncertain.identity === sessionBoundary.identity
+      ? workingSession.pendingUncertain
       : null;
 
   const activeSlotEditor =
-    slotEditor !== null &&
+    slotSession.editor !== null &&
     !sessionBoundary.resetPrivateState &&
     sessionBoundary.identity !== null &&
-    slotEditor.identity === sessionBoundary.identity
-      ? slotEditor
+    slotSession.editor.identity === sessionBoundary.identity
+      ? slotSession.editor
+      : null;
+
+  const activePendingSlotUncertain =
+    slotSession.pendingUncertain !== null &&
+    !sessionBoundary.resetPrivateState &&
+    sessionBoundary.identity !== null &&
+    slotSession.pendingUncertain.identity === sessionBoundary.identity
+      ? slotSession.pendingUncertain
       : null;
 
   const activeSlotsListOpen =
@@ -241,15 +279,19 @@ export default function ProviderAvailabilityPage() {
 
   // Unmount all <ProviderWorkspaceDialog> instances whenever private UI is hidden
   // (including same-identity revalidate error) to release top-layer backdrop/scroll lock,
-  // while retaining drafts and uncertain state in memory for the same identity.
+  // while retaining drafts and pendingUncertain state in memory for the same identity.
   const canRenderDialogs =
     !sessionBoundary.closeDialog &&
     !sessionBoundary.hidePrivateData &&
     profileReady;
 
-  const showWorkingDialog = canRenderDialogs && activeWorkingDialog !== null;
+  const showWorkingDialog =
+    canRenderDialogs &&
+    workingSession.dialogOpen &&
+    activeWorkingDialog !== null;
   const showSlotDialog =
     canRenderDialogs &&
+    slotSession.dialogOpen &&
     activeSlotEditor !== null &&
     (activeSlotEditor.mode === "create" || editingSlot !== null);
   const showSlotsDialog =
@@ -283,29 +325,35 @@ export default function ProviderAvailabilityPage() {
     ) {
       return;
     }
+    const targetIdentity = sessionBoundary.identity;
     setScopedFeedback(null);
-    setSlotEditor(null);
+    setSlotSession((current) => closeSlotDialogSession(current));
     setSlotsDialogIdentity(null);
-    setWorkingDialog({
-      identity: sessionBoundary.identity,
-      mode: "create",
-      editingId: null,
-      draft: workingHourToDraft(null, 1),
-      errors: {},
-      saving: false,
-      mutatingRowId: null,
-      confirmDeactivateId: null,
-      reconciling: false,
-      error: null,
-      uncertain: null,
-      reconcileNote: null,
-      inlineFeedback: null,
-    });
+    setWorkingSession((current) =>
+      openWorkingHoursDialogSession(current, targetIdentity),
+    );
+  }
+
+  function reopenPendingWorkingHours() {
+    if (
+      submittingRef.current ||
+      !profileReady ||
+      sessionBoundary.lockActions ||
+      !sessionBoundary.identity
+    ) {
+      return;
+    }
+    const targetIdentity = sessionBoundary.identity;
+    setSlotSession((current) => closeSlotDialogSession(current));
+    setSlotsDialogIdentity(null);
+    setWorkingSession((current) =>
+      reopenPendingWorkingHoursSession(current, targetIdentity),
+    );
   }
 
   function closeWorkingHoursDialog() {
     if (submittingRef.current) return;
-    setWorkingDialog(null);
+    setWorkingSession((current) => closeWorkingHoursDialogSession(current));
   }
 
   function openSlotsDialog() {
@@ -318,8 +366,8 @@ export default function ProviderAvailabilityPage() {
       return;
     }
     setScopedFeedback(null);
-    setWorkingDialog(null);
-    setSlotEditor(null);
+    setWorkingSession((current) => closeWorkingHoursDialogSession(current));
+    setSlotSession((current) => closeSlotDialogSession(current));
     setSlotsDialogIdentity(sessionBoundary.identity);
   }
 
@@ -338,31 +386,23 @@ export default function ProviderAvailabilityPage() {
     ) {
       return;
     }
+    const targetIdentity = sessionBoundary.identity;
     const freshNow = new Date().toISOString();
     setNowIso(freshNow);
     setScopedFeedback(null);
-    setWorkingDialog(null);
+    setWorkingSession((current) => closeWorkingHoursDialogSession(current));
     setSlotsDialogIdentity(null);
     const firstActive = availabilityState.services.find(
       (item) => item.status === "ACTIVE",
     );
-    setSlotEditor({
-      identity: sessionBoundary.identity,
-      mode: "create",
-      slotId: null,
-      draft: slotToDraft(null, localDate(freshNow), firstActive?.id ?? ""),
-      autoEndTime: true,
-      errors: {},
-      saving: false,
-      updatingStatus: false,
-      reconciling: false,
-      confirmAction: null,
-      saveError: null,
-      statusError: null,
-      uncertain: null,
-      reconcileNote: null,
-      statusFeedback: null,
-    });
+    setSlotSession((current) =>
+      openCreateSlotDialogSession(
+        current,
+        targetIdentity,
+        localDate(freshNow),
+        firstActive?.id ?? "",
+      ),
+    );
   }
 
   function openEditSlot(slotId: string) {
@@ -376,77 +416,91 @@ export default function ProviderAvailabilityPage() {
     }
     const target = availabilityState.slots.find((item) => item.id === slotId);
     if (!target) return;
+    const targetIdentity = sessionBoundary.identity;
     setNowIso(new Date().toISOString());
     setScopedFeedback(null);
-    setWorkingDialog(null);
+    setWorkingSession((current) => closeWorkingHoursDialogSession(current));
     setSlotsDialogIdentity(null);
-    setSlotEditor({
-      identity: sessionBoundary.identity,
-      mode: "edit",
-      slotId: target.id,
-      draft: slotToDraft(target),
-      autoEndTime: false,
-      errors: {},
-      saving: false,
-      updatingStatus: false,
-      reconciling: false,
-      confirmAction: null,
-      saveError: null,
-      statusError: null,
-      uncertain: null,
-      reconcileNote: null,
-      statusFeedback: null,
-    });
+    setSlotSession((current) =>
+      openEditSlotDialogSession(current, targetIdentity, target),
+    );
+  }
+
+  function reopenPendingSlot() {
+    if (
+      submittingRef.current ||
+      !profileReady ||
+      sessionBoundary.lockActions ||
+      !sessionBoundary.identity
+    ) {
+      return;
+    }
+    const targetIdentity = sessionBoundary.identity;
+    setWorkingSession((current) => closeWorkingHoursDialogSession(current));
+    setSlotsDialogIdentity(null);
+    setSlotSession((current) =>
+      reopenPendingSlotSession(current, targetIdentity),
+    );
   }
 
   function closeSlotEditor() {
     if (submittingRef.current) return;
-    setSlotEditor(null);
+    setSlotSession((current) => closeSlotDialogSession(current));
   }
 
   function handleChangeWorkingHourField(
     field: WorkingHourFieldKey,
     value: string | DayOfWeek,
   ) {
-    setWorkingDialog((current) => {
+    setWorkingSession((current) => {
+      const dialog = current.dialog;
       if (
-        !current ||
-        current.saving ||
-        current.mutatingRowId !== null ||
-        current.reconciling ||
-        current.uncertain !== null ||
+        !dialog ||
+        dialog.saving ||
+        dialog.mutatingRowId !== null ||
+        dialog.reconciling ||
+        dialog.uncertain !== null ||
+        current.pendingUncertain !== null ||
         !canManageResources
       ) {
         return current;
       }
-      const nextErrors = { ...current.errors };
+      const nextErrors = { ...dialog.errors };
       delete nextErrors[field];
       delete nextErrors.form;
       return {
         ...current,
-        draft: { ...current.draft, [field]: value },
-        errors: nextErrors,
-        error: null,
-        reconcileNote: null,
-        inlineFeedback: null,
+        dialog: {
+          ...dialog,
+          draft: { ...dialog.draft, [field]: value },
+          errors: nextErrors,
+          error: null,
+          reconcileNote: null,
+          inlineFeedback: null,
+        },
       };
     });
   }
 
   function handleStartEditWorkingHour(hour: ProviderWorkingHour) {
     if (submittingRef.current || !canManageResources) return;
-    setWorkingDialog((current) =>
-      current && current.uncertain === null
+    setWorkingSession((current) =>
+      current.dialog &&
+      current.dialog.uncertain === null &&
+      current.pendingUncertain === null
         ? {
             ...current,
-            mode: "edit",
-            editingId: hour.id,
-            draft: workingHourToDraft(hour),
-            errors: {},
-            confirmDeactivateId: null,
-            error: null,
-            reconcileNote: null,
-            inlineFeedback: null,
+            dialog: {
+              ...current.dialog,
+              mode: "edit",
+              editingId: hour.id,
+              draft: workingHourToDraft(hour),
+              errors: {},
+              confirmDeactivateId: null,
+              error: null,
+              reconcileNote: null,
+              inlineFeedback: null,
+            },
           }
         : current,
     );
@@ -454,36 +508,41 @@ export default function ProviderAvailabilityPage() {
 
   function handleCancelEditWorkingHour() {
     if (submittingRef.current) return;
-    setWorkingDialog((current) =>
-      current
+    setWorkingSession((current) =>
+      current.dialog
         ? {
             ...current,
-            mode: "create",
-            editingId: null,
-            draft: workingHourToDraft(null, current.draft.dayOfWeek),
-            errors: {},
-            error: null,
-            reconcileNote: null,
+            dialog: {
+              ...current.dialog,
+              mode: "create",
+              editingId: null,
+              draft: workingHourToDraft(null, current.dialog.draft.dayOfWeek),
+              errors: {},
+              error: null,
+              reconcileNote: null,
+            },
           }
         : current,
     );
   }
 
   function handleChangeSlotField(field: SlotFieldKey, value: string) {
-    setSlotEditor((current) => {
+    setSlotSession((current) => {
+      const editor = current.editor;
       if (
-        !current ||
-        current.saving ||
-        current.updatingStatus ||
-        current.reconciling ||
-        current.uncertain !== null ||
+        !editor ||
+        editor.saving ||
+        editor.updatingStatus ||
+        editor.reconciling ||
+        editor.uncertain !== null ||
+        current.pendingUncertain !== null ||
         !canManageResources
       ) {
         return current;
       }
 
-      const nextDraft = { ...current.draft, [field]: value };
-      let nextAutoEndTime = current.autoEndTime;
+      const nextDraft = { ...editor.draft, [field]: value };
+      let nextAutoEndTime = editor.autoEndTime;
       if (field === "endTime") {
         nextAutoEndTime = value.trim() === "";
       }
@@ -510,7 +569,7 @@ export default function ProviderAvailabilityPage() {
         }
       }
 
-      const nextErrors = { ...current.errors };
+      const nextErrors = { ...editor.errors };
       delete nextErrors[field];
       if (field === "serviceId" || field === "startTime") {
         delete nextErrors.endTime;
@@ -519,11 +578,14 @@ export default function ProviderAvailabilityPage() {
 
       return {
         ...current,
-        draft: nextDraft,
-        autoEndTime: nextAutoEndTime,
-        errors: nextErrors,
-        saveError: null,
-        reconcileNote: null,
+        editor: {
+          ...editor,
+          draft: nextDraft,
+          autoEndTime: nextAutoEndTime,
+          errors: nextErrors,
+          saveError: null,
+          reconcileNote: null,
+        },
       };
     });
   }
@@ -582,6 +644,7 @@ export default function ProviderAvailabilityPage() {
       !profile ||
       !canManageResources ||
       activeWorkingDialog.uncertain !== null ||
+      activePendingWorkingUncertain !== null ||
       cooldownSeconds > 0
     ) {
       return;
@@ -604,8 +667,13 @@ export default function ProviderAvailabilityPage() {
       (key) => Boolean(validationErrors[key]),
     );
     if (firstField || validationErrors.form) {
-      setWorkingDialog((current) =>
-        current ? { ...current, errors: validationErrors } : current,
+      setWorkingSession((current) =>
+        current.dialog
+          ? {
+              ...current,
+              dialog: { ...current.dialog, errors: validationErrors },
+            }
+          : current,
       );
       if (firstField) {
         window.requestAnimationFrame(() => {
@@ -624,21 +692,41 @@ export default function ProviderAvailabilityPage() {
 
     submittingRef.current = true;
     const attemptIdentity = activeWorkingDialog.identity;
+    const attemptMode = activeWorkingDialog.mode;
+    const attemptEditingId = activeWorkingDialog.editingId;
+    const attemptDraft = activeWorkingDialog.draft;
     const preSubmitIds = availabilityState.workingHours.map((item) => item.id);
+    const operation =
+      plan.kind === "create" ? "create-working-hour" : "update-working-hour";
+    const uncertainSpec: WorkingHourUncertainAction =
+      plan.kind === "create"
+        ? {
+            kind: "create",
+            preSubmitIds,
+            expected: plan.expected,
+          }
+        : {
+            kind: plan.kind === "reactivate" ? "reactivate" : "update",
+            workingHourId: plan.workingHourId,
+            expected: plan.expected,
+          };
     const controller = new AbortController();
     mutationControllerRef.current?.abort();
     mutationControllerRef.current = controller;
 
-    setWorkingDialog((current) =>
-      current && current.identity === attemptIdentity
+    setWorkingSession((current) =>
+      current.dialog && current.dialog.identity === attemptIdentity
         ? {
             ...current,
-            errors: {},
-            saving: true,
-            confirmDeactivateId: null,
-            error: null,
-            reconcileNote: null,
-            inlineFeedback: null,
+            dialog: {
+              ...current.dialog,
+              errors: {},
+              saving: true,
+              confirmDeactivateId: null,
+              error: null,
+              reconcileNote: null,
+              inlineFeedback: null,
+            },
           }
         : current,
     );
@@ -648,7 +736,7 @@ export default function ProviderAvailabilityPage() {
     try {
       let saved: ProviderWorkingHour;
       let successMessage: string;
-      const dayLabel = getDayOfWeekLabel(activeWorkingDialog.draft.dayOfWeek);
+      const dayLabel = getDayOfWeekLabel(attemptDraft.dayOfWeek);
 
       if (plan.kind === "create") {
         saved = await createWorkingHour(plan.input, {
@@ -679,10 +767,25 @@ export default function ProviderAvailabilityPage() {
         });
       }
 
+      const liveIdentity = providerSessionIdentityKey(snapshot());
       if (
-        controller.signal.aborted ||
+        liveIdentity !== attemptIdentity ||
         currentIdentityRef.current !== attemptIdentity
       ) {
+        return;
+      }
+      if (controller.signal.aborted) {
+        setWorkingSession((current) =>
+          recoverAbortedWorkingHoursMutation(current, {
+            attemptIdentity,
+            liveIdentity,
+            mode: attemptMode,
+            editingId: attemptEditingId,
+            draft: attemptDraft,
+            uncertain: uncertainSpec,
+            error: classifyProviderError(new ApiError("network"), operation),
+          }),
+        );
         return;
       }
 
@@ -702,36 +805,52 @@ export default function ProviderAvailabilityPage() {
         ? successMessage
         : `${successMessage} ${feedbackLocale.refreshWarning}`;
 
-      setWorkingDialog((current) =>
-        current && current.identity === attemptIdentity
+      setWorkingSession((current) =>
+        current.dialog && current.dialog.identity === attemptIdentity
           ? {
               ...current,
-              mode: "create",
-              editingId: null,
-              draft: workingHourToDraft(null, saved.dayOfWeek),
-              errors: {},
-              saving: false,
-              error: null,
-              inlineFeedback: { outcome: "success", message: finalMessage },
+              pendingUncertain: null,
+              dialog: {
+                ...current.dialog,
+                mode: "create",
+                editingId: null,
+                draft: workingHourToDraft(null, saved.dayOfWeek),
+                errors: {},
+                saving: false,
+                error: null,
+                inlineFeedback: { outcome: "success", message: finalMessage },
+              },
             }
           : current,
       );
       setPageFeedback(attemptIdentity, "success", finalMessage);
     } catch (err) {
+      if (isRequestCancelled(err) || controller.signal.aborted) {
+        const liveIdentity = providerSessionIdentityKey(snapshot());
+        setWorkingSession((current) =>
+          recoverAbortedWorkingHoursMutation(current, {
+            attemptIdentity,
+            liveIdentity,
+            mode: attemptMode,
+            editingId: attemptEditingId,
+            draft: attemptDraft,
+            uncertain: uncertainSpec,
+            error: classifyProviderError(new ApiError("network"), operation),
+          }),
+        );
+        return;
+      }
       if (
-        isRequestCancelled(err) ||
-        controller.signal.aborted ||
+        providerSessionIdentityKey(snapshot()) !== attemptIdentity ||
         currentIdentityRef.current !== attemptIdentity
       ) {
         return;
       }
 
-      const operation =
-        plan.kind === "create" ? "create-working-hour" : "update-working-hour";
       const info = classifyProviderError(err, operation);
 
       if (info.outcome === "session-ended") {
-        setWorkingDialog(null);
+        setWorkingSession(INITIAL_WORKING_HOURS_SESSION);
         return;
       }
 
@@ -739,19 +858,22 @@ export default function ProviderAvailabilityPage() {
 
       if (info.code === "PROVIDER_PROFILE_NOT_FOUND") {
         profileState.markNotFound();
-        setWorkingDialog(null);
+        setWorkingSession(INITIAL_WORKING_HOURS_SESSION);
         return;
       }
 
       if (info.code === "WORKING_HOUR_NOT_FOUND") {
-        setWorkingDialog((current) =>
-          current && current.identity === attemptIdentity
+        setWorkingSession((current) =>
+          current.dialog && current.dialog.identity === attemptIdentity
             ? {
                 ...current,
-                mode: "create",
-                editingId: null,
-                saving: false,
-                error: info,
+                dialog: {
+                  ...current.dialog,
+                  mode: "create",
+                  editingId: null,
+                  saving: false,
+                  error: info,
+                },
               }
             : current,
         );
@@ -763,9 +885,12 @@ export default function ProviderAvailabilityPage() {
         info.code === "PROVIDER_REJECTED_FORBIDDEN" ||
         info.code === "PROVIDER_SUSPENDED_FORBIDDEN"
       ) {
-        setWorkingDialog((current) =>
-          current && current.identity === attemptIdentity
-            ? { ...current, saving: false, error: info }
+        setWorkingSession((current) =>
+          current.dialog && current.dialog.identity === attemptIdentity
+            ? {
+                ...current,
+                dialog: { ...current.dialog, saving: false, error: info },
+              }
             : current,
         );
         void profileState.reload().then((syncResult) => {
@@ -777,39 +902,25 @@ export default function ProviderAvailabilityPage() {
       }
 
       if (info.outcome === "unknown") {
-        setWorkingDialog((current) => {
-          if (!current || current.identity !== attemptIdentity) return current;
-          if (plan.kind === "create") {
-            return {
-              ...current,
-              saving: false,
-              error: info,
-              uncertain: {
-                kind: "create",
-                preSubmitIds,
-                expected: plan.expected,
-              },
-              reconcileNote: null,
-            };
-          }
-          return {
-            ...current,
-            saving: false,
+        setWorkingSession((current) =>
+          enterWorkingHoursUncertainSession(current, {
+            attemptIdentity,
+            mode: attemptMode,
+            editingId: attemptEditingId,
+            draft: attemptDraft,
+            uncertain: uncertainSpec,
             error: info,
-            uncertain: {
-              kind: plan.kind === "reactivate" ? "reactivate" : "update",
-              workingHourId: plan.workingHourId,
-              expected: plan.expected,
-            },
-            reconcileNote: null,
-          };
-        });
+          }),
+        );
         return;
       }
 
-      setWorkingDialog((current) =>
-        current && current.identity === attemptIdentity
-          ? { ...current, saving: false, error: info }
+      setWorkingSession((current) =>
+        current.dialog && current.dialog.identity === attemptIdentity
+          ? {
+              ...current,
+              dialog: { ...current.dialog, saving: false, error: info },
+            }
           : current,
       );
     } finally {
@@ -828,6 +939,7 @@ export default function ProviderAvailabilityPage() {
       !profile ||
       !canManageResources ||
       activeWorkingDialog.uncertain !== null ||
+      activePendingWorkingUncertain !== null ||
       cooldownSeconds > 0
     ) {
       return;
@@ -840,18 +952,28 @@ export default function ProviderAvailabilityPage() {
 
     submittingRef.current = true;
     const attemptIdentity = activeWorkingDialog.identity;
+    const attemptMode = activeWorkingDialog.mode;
+    const attemptEditingId = activeWorkingDialog.editingId;
+    const attemptDraft = activeWorkingDialog.draft;
+    const uncertainSpec: WorkingHourUncertainAction = {
+      kind: "deactivate",
+      workingHourId,
+    };
     const controller = new AbortController();
     mutationControllerRef.current?.abort();
     mutationControllerRef.current = controller;
 
-    setWorkingDialog((current) =>
-      current && current.identity === attemptIdentity
+    setWorkingSession((current) =>
+      current.dialog && current.dialog.identity === attemptIdentity
         ? {
             ...current,
-            mutatingRowId: workingHourId,
-            error: null,
-            reconcileNote: null,
-            inlineFeedback: null,
+            dialog: {
+              ...current.dialog,
+              mutatingRowId: workingHourId,
+              error: null,
+              reconcileNote: null,
+              inlineFeedback: null,
+            },
           }
         : current,
     );
@@ -863,10 +985,28 @@ export default function ProviderAvailabilityPage() {
         signal: controller.signal,
       });
 
+      const liveIdentity = providerSessionIdentityKey(snapshot());
       if (
-        controller.signal.aborted ||
+        liveIdentity !== attemptIdentity ||
         currentIdentityRef.current !== attemptIdentity
       ) {
+        return;
+      }
+      if (controller.signal.aborted) {
+        setWorkingSession((current) =>
+          recoverAbortedWorkingHoursMutation(current, {
+            attemptIdentity,
+            liveIdentity,
+            mode: attemptMode,
+            editingId: attemptEditingId,
+            draft: attemptDraft,
+            uncertain: uncertainSpec,
+            error: classifyProviderError(
+              new ApiError("network"),
+              "deactivate-working-hour",
+            ),
+          }),
+        );
         return;
       }
 
@@ -894,25 +1034,51 @@ export default function ProviderAvailabilityPage() {
         ? successMessage
         : `${successMessage} ${feedbackLocale.refreshWarning}`;
 
-      setWorkingDialog((current) =>
-        current && current.identity === attemptIdentity
+      setWorkingSession((current) =>
+        current.dialog && current.dialog.identity === attemptIdentity
           ? {
               ...current,
-              mode: current.editingId === workingHourId ? "create" : current.mode,
-              editingId:
-                current.editingId === workingHourId ? null : current.editingId,
-              mutatingRowId: null,
-              confirmDeactivateId: null,
-              error: null,
-              inlineFeedback: { outcome: "success", message: finalMessage },
+              pendingUncertain: null,
+              dialog: {
+                ...current.dialog,
+                mode:
+                  current.dialog.editingId === workingHourId
+                    ? "create"
+                    : current.dialog.mode,
+                editingId:
+                  current.dialog.editingId === workingHourId
+                    ? null
+                    : current.dialog.editingId,
+                mutatingRowId: null,
+                confirmDeactivateId: null,
+                error: null,
+                inlineFeedback: { outcome: "success", message: finalMessage },
+              },
             }
           : current,
       );
       setPageFeedback(attemptIdentity, "success", finalMessage);
     } catch (err) {
+      if (isRequestCancelled(err) || controller.signal.aborted) {
+        const liveIdentity = providerSessionIdentityKey(snapshot());
+        setWorkingSession((current) =>
+          recoverAbortedWorkingHoursMutation(current, {
+            attemptIdentity,
+            liveIdentity,
+            mode: attemptMode,
+            editingId: attemptEditingId,
+            draft: attemptDraft,
+            uncertain: uncertainSpec,
+            error: classifyProviderError(
+              new ApiError("network"),
+              "deactivate-working-hour",
+            ),
+          }),
+        );
+        return;
+      }
       if (
-        isRequestCancelled(err) ||
-        controller.signal.aborted ||
+        providerSessionIdentityKey(snapshot()) !== attemptIdentity ||
         currentIdentityRef.current !== attemptIdentity
       ) {
         return;
@@ -920,7 +1086,7 @@ export default function ProviderAvailabilityPage() {
 
       const info = classifyProviderError(err, "deactivate-working-hour");
       if (info.outcome === "session-ended") {
-        setWorkingDialog(null);
+        setWorkingSession(INITIAL_WORKING_HOURS_SESSION);
         return;
       }
 
@@ -928,18 +1094,21 @@ export default function ProviderAvailabilityPage() {
 
       if (info.code === "PROVIDER_PROFILE_NOT_FOUND") {
         profileState.markNotFound();
-        setWorkingDialog(null);
+        setWorkingSession(INITIAL_WORKING_HOURS_SESSION);
         return;
       }
 
       if (info.code === "WORKING_HOUR_NOT_FOUND") {
-        setWorkingDialog((current) =>
-          current && current.identity === attemptIdentity
+        setWorkingSession((current) =>
+          current.dialog && current.dialog.identity === attemptIdentity
             ? {
                 ...current,
-                mutatingRowId: null,
-                confirmDeactivateId: null,
-                error: info,
+                dialog: {
+                  ...current.dialog,
+                  mutatingRowId: null,
+                  confirmDeactivateId: null,
+                  error: info,
+                },
               }
             : current,
         );
@@ -951,13 +1120,16 @@ export default function ProviderAvailabilityPage() {
         info.code === "PROVIDER_REJECTED_FORBIDDEN" ||
         info.code === "PROVIDER_SUSPENDED_FORBIDDEN"
       ) {
-        setWorkingDialog((current) =>
-          current && current.identity === attemptIdentity
+        setWorkingSession((current) =>
+          current.dialog && current.dialog.identity === attemptIdentity
             ? {
                 ...current,
-                mutatingRowId: null,
-                confirmDeactivateId: null,
-                error: info,
+                dialog: {
+                  ...current.dialog,
+                  mutatingRowId: null,
+                  confirmDeactivateId: null,
+                  error: info,
+                },
               }
             : current,
         );
@@ -970,24 +1142,25 @@ export default function ProviderAvailabilityPage() {
       }
 
       if (info.outcome === "unknown") {
-        setWorkingDialog((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
-                mutatingRowId: null,
-                confirmDeactivateId: null,
-                error: info,
-                uncertain: { kind: "deactivate", workingHourId },
-                reconcileNote: null,
-              }
-            : current,
+        setWorkingSession((current) =>
+          enterWorkingHoursUncertainSession(current, {
+            attemptIdentity,
+            mode: attemptMode,
+            editingId: attemptEditingId,
+            draft: attemptDraft,
+            uncertain: uncertainSpec,
+            error: info,
+          }),
         );
         return;
       }
 
-      setWorkingDialog((current) =>
-        current && current.identity === attemptIdentity
-          ? { ...current, mutatingRowId: null, error: info }
+      setWorkingSession((current) =>
+        current.dialog && current.dialog.identity === attemptIdentity
+          ? {
+              ...current,
+              dialog: { ...current.dialog, mutatingRowId: null, error: info },
+            }
           : current,
       );
     } finally {
@@ -1006,6 +1179,7 @@ export default function ProviderAvailabilityPage() {
       !profile ||
       !canManageResources ||
       activeWorkingDialog.uncertain !== null ||
+      activePendingWorkingUncertain !== null ||
       cooldownSeconds > 0
     ) {
       return;
@@ -1013,19 +1187,30 @@ export default function ProviderAvailabilityPage() {
 
     submittingRef.current = true;
     const attemptIdentity = activeWorkingDialog.identity;
+    const attemptMode = activeWorkingDialog.mode;
+    const attemptEditingId = activeWorkingDialog.editingId;
+    const attemptDraft = activeWorkingDialog.draft;
+    const uncertainSpec: WorkingHourUncertainAction = {
+      kind: "reactivate",
+      workingHourId: hour.id,
+      expected: { isActive: true },
+    };
     const controller = new AbortController();
     mutationControllerRef.current?.abort();
     mutationControllerRef.current = controller;
 
-    setWorkingDialog((current) =>
-      current && current.identity === attemptIdentity
+    setWorkingSession((current) =>
+      current.dialog && current.dialog.identity === attemptIdentity
         ? {
             ...current,
-            mutatingRowId: hour.id,
-            confirmDeactivateId: null,
-            error: null,
-            reconcileNote: null,
-            inlineFeedback: null,
+            dialog: {
+              ...current.dialog,
+              mutatingRowId: hour.id,
+              confirmDeactivateId: null,
+              error: null,
+              reconcileNote: null,
+              inlineFeedback: null,
+            },
           }
         : current,
     );
@@ -1039,10 +1224,28 @@ export default function ProviderAvailabilityPage() {
         { signal: controller.signal },
       );
 
+      const liveIdentity = providerSessionIdentityKey(snapshot());
       if (
-        controller.signal.aborted ||
+        liveIdentity !== attemptIdentity ||
         currentIdentityRef.current !== attemptIdentity
       ) {
+        return;
+      }
+      if (controller.signal.aborted) {
+        setWorkingSession((current) =>
+          recoverAbortedWorkingHoursMutation(current, {
+            attemptIdentity,
+            liveIdentity,
+            mode: attemptMode,
+            editingId: attemptEditingId,
+            draft: attemptDraft,
+            uncertain: uncertainSpec,
+            error: classifyProviderError(
+              new ApiError("network"),
+              "update-working-hour",
+            ),
+          }),
+        );
         return;
       }
 
@@ -1070,21 +1273,42 @@ export default function ProviderAvailabilityPage() {
         ? successMessage
         : `${successMessage} ${feedbackLocale.refreshWarning}`;
 
-      setWorkingDialog((current) =>
-        current && current.identity === attemptIdentity
+      setWorkingSession((current) =>
+        current.dialog && current.dialog.identity === attemptIdentity
           ? {
               ...current,
-              mutatingRowId: null,
-              error: null,
-              inlineFeedback: { outcome: "success", message: finalMessage },
+              pendingUncertain: null,
+              dialog: {
+                ...current.dialog,
+                mutatingRowId: null,
+                error: null,
+                inlineFeedback: { outcome: "success", message: finalMessage },
+              },
             }
           : current,
       );
       setPageFeedback(attemptIdentity, "success", finalMessage);
     } catch (err) {
+      if (isRequestCancelled(err) || controller.signal.aborted) {
+        const liveIdentity = providerSessionIdentityKey(snapshot());
+        setWorkingSession((current) =>
+          recoverAbortedWorkingHoursMutation(current, {
+            attemptIdentity,
+            liveIdentity,
+            mode: attemptMode,
+            editingId: attemptEditingId,
+            draft: attemptDraft,
+            uncertain: uncertainSpec,
+            error: classifyProviderError(
+              new ApiError("network"),
+              "update-working-hour",
+            ),
+          }),
+        );
+        return;
+      }
       if (
-        isRequestCancelled(err) ||
-        controller.signal.aborted ||
+        providerSessionIdentityKey(snapshot()) !== attemptIdentity ||
         currentIdentityRef.current !== attemptIdentity
       ) {
         return;
@@ -1092,7 +1316,7 @@ export default function ProviderAvailabilityPage() {
 
       const info = classifyProviderError(err, "update-working-hour");
       if (info.outcome === "session-ended") {
-        setWorkingDialog(null);
+        setWorkingSession(INITIAL_WORKING_HOURS_SESSION);
         return;
       }
 
@@ -1100,7 +1324,7 @@ export default function ProviderAvailabilityPage() {
 
       if (info.code === "PROVIDER_PROFILE_NOT_FOUND") {
         profileState.markNotFound();
-        setWorkingDialog(null);
+        setWorkingSession(INITIAL_WORKING_HOURS_SESSION);
         return;
       }
 
@@ -1108,9 +1332,12 @@ export default function ProviderAvailabilityPage() {
         info.code === "PROVIDER_REJECTED_FORBIDDEN" ||
         info.code === "PROVIDER_SUSPENDED_FORBIDDEN"
       ) {
-        setWorkingDialog((current) =>
-          current && current.identity === attemptIdentity
-            ? { ...current, mutatingRowId: null, error: info }
+        setWorkingSession((current) =>
+          current.dialog && current.dialog.identity === attemptIdentity
+            ? {
+                ...current,
+                dialog: { ...current.dialog, mutatingRowId: null, error: info },
+              }
             : current,
         );
         void profileState.reload().then((syncResult) => {
@@ -1122,27 +1349,25 @@ export default function ProviderAvailabilityPage() {
       }
 
       if (info.outcome === "unknown") {
-        setWorkingDialog((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
-                mutatingRowId: null,
-                error: info,
-                uncertain: {
-                  kind: "reactivate",
-                  workingHourId: hour.id,
-                  expected: { isActive: true },
-                },
-                reconcileNote: null,
-              }
-            : current,
+        setWorkingSession((current) =>
+          enterWorkingHoursUncertainSession(current, {
+            attemptIdentity,
+            mode: attemptMode,
+            editingId: attemptEditingId,
+            draft: attemptDraft,
+            uncertain: uncertainSpec,
+            error: info,
+          }),
         );
         return;
       }
 
-      setWorkingDialog((current) =>
-        current && current.identity === attemptIdentity
-          ? { ...current, mutatingRowId: null, error: info }
+      setWorkingSession((current) =>
+        current.dialog && current.dialog.identity === attemptIdentity
+          ? {
+              ...current,
+              dialog: { ...current.dialog, mutatingRowId: null, error: info },
+            }
           : current,
       );
     } finally {
@@ -1154,24 +1379,37 @@ export default function ProviderAvailabilityPage() {
   }
 
   async function handleReconcileWorkingHour() {
+    const pending = activePendingWorkingUncertain;
+    const uncertain =
+      pending?.uncertain ?? activeWorkingDialog?.uncertain ?? null;
+    const attemptIdentity =
+      pending?.identity ?? activeWorkingDialog?.identity ?? null;
     if (
       submittingRef.current ||
       sessionBoundary.lockActions ||
-      !activeWorkingDialog?.uncertain ||
+      !uncertain ||
+      !attemptIdentity ||
       cooldownSeconds > 0
     ) {
       return;
     }
 
     submittingRef.current = true;
-    const attemptIdentity = activeWorkingDialog.identity;
-    const uncertain = activeWorkingDialog.uncertain;
 
-    setWorkingDialog((current) =>
-      current && current.identity === attemptIdentity
-        ? { ...current, reconciling: true, error: null, reconcileNote: null }
-        : current,
-    );
+    setWorkingSession((current) => {
+      const base =
+        current.dialog && current.dialog.identity === attemptIdentity
+          ? current.dialog
+          : current.pendingUncertain &&
+              current.pendingUncertain.identity === attemptIdentity
+            ? buildWorkingHoursDialogFromPending(current.pendingUncertain)
+            : null;
+      if (!base) return current;
+      return {
+        ...current,
+        dialog: { ...base, reconciling: true, error: null, reconcileNote: null },
+      };
+    });
 
     const weeklyLocale = vi.provider.availability.weekly;
     const feedbackLocale = vi.provider.availability.feedback;
@@ -1181,7 +1419,13 @@ export default function ProviderAvailabilityPage() {
         availabilityState.reloadWorkingHours(),
         profileState.reload(),
       ]);
-      if (currentIdentityRef.current !== attemptIdentity) return;
+      const liveIdentity = providerSessionIdentityKey(snapshot());
+      if (
+        liveIdentity !== attemptIdentity ||
+        currentIdentityRef.current !== attemptIdentity
+      ) {
+        return;
+      }
 
       if (
         (!profileRes.ok &&
@@ -1193,25 +1437,34 @@ export default function ProviderAvailabilityPage() {
           (hoursRes.error.outcome === "session-ended" ||
             hoursRes.error.code === "PROVIDER_PROFILE_NOT_FOUND"))
       ) {
-        setWorkingDialog(null);
+        setWorkingSession(INITIAL_WORKING_HOURS_SESSION);
         return;
       }
 
       if (!hoursRes.ok) {
         if (hoursRes.aborted) {
-          setWorkingDialog((current) =>
-            current && current.identity === attemptIdentity
-              ? { ...current, reconciling: false }
-              : current,
+          setWorkingSession((current) =>
+            recoverAbortedWorkingHoursReconcile(
+              current,
+              attemptIdentity,
+              liveIdentity,
+            ),
           );
           return;
         }
         startCooldown(hoursRes.error.retryAfterSeconds);
-        setWorkingDialog((current) =>
-          current && current.identity === attemptIdentity
-            ? { ...current, reconciling: false, error: hoursRes.error }
-            : current,
-        );
+        setWorkingSession((current) => ({
+          ...current,
+          pendingUncertain:
+            current.pendingUncertain &&
+            current.pendingUncertain.identity === attemptIdentity
+              ? { ...current.pendingUncertain, error: hoursRes.error }
+              : current.pendingUncertain,
+          dialog:
+            current.dialog && current.dialog.identity === attemptIdentity
+              ? { ...current.dialog, reconciling: false, error: hoursRes.error }
+              : current.dialog,
+        }));
         return;
       }
 
@@ -1227,23 +1480,31 @@ export default function ProviderAvailabilityPage() {
           approvalStatus,
         );
         if (res.outcome === "created") {
-          setWorkingDialog((current) =>
-            current && current.identity === attemptIdentity
-              ? {
-                  ...current,
-                  mode: "create",
-                  editingId: null,
-                  draft: workingHourToDraft(null, res.item.dayOfWeek),
-                  reconciling: false,
-                  uncertain: null,
-                  error: null,
-                  inlineFeedback: {
-                    outcome: "success",
-                    message: feedbackLocale.workingHourReconciledCreated,
-                  },
-                }
-              : current,
-          );
+          setWorkingSession((current) => {
+            if (!current.dialogOpen) return INITIAL_WORKING_HOURS_SESSION;
+            const base =
+              current.dialog && current.dialog.identity === attemptIdentity
+                ? current.dialog
+                : null;
+            if (!base) return INITIAL_WORKING_HOURS_SESSION;
+            return {
+              dialogOpen: true,
+              pendingUncertain: null,
+              dialog: {
+                ...base,
+                mode: "create",
+                editingId: null,
+                draft: workingHourToDraft(null, res.item.dayOfWeek),
+                reconciling: false,
+                uncertain: null,
+                error: null,
+                inlineFeedback: {
+                  outcome: "success",
+                  message: feedbackLocale.workingHourReconciledCreated,
+                },
+              },
+            };
+          });
           setPageFeedback(
             attemptIdentity,
             "success",
@@ -1252,29 +1513,49 @@ export default function ProviderAvailabilityPage() {
           return;
         }
         if (res.outcome === "forbidden-lifecycle") {
-          setWorkingDialog((current) =>
-            current && current.identity === attemptIdentity
-              ? {
-                  ...current,
-                  reconciling: false,
-                  uncertain: null,
-                  error: lifecycleErrorInfo(res.approvalStatus),
-                }
-              : current,
-          );
-          return;
-        }
-        setWorkingDialog((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
+          setWorkingSession((current) => {
+            const base =
+              current.dialog && current.dialog.identity === attemptIdentity
+                ? current.dialog
+                : current.pendingUncertain &&
+                    current.pendingUncertain.identity === attemptIdentity
+                  ? buildWorkingHoursDialogFromPending(current.pendingUncertain)
+                  : null;
+            if (!base) return INITIAL_WORKING_HOURS_SESSION;
+            return {
+              dialogOpen: true,
+              pendingUncertain: null,
+              dialog: {
+                ...base,
                 reconciling: false,
                 uncertain: null,
-                error: null,
-                reconcileNote: weeklyLocale.reconcileNotCreated,
-              }
-            : current,
-        );
+                error: lifecycleErrorInfo(res.approvalStatus),
+              },
+            };
+          });
+          return;
+        }
+        setWorkingSession((current) => {
+          const base =
+            current.dialog && current.dialog.identity === attemptIdentity
+              ? current.dialog
+              : current.pendingUncertain &&
+                  current.pendingUncertain.identity === attemptIdentity
+                ? buildWorkingHoursDialogFromPending(current.pendingUncertain)
+                : null;
+          if (!base) return INITIAL_WORKING_HOURS_SESSION;
+          return {
+            dialogOpen: true,
+            pendingUncertain: null,
+            dialog: {
+              ...base,
+              reconciling: false,
+              uncertain: null,
+              error: null,
+              reconcileNote: weeklyLocale.reconcileNotCreated,
+            },
+          };
+        });
         return;
       }
 
@@ -1297,65 +1578,102 @@ export default function ProviderAvailabilityPage() {
           uncertain.kind === "deactivate"
             ? feedbackLocale.workingHourReconciledDeactivated
             : feedbackLocale.workingHourReconciledUpdated;
-        setWorkingDialog((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
-                mode: "create",
-                editingId: null,
-                reconciling: false,
-                uncertain: null,
-                error: null,
-                inlineFeedback: { outcome: "success", message },
-              }
-            : current,
-        );
+        setWorkingSession((current) => {
+          if (!current.dialogOpen) return INITIAL_WORKING_HOURS_SESSION;
+          const base =
+            current.dialog && current.dialog.identity === attemptIdentity
+              ? current.dialog
+              : null;
+          if (!base) return INITIAL_WORKING_HOURS_SESSION;
+          return {
+            dialogOpen: true,
+            pendingUncertain: null,
+            dialog: {
+              ...base,
+              mode: "create",
+              editingId: null,
+              reconciling: false,
+              uncertain: null,
+              error: null,
+              inlineFeedback: { outcome: "success", message },
+            },
+          };
+        });
         setPageFeedback(attemptIdentity, "success", message);
         return;
       }
       if (res.outcome === "not-found") {
         const message = getProviderErrorMessageByCode("WORKING_HOUR_NOT_FOUND");
-        setWorkingDialog((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
-                mode: "create",
-                editingId: null,
-                reconciling: false,
-                uncertain: null,
-                inlineFeedback: { outcome: "error", message },
-              }
-            : current,
-        );
+        setWorkingSession((current) => {
+          if (!current.dialogOpen) return INITIAL_WORKING_HOURS_SESSION;
+          const base =
+            current.dialog && current.dialog.identity === attemptIdentity
+              ? current.dialog
+              : null;
+          if (!base) return INITIAL_WORKING_HOURS_SESSION;
+          return {
+            dialogOpen: true,
+            pendingUncertain: null,
+            dialog: {
+              ...base,
+              mode: "create",
+              editingId: null,
+              reconciling: false,
+              uncertain: null,
+              inlineFeedback: { outcome: "error", message },
+            },
+          };
+        });
+        setPageFeedback(attemptIdentity, "error", message);
         return;
       }
       if (res.outcome === "forbidden-lifecycle") {
-        setWorkingDialog((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
-                reconciling: false,
-                uncertain: null,
-                error: lifecycleErrorInfo(res.approvalStatus),
-              }
-            : current,
-        );
-        return;
-      }
-      setWorkingDialog((current) =>
-        current && current.identity === attemptIdentity
-          ? {
-              ...current,
+        setWorkingSession((current) => {
+          const base =
+            current.dialog && current.dialog.identity === attemptIdentity
+              ? current.dialog
+              : current.pendingUncertain &&
+                  current.pendingUncertain.identity === attemptIdentity
+                ? buildWorkingHoursDialogFromPending(current.pendingUncertain)
+                : null;
+          if (!base) return INITIAL_WORKING_HOURS_SESSION;
+          return {
+            dialogOpen: true,
+            pendingUncertain: null,
+            dialog: {
+              ...base,
               reconciling: false,
               uncertain: null,
-              error: null,
-              reconcileNote:
-                uncertain.kind === "deactivate"
-                  ? weeklyLocale.reconcileNotDeactivated
-                  : weeklyLocale.reconcileNotSaved,
-            }
-          : current,
-      );
+              error: lifecycleErrorInfo(res.approvalStatus),
+            },
+          };
+        });
+        return;
+      }
+      setWorkingSession((current) => {
+        const base =
+          current.dialog && current.dialog.identity === attemptIdentity
+            ? current.dialog
+            : current.pendingUncertain &&
+                current.pendingUncertain.identity === attemptIdentity
+              ? buildWorkingHoursDialogFromPending(current.pendingUncertain)
+              : null;
+        if (!base) return INITIAL_WORKING_HOURS_SESSION;
+        return {
+          dialogOpen: true,
+          pendingUncertain: null,
+          dialog: {
+            ...base,
+            reconciling: false,
+            uncertain: null,
+            error: null,
+            reconcileNote:
+              uncertain.kind === "deactivate"
+                ? weeklyLocale.reconcileNotDeactivated
+                : weeklyLocale.reconcileNotSaved,
+          },
+        };
+      });
     } finally {
       submittingRef.current = false;
     }
@@ -1369,6 +1687,7 @@ export default function ProviderAvailabilityPage() {
       !profile ||
       !canManageResources ||
       activeSlotEditor.uncertain !== null ||
+      activePendingSlotUncertain !== null ||
       cooldownSeconds > 0
     ) {
       return;
@@ -1392,8 +1711,13 @@ export default function ProviderAvailabilityPage() {
       ["serviceId", "slotDate", "startTime", "endTime", "capacity"] as const
     ).find((key) => Boolean(validationErrors[key]));
     if (firstField || validationErrors.form) {
-      setSlotEditor((current) =>
-        current ? { ...current, errors: validationErrors } : current,
+      setSlotSession((current) =>
+        current.editor
+          ? {
+              ...current,
+              editor: { ...current.editor, errors: validationErrors },
+            }
+          : current,
       );
       if (firstField) {
         window.requestAnimationFrame(() => {
@@ -1422,22 +1746,43 @@ export default function ProviderAvailabilityPage() {
 
     submittingRef.current = true;
     const attemptIdentity = activeSlotEditor.identity;
+    const attemptMode = activeSlotEditor.mode;
+    const attemptSlotId = activeSlotEditor.slotId;
+    const attemptDraft = activeSlotEditor.draft;
+    const attemptAutoEndTime = activeSlotEditor.autoEndTime;
+    const attemptConfirmAction = activeSlotEditor.confirmAction;
     const preSubmitIds = availabilityState.slots.map((item) => item.id);
+    const operation = isEdit ? "update-availability" : "create-availability";
+    const uncertainSpec: SlotUncertainAction =
+      isEdit && editingSlot && updatePatch
+        ? {
+            kind: "update",
+            slotId: editingSlot.id,
+            expected: updatePatch.expected,
+          }
+        : {
+            kind: "create",
+            preSubmitIds,
+            expected: createPayload!.expected,
+          };
     const controller = new AbortController();
     mutationControllerRef.current?.abort();
     mutationControllerRef.current = controller;
 
-    setSlotEditor((current) =>
-      current && current.identity === attemptIdentity
+    setSlotSession((current) =>
+      current.editor && current.editor.identity === attemptIdentity
         ? {
             ...current,
-            errors: {},
-            saving: true,
-            confirmAction: null,
-            saveError: null,
-            statusError: null,
-            reconcileNote: null,
-            statusFeedback: null,
+            editor: {
+              ...current.editor,
+              errors: {},
+              saving: true,
+              confirmAction: null,
+              saveError: null,
+              statusError: null,
+              reconcileNote: null,
+              statusFeedback: null,
+            },
           }
         : current,
     );
@@ -1451,10 +1796,27 @@ export default function ProviderAvailabilityPage() {
           updatePatch.input,
           { signal: controller.signal },
         );
+        const liveIdentity = providerSessionIdentityKey(snapshot());
         if (
-          controller.signal.aborted ||
+          liveIdentity !== attemptIdentity ||
           currentIdentityRef.current !== attemptIdentity
         ) {
+          return;
+        }
+        if (controller.signal.aborted) {
+          setSlotSession((current) =>
+            recoverAbortedSlotMutation(current, {
+              attemptIdentity,
+              liveIdentity,
+              mode: attemptMode,
+              slotId: attemptSlotId,
+              draft: attemptDraft,
+              autoEndTime: attemptAutoEndTime,
+              confirmAction: attemptConfirmAction,
+              uncertain: uncertainSpec,
+              error: classifyProviderError(new ApiError("network"), operation),
+            }),
+          );
           return;
         }
         const refreshed = await availabilityState.reloadSlots();
@@ -1468,7 +1830,7 @@ export default function ProviderAvailabilityPage() {
               availabilityState.services,
             ),
           );
-          setSlotEditor(null);
+          setSlotSession(INITIAL_SLOT_DIALOG_SESSION);
           setPageFeedback(
             attemptIdentity,
             "success",
@@ -1476,16 +1838,33 @@ export default function ProviderAvailabilityPage() {
           );
           return;
         }
-        setSlotEditor(null);
+        setSlotSession(INITIAL_SLOT_DIALOG_SESSION);
         setPageFeedback(attemptIdentity, "success", feedbackLocale.slotUpdated);
       } else if (createPayload) {
         const created = await createAvailabilitySlot(createPayload.input, {
           signal: controller.signal,
         });
+        const liveIdentity = providerSessionIdentityKey(snapshot());
         if (
-          controller.signal.aborted ||
+          liveIdentity !== attemptIdentity ||
           currentIdentityRef.current !== attemptIdentity
         ) {
+          return;
+        }
+        if (controller.signal.aborted) {
+          setSlotSession((current) =>
+            recoverAbortedSlotMutation(current, {
+              attemptIdentity,
+              liveIdentity,
+              mode: attemptMode,
+              slotId: attemptSlotId,
+              draft: attemptDraft,
+              autoEndTime: attemptAutoEndTime,
+              confirmAction: attemptConfirmAction,
+              uncertain: uncertainSpec,
+              error: classifyProviderError(new ApiError("network"), operation),
+            }),
+          );
           return;
         }
         const createdMessage =
@@ -1503,7 +1882,7 @@ export default function ProviderAvailabilityPage() {
               availabilityState.services,
             ),
           );
-          setSlotEditor(null);
+          setSlotSession(INITIAL_SLOT_DIALOG_SESSION);
           setPageFeedback(
             attemptIdentity,
             "success",
@@ -1511,23 +1890,38 @@ export default function ProviderAvailabilityPage() {
           );
           return;
         }
-        setSlotEditor(null);
+        setSlotSession(INITIAL_SLOT_DIALOG_SESSION);
         setPageFeedback(attemptIdentity, "success", createdMessage);
       }
     } catch (err) {
+      if (isRequestCancelled(err) || controller.signal.aborted) {
+        const liveIdentity = providerSessionIdentityKey(snapshot());
+        setSlotSession((current) =>
+          recoverAbortedSlotMutation(current, {
+            attemptIdentity,
+            liveIdentity,
+            mode: attemptMode,
+            slotId: attemptSlotId,
+            draft: attemptDraft,
+            autoEndTime: attemptAutoEndTime,
+            confirmAction: attemptConfirmAction,
+            uncertain: uncertainSpec,
+            error: classifyProviderError(new ApiError("network"), operation),
+          }),
+        );
+        return;
+      }
       if (
-        isRequestCancelled(err) ||
-        controller.signal.aborted ||
+        providerSessionIdentityKey(snapshot()) !== attemptIdentity ||
         currentIdentityRef.current !== attemptIdentity
       ) {
         return;
       }
 
-      const operation = isEdit ? "update-availability" : "create-availability";
       const info = classifyProviderError(err, operation);
 
       if (info.outcome === "session-ended") {
-        setSlotEditor(null);
+        setSlotSession(INITIAL_SLOT_DIALOG_SESSION);
         return;
       }
 
@@ -1535,12 +1929,12 @@ export default function ProviderAvailabilityPage() {
 
       if (info.code === "PROVIDER_PROFILE_NOT_FOUND") {
         profileState.markNotFound();
-        setSlotEditor(null);
+        setSlotSession(INITIAL_SLOT_DIALOG_SESSION);
         return;
       }
 
       if (info.code === "SLOT_NOT_FOUND") {
-        setSlotEditor(null);
+        setSlotSession(INITIAL_SLOT_DIALOG_SESSION);
         setPageFeedback(
           attemptIdentity,
           "error",
@@ -1554,9 +1948,12 @@ export default function ProviderAvailabilityPage() {
         info.code === "PROVIDER_REJECTED_FORBIDDEN" ||
         info.code === "PROVIDER_SUSPENDED_FORBIDDEN"
       ) {
-        setSlotEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? { ...current, saving: false, saveError: info }
+        setSlotSession((current) =>
+          current.editor && current.editor.identity === attemptIdentity
+            ? {
+                ...current,
+                editor: { ...current.editor, saving: false, saveError: info },
+              }
             : current,
         );
         void profileState.reload().then((syncResult) => {
@@ -1568,15 +1965,18 @@ export default function ProviderAvailabilityPage() {
       }
 
       if (info.code === "SERVICE_INACTIVE" || info.code === "SERVICE_NOT_FOUND") {
-        setSlotEditor((current) =>
-          current && current.identity === attemptIdentity
+        setSlotSession((current) =>
+          current.editor && current.editor.identity === attemptIdentity
             ? {
                 ...current,
-                saving: false,
-                saveError: info,
-                errors: {
-                  ...current.errors,
-                  serviceId: getProviderErrorMessage(info),
+                editor: {
+                  ...current.editor,
+                  saving: false,
+                  saveError: info,
+                  errors: {
+                    ...current.editor.errors,
+                    serviceId: getProviderErrorMessage(info),
+                  },
                 },
               }
             : current,
@@ -1586,9 +1986,12 @@ export default function ProviderAvailabilityPage() {
       }
 
       if (info.code === "SLOT_OUTSIDE_WORKING_HOURS") {
-        setSlotEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? { ...current, saving: false, saveError: info }
+        setSlotSession((current) =>
+          current.editor && current.editor.identity === attemptIdentity
+            ? {
+                ...current,
+                editor: { ...current.editor, saving: false, saveError: info },
+              }
             : current,
         );
         void availabilityState.reloadWorkingHours();
@@ -1599,9 +2002,12 @@ export default function ProviderAvailabilityPage() {
         info.code === "SLOT_HAS_BOOKINGS_LOCKED_FIELDS" ||
         info.code === "SLOT_CAPACITY_BELOW_BOOKED"
       ) {
-        setSlotEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? { ...current, saving: false, saveError: info }
+        setSlotSession((current) =>
+          current.editor && current.editor.identity === attemptIdentity
+            ? {
+                ...current,
+                editor: { ...current.editor, saving: false, saveError: info },
+              }
             : current,
         );
         void availabilityState.reloadSlots();
@@ -1609,42 +2015,27 @@ export default function ProviderAvailabilityPage() {
       }
 
       if (info.outcome === "unknown") {
-        setSlotEditor((current) => {
-          if (!current || current.identity !== attemptIdentity) return current;
-          if (isEdit && editingSlot && updatePatch) {
-            return {
-              ...current,
-              saving: false,
-              saveError: info,
-              uncertain: {
-                kind: "update",
-                slotId: editingSlot.id,
-                expected: updatePatch.expected,
-              },
-              reconcileNote: null,
-            };
-          }
-          if (createPayload) {
-            return {
-              ...current,
-              saving: false,
-              saveError: info,
-              uncertain: {
-                kind: "create",
-                preSubmitIds,
-                expected: createPayload.expected,
-              },
-              reconcileNote: null,
-            };
-          }
-          return { ...current, saving: false, saveError: info };
-        });
+        setSlotSession((current) =>
+          enterSlotUncertainSession(current, {
+            attemptIdentity,
+            mode: attemptMode,
+            slotId: attemptSlotId,
+            draft: attemptDraft,
+            autoEndTime: attemptAutoEndTime,
+            confirmAction: attemptConfirmAction,
+            uncertain: uncertainSpec,
+            error: info,
+          }),
+        );
         return;
       }
 
-      setSlotEditor((current) =>
-        current && current.identity === attemptIdentity
-          ? { ...current, saving: false, saveError: info }
+      setSlotSession((current) =>
+        current.editor && current.editor.identity === attemptIdentity
+          ? {
+              ...current,
+              editor: { ...current.editor, saving: false, saveError: info },
+            }
           : current,
       );
     } finally {
@@ -1663,31 +2054,45 @@ export default function ProviderAvailabilityPage() {
     ) {
       return;
     }
-    setSlotEditor((current) => {
+    setSlotSession((current) => {
+      const editor = current.editor;
       if (
-        !current ||
-        current.mode !== "edit" ||
-        current.saving ||
-        current.updatingStatus ||
-        current.reconciling ||
-        current.uncertain !== null
+        !editor ||
+        editor.mode !== "edit" ||
+        editor.saving ||
+        editor.updatingStatus ||
+        editor.reconciling ||
+        editor.uncertain !== null ||
+        current.pendingUncertain !== null
       ) {
         return current;
       }
       return {
         ...current,
-        confirmAction: action,
-        statusError: null,
-        statusFeedback: null,
-        reconcileNote: null,
+        editor: {
+          ...editor,
+          confirmAction: action,
+          statusError: null,
+          statusFeedback: null,
+          reconcileNote: null,
+        },
       };
     });
   }
 
   function handleCancelSlotStatusAction() {
     if (submittingRef.current) return;
-    setSlotEditor((current) =>
-      current ? { ...current, confirmAction: null, statusError: null } : current,
+    setSlotSession((current) =>
+      current.editor
+        ? {
+            ...current,
+            editor: {
+              ...current.editor,
+              confirmAction: null,
+              statusError: null,
+            },
+          }
+        : current,
     );
   }
 
@@ -1702,6 +2107,7 @@ export default function ProviderAvailabilityPage() {
       !profile ||
       !canManageResources ||
       activeSlotEditor.uncertain !== null ||
+      activePendingSlotUncertain !== null ||
       cooldownSeconds > 0
     ) {
       return;
@@ -1722,12 +2128,15 @@ export default function ProviderAvailabilityPage() {
           )
         : null;
     if (reopenCheck && !reopenCheck.allowed) {
-      setSlotEditor((current) =>
-        current
+      setSlotSession((current) =>
+        current.editor
           ? {
               ...current,
-              confirmAction: null,
-              reconcileNote: reopenCheck.reason,
+              editor: {
+                ...current.editor,
+                confirmAction: null,
+                reconcileNote: reopenCheck.reason,
+              },
             }
           : current,
       );
@@ -1736,19 +2145,34 @@ export default function ProviderAvailabilityPage() {
 
     submittingRef.current = true;
     const attemptIdentity = activeSlotEditor.identity;
+    const attemptDraft = activeSlotEditor.draft;
+    const attemptAutoEndTime = activeSlotEditor.autoEndTime;
+    const operation =
+      action === "cancel" ? "deactivate-availability" : "update-availability";
+    const uncertainSpec: SlotUncertainAction =
+      action === "cancel"
+        ? { kind: "cancel", slotId }
+        : {
+            kind: "status",
+            slotId,
+            targetStatus: action === "close" ? "CLOSED" : "OPEN",
+          };
     const controller = new AbortController();
     mutationControllerRef.current?.abort();
     mutationControllerRef.current = controller;
 
-    setSlotEditor((current) =>
-      current && current.identity === attemptIdentity
+    setSlotSession((current) =>
+      current.editor && current.editor.identity === attemptIdentity
         ? {
             ...current,
-            updatingStatus: true,
-            saveError: null,
-            statusError: null,
-            reconcileNote: null,
-            statusFeedback: null,
+            editor: {
+              ...current.editor,
+              updatingStatus: true,
+              saveError: null,
+              statusError: null,
+              reconcileNote: null,
+              statusFeedback: null,
+            },
           }
         : current,
     );
@@ -1769,10 +2193,27 @@ export default function ProviderAvailabilityPage() {
         );
       }
 
+      const liveIdentity = providerSessionIdentityKey(snapshot());
       if (
-        controller.signal.aborted ||
+        liveIdentity !== attemptIdentity ||
         currentIdentityRef.current !== attemptIdentity
       ) {
+        return;
+      }
+      if (controller.signal.aborted) {
+        setSlotSession((current) =>
+          recoverAbortedSlotMutation(current, {
+            attemptIdentity,
+            liveIdentity,
+            mode: "edit",
+            slotId,
+            draft: attemptDraft,
+            autoEndTime: attemptAutoEndTime,
+            confirmAction: action,
+            uncertain: uncertainSpec,
+            error: classifyProviderError(new ApiError("network"), operation),
+          }),
+        );
         return;
       }
 
@@ -1816,33 +2257,51 @@ export default function ProviderAvailabilityPage() {
         ? successMessage
         : `${successMessage} ${feedbackLocale.refreshWarning}`;
 
-      setSlotEditor((current) =>
-        current && current.identity === attemptIdentity
+      setSlotSession((current) =>
+        current.editor && current.editor.identity === attemptIdentity
           ? {
               ...current,
-              updatingStatus: false,
-              confirmAction: null,
-              statusError: null,
-              statusFeedback: finalMessage,
+              pendingUncertain: null,
+              editor: {
+                ...current.editor,
+                updatingStatus: false,
+                confirmAction: null,
+                statusError: null,
+                statusFeedback: finalMessage,
+              },
             }
           : current,
       );
       setPageFeedback(attemptIdentity, "success", finalMessage);
     } catch (err) {
+      if (isRequestCancelled(err) || controller.signal.aborted) {
+        const liveIdentity = providerSessionIdentityKey(snapshot());
+        setSlotSession((current) =>
+          recoverAbortedSlotMutation(current, {
+            attemptIdentity,
+            liveIdentity,
+            mode: "edit",
+            slotId,
+            draft: attemptDraft,
+            autoEndTime: attemptAutoEndTime,
+            confirmAction: action,
+            uncertain: uncertainSpec,
+            error: classifyProviderError(new ApiError("network"), operation),
+          }),
+        );
+        return;
+      }
       if (
-        isRequestCancelled(err) ||
-        controller.signal.aborted ||
+        providerSessionIdentityKey(snapshot()) !== attemptIdentity ||
         currentIdentityRef.current !== attemptIdentity
       ) {
         return;
       }
 
-      const operation =
-        action === "cancel" ? "deactivate-availability" : "update-availability";
       const info = classifyProviderError(err, operation);
 
       if (info.outcome === "session-ended") {
-        setSlotEditor(null);
+        setSlotSession(INITIAL_SLOT_DIALOG_SESSION);
         return;
       }
 
@@ -1850,12 +2309,12 @@ export default function ProviderAvailabilityPage() {
 
       if (info.code === "PROVIDER_PROFILE_NOT_FOUND") {
         profileState.markNotFound();
-        setSlotEditor(null);
+        setSlotSession(INITIAL_SLOT_DIALOG_SESSION);
         return;
       }
 
       if (info.code === "SLOT_NOT_FOUND") {
-        setSlotEditor(null);
+        setSlotSession(INITIAL_SLOT_DIALOG_SESSION);
         setPageFeedback(
           attemptIdentity,
           "error",
@@ -1869,13 +2328,16 @@ export default function ProviderAvailabilityPage() {
         info.code === "PROVIDER_REJECTED_FORBIDDEN" ||
         info.code === "PROVIDER_SUSPENDED_FORBIDDEN"
       ) {
-        setSlotEditor((current) =>
-          current && current.identity === attemptIdentity
+        setSlotSession((current) =>
+          current.editor && current.editor.identity === attemptIdentity
             ? {
                 ...current,
-                updatingStatus: false,
-                confirmAction: null,
-                statusError: info,
+                editor: {
+                  ...current.editor,
+                  updatingStatus: false,
+                  confirmAction: null,
+                  statusError: info,
+                },
               }
             : current,
         );
@@ -1888,30 +2350,27 @@ export default function ProviderAvailabilityPage() {
       }
 
       if (info.outcome === "unknown") {
-        setSlotEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
-                updatingStatus: false,
-                statusError: info,
-                uncertain:
-                  action === "cancel"
-                    ? { kind: "cancel", slotId }
-                    : {
-                        kind: "status",
-                        slotId,
-                        targetStatus: action === "close" ? "CLOSED" : "OPEN",
-                      },
-                reconcileNote: null,
-              }
-            : current,
+        setSlotSession((current) =>
+          enterSlotUncertainSession(current, {
+            attemptIdentity,
+            mode: "edit",
+            slotId,
+            draft: attemptDraft,
+            autoEndTime: attemptAutoEndTime,
+            confirmAction: action,
+            uncertain: uncertainSpec,
+            error: info,
+          }),
         );
         return;
       }
 
-      setSlotEditor((current) =>
-        current && current.identity === attemptIdentity
-          ? { ...current, updatingStatus: false, statusError: info }
+      setSlotSession((current) =>
+        current.editor && current.editor.identity === attemptIdentity
+          ? {
+              ...current,
+              editor: { ...current.editor, updatingStatus: false, statusError: info },
+            }
           : current,
       );
     } finally {
@@ -1923,30 +2382,43 @@ export default function ProviderAvailabilityPage() {
   }
 
   async function handleReconcileSlot() {
+    const pending = activePendingSlotUncertain;
+    const uncertain =
+      pending?.uncertain ?? activeSlotEditor?.uncertain ?? null;
+    const attemptIdentity =
+      pending?.identity ?? activeSlotEditor?.identity ?? null;
     if (
       submittingRef.current ||
       sessionBoundary.lockActions ||
-      !activeSlotEditor?.uncertain ||
+      !uncertain ||
+      !attemptIdentity ||
       cooldownSeconds > 0
     ) {
       return;
     }
 
     submittingRef.current = true;
-    const attemptIdentity = activeSlotEditor.identity;
-    const uncertain = activeSlotEditor.uncertain;
 
-    setSlotEditor((current) =>
-      current && current.identity === attemptIdentity
-        ? {
-            ...current,
-            reconciling: true,
-            saveError: null,
-            statusError: null,
-            reconcileNote: null,
-          }
-        : current,
-    );
+    setSlotSession((current) => {
+      const base =
+        current.editor && current.editor.identity === attemptIdentity
+          ? current.editor
+          : current.pendingUncertain &&
+              current.pendingUncertain.identity === attemptIdentity
+            ? buildSlotEditorFromPending(current.pendingUncertain)
+            : null;
+      if (!base) return current;
+      return {
+        ...current,
+        editor: {
+          ...base,
+          reconciling: true,
+          saveError: null,
+          statusError: null,
+          reconcileNote: null,
+        },
+      };
+    });
 
     const slotLocale = vi.provider.availability.slot;
     const feedbackLocale = vi.provider.availability.feedback;
@@ -1956,7 +2428,13 @@ export default function ProviderAvailabilityPage() {
         availabilityState.reloadSlots(),
         profileState.reload(),
       ]);
-      if (currentIdentityRef.current !== attemptIdentity) return;
+      const liveIdentity = providerSessionIdentityKey(snapshot());
+      if (
+        liveIdentity !== attemptIdentity ||
+        currentIdentityRef.current !== attemptIdentity
+      ) {
+        return;
+      }
 
       if (
         (!profileRes.ok &&
@@ -1968,32 +2446,37 @@ export default function ProviderAvailabilityPage() {
           (slotsRes.error.outcome === "session-ended" ||
             slotsRes.error.code === "PROVIDER_PROFILE_NOT_FOUND"))
       ) {
-        setSlotEditor(null);
+        setSlotSession(INITIAL_SLOT_DIALOG_SESSION);
         return;
       }
 
       if (!slotsRes.ok) {
         if (slotsRes.aborted) {
-          setSlotEditor((current) =>
-            current && current.identity === attemptIdentity
-              ? { ...current, reconciling: false }
-              : current,
+          setSlotSession((current) =>
+            recoverAbortedSlotReconcile(current, attemptIdentity, liveIdentity),
           );
           return;
         }
         startCooldown(slotsRes.error.retryAfterSeconds);
         const isStatusKind =
           uncertain.kind === "status" || uncertain.kind === "cancel";
-        setSlotEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
-                reconciling: false,
-                saveError: isStatusKind ? null : slotsRes.error,
-                statusError: isStatusKind ? slotsRes.error : null,
-              }
-            : current,
-        );
+        setSlotSession((current) => ({
+          ...current,
+          pendingUncertain:
+            current.pendingUncertain &&
+            current.pendingUncertain.identity === attemptIdentity
+              ? { ...current.pendingUncertain, error: slotsRes.error }
+              : current.pendingUncertain,
+          editor:
+            current.editor && current.editor.identity === attemptIdentity
+              ? {
+                  ...current.editor,
+                  reconciling: false,
+                  saveError: isStatusKind ? null : slotsRes.error,
+                  statusError: isStatusKind ? slotsRes.error : null,
+                }
+              : current.editor,
+        }));
         return;
       }
 
@@ -2009,7 +2492,7 @@ export default function ProviderAvailabilityPage() {
           approvalStatus,
         );
         if (res.outcome === "created") {
-          setSlotEditor(null);
+          setSlotSession(INITIAL_SLOT_DIALOG_SESSION);
           setPageFeedback(
             attemptIdentity,
             "success",
@@ -2018,29 +2501,49 @@ export default function ProviderAvailabilityPage() {
           return;
         }
         if (res.outcome === "forbidden-lifecycle") {
-          setSlotEditor((current) =>
-            current && current.identity === attemptIdentity
-              ? {
-                  ...current,
-                  reconciling: false,
-                  uncertain: null,
-                  saveError: lifecycleErrorInfo(res.approvalStatus),
-                }
-              : current,
-          );
-          return;
-        }
-        setSlotEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
+          setSlotSession((current) => {
+            const base =
+              current.editor && current.editor.identity === attemptIdentity
+                ? current.editor
+                : current.pendingUncertain &&
+                    current.pendingUncertain.identity === attemptIdentity
+                  ? buildSlotEditorFromPending(current.pendingUncertain)
+                  : null;
+            if (!base) return INITIAL_SLOT_DIALOG_SESSION;
+            return {
+              dialogOpen: true,
+              pendingUncertain: null,
+              editor: {
+                ...base,
                 reconciling: false,
                 uncertain: null,
-                saveError: null,
-                reconcileNote: slotLocale.reconcileNotCreated,
-              }
-            : current,
-        );
+                saveError: lifecycleErrorInfo(res.approvalStatus),
+              },
+            };
+          });
+          return;
+        }
+        setSlotSession((current) => {
+          const base =
+            current.editor && current.editor.identity === attemptIdentity
+              ? current.editor
+              : current.pendingUncertain &&
+                  current.pendingUncertain.identity === attemptIdentity
+                ? buildSlotEditorFromPending(current.pendingUncertain)
+                : null;
+          if (!base) return INITIAL_SLOT_DIALOG_SESSION;
+          return {
+            dialogOpen: true,
+            pendingUncertain: null,
+            editor: {
+              ...base,
+              reconciling: false,
+              uncertain: null,
+              saveError: null,
+              reconcileNote: slotLocale.reconcileNotCreated,
+            },
+          };
+        });
         return;
       }
 
@@ -2052,7 +2555,7 @@ export default function ProviderAvailabilityPage() {
           approvalStatus,
         );
         if (res.outcome === "saved") {
-          setSlotEditor(null);
+          setSlotSession(INITIAL_SLOT_DIALOG_SESSION);
           setPageFeedback(
             attemptIdentity,
             "success",
@@ -2061,7 +2564,7 @@ export default function ProviderAvailabilityPage() {
           return;
         }
         if (res.outcome === "not-found") {
-          setSlotEditor(null);
+          setSlotSession(INITIAL_SLOT_DIALOG_SESSION);
           setPageFeedback(
             attemptIdentity,
             "error",
@@ -2070,29 +2573,49 @@ export default function ProviderAvailabilityPage() {
           return;
         }
         if (res.outcome === "forbidden-lifecycle") {
-          setSlotEditor((current) =>
-            current && current.identity === attemptIdentity
-              ? {
-                  ...current,
-                  reconciling: false,
-                  uncertain: null,
-                  saveError: lifecycleErrorInfo(res.approvalStatus),
-                }
-              : current,
-          );
-          return;
-        }
-        setSlotEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
+          setSlotSession((current) => {
+            const base =
+              current.editor && current.editor.identity === attemptIdentity
+                ? current.editor
+                : current.pendingUncertain &&
+                    current.pendingUncertain.identity === attemptIdentity
+                  ? buildSlotEditorFromPending(current.pendingUncertain)
+                  : null;
+            if (!base) return INITIAL_SLOT_DIALOG_SESSION;
+            return {
+              dialogOpen: true,
+              pendingUncertain: null,
+              editor: {
+                ...base,
                 reconciling: false,
                 uncertain: null,
-                saveError: null,
-                reconcileNote: slotLocale.reconcileNotSaved,
-              }
-            : current,
-        );
+                saveError: lifecycleErrorInfo(res.approvalStatus),
+              },
+            };
+          });
+          return;
+        }
+        setSlotSession((current) => {
+          const base =
+            current.editor && current.editor.identity === attemptIdentity
+              ? current.editor
+              : current.pendingUncertain &&
+                  current.pendingUncertain.identity === attemptIdentity
+                ? buildSlotEditorFromPending(current.pendingUncertain)
+                : null;
+          if (!base) return INITIAL_SLOT_DIALOG_SESSION;
+          return {
+            dialogOpen: true,
+            pendingUncertain: null,
+            editor: {
+              ...base,
+              reconciling: false,
+              uncertain: null,
+              saveError: null,
+              reconcileNote: slotLocale.reconcileNotSaved,
+            },
+          };
+        });
         return;
       }
 
@@ -2115,23 +2638,31 @@ export default function ProviderAvailabilityPage() {
           uncertain.kind === "cancel"
             ? feedbackLocale.slotReconciledCancelled
             : feedbackLocale.slotReconciledStatus;
-        setSlotEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
-                reconciling: false,
-                uncertain: null,
-                confirmAction: null,
-                statusError: null,
-                statusFeedback: message,
-              }
-            : current,
-        );
+        setSlotSession((current) => {
+          if (!current.dialogOpen) return INITIAL_SLOT_DIALOG_SESSION;
+          const base =
+            current.editor && current.editor.identity === attemptIdentity
+              ? current.editor
+              : null;
+          if (!base) return INITIAL_SLOT_DIALOG_SESSION;
+          return {
+            dialogOpen: true,
+            pendingUncertain: null,
+            editor: {
+              ...base,
+              reconciling: false,
+              uncertain: null,
+              confirmAction: null,
+              statusError: null,
+              statusFeedback: message,
+            },
+          };
+        });
         setPageFeedback(attemptIdentity, "success", message);
         return;
       }
       if (res.outcome === "not-found") {
-        setSlotEditor(null);
+        setSlotSession(INITIAL_SLOT_DIALOG_SESSION);
         setPageFeedback(
           attemptIdentity,
           "error",
@@ -2140,30 +2671,50 @@ export default function ProviderAvailabilityPage() {
         return;
       }
       if (res.outcome === "forbidden-lifecycle") {
-        setSlotEditor((current) =>
-          current && current.identity === attemptIdentity
-            ? {
-                ...current,
-                reconciling: false,
-                uncertain: null,
-                confirmAction: null,
-                statusError: lifecycleErrorInfo(res.approvalStatus),
-              }
-            : current,
-        );
-        return;
-      }
-      setSlotEditor((current) =>
-        current && current.identity === attemptIdentity
-          ? {
-              ...current,
+        setSlotSession((current) => {
+          const base =
+            current.editor && current.editor.identity === attemptIdentity
+              ? current.editor
+              : current.pendingUncertain &&
+                  current.pendingUncertain.identity === attemptIdentity
+                ? buildSlotEditorFromPending(current.pendingUncertain)
+                : null;
+          if (!base) return INITIAL_SLOT_DIALOG_SESSION;
+          return {
+            dialogOpen: true,
+            pendingUncertain: null,
+            editor: {
+              ...base,
               reconciling: false,
               uncertain: null,
-              statusError: null,
-              reconcileNote: slotLocale.reconcileStatusNotSaved,
-            }
-          : current,
-      );
+              confirmAction: null,
+              statusError: lifecycleErrorInfo(res.approvalStatus),
+            },
+          };
+        });
+        return;
+      }
+      setSlotSession((current) => {
+        const base =
+          current.editor && current.editor.identity === attemptIdentity
+            ? current.editor
+            : current.pendingUncertain &&
+                current.pendingUncertain.identity === attemptIdentity
+              ? buildSlotEditorFromPending(current.pendingUncertain)
+              : null;
+        if (!base) return INITIAL_SLOT_DIALOG_SESSION;
+        return {
+          dialogOpen: true,
+          pendingUncertain: null,
+          editor: {
+            ...base,
+            reconciling: false,
+            uncertain: null,
+            statusError: null,
+            reconcileNote: slotLocale.reconcileStatusNotSaved,
+          },
+        };
+      });
     } finally {
       submittingRef.current = false;
     }
@@ -2296,6 +2847,103 @@ export default function ProviderAvailabilityPage() {
                 </p>
               )}
 
+              {!showWorkingDialog && activePendingWorkingUncertain && (
+                <section className={styles.reconcileBox} role="alert">
+                  <div className={styles.reconcileHeading}>
+                    <AlertTriangle aria-hidden="true" focusable="false" size={16} />
+                    <strong>{vi.provider.availability.weekly.pendingBannerTitle}</strong>
+                  </div>
+                  <p>
+                    {activePendingWorkingUncertain.uncertain.kind === "create"
+                      ? vi.provider.availability.weekly.reconcileCreateBody
+                      : activePendingWorkingUncertain.uncertain.kind ===
+                          "deactivate"
+                        ? vi.provider.availability.weekly.reconcileDeactivateBody
+                        : vi.provider.availability.weekly.reconcileUpdateBody}
+                  </p>
+                  {activePendingWorkingUncertain.error && (
+                    <p>
+                      {getProviderErrorMessage(
+                        activePendingWorkingUncertain.error,
+                        cooldownSeconds,
+                      )}
+                    </p>
+                  )}
+                  <div className={styles.formActions}>
+                    <button
+                      type="button"
+                      className={styles.primaryButton}
+                      disabled={
+                        busy || sessionBoundary.lockActions || cooldownSeconds > 0
+                      }
+                      onClick={() => void handleReconcileWorkingHour()}
+                    >
+                      <RefreshCw aria-hidden="true" focusable="false" size={14} />
+                      {activeWorkingDialog?.reconciling
+                        ? vi.provider.availability.weekly.reconciling
+                        : vi.provider.availability.weekly.reconcileAction}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.outlineButton}
+                      disabled={busy || sessionBoundary.lockActions}
+                      onClick={reopenPendingWorkingHours}
+                    >
+                      {vi.provider.availability.weekly.reviewRequest}
+                    </button>
+                  </div>
+                </section>
+              )}
+
+              {!showSlotDialog && activePendingSlotUncertain && (
+                <section className={styles.reconcileBox} role="alert">
+                  <div className={styles.reconcileHeading}>
+                    <AlertTriangle aria-hidden="true" focusable="false" size={16} />
+                    <strong>{vi.provider.availability.slot.pendingBannerTitle}</strong>
+                  </div>
+                  <p>
+                    {activePendingSlotUncertain.uncertain.kind === "create"
+                      ? vi.provider.availability.slot.reconcileCreateBody
+                      : activePendingSlotUncertain.uncertain.kind === "status"
+                        ? vi.provider.availability.slot.reconcileStatusBody
+                        : activePendingSlotUncertain.uncertain.kind === "cancel"
+                          ? vi.provider.availability.slot.reconcileCancelBody
+                          : vi.provider.availability.slot.reconcileUpdateBody}
+                  </p>
+                  {activePendingSlotUncertain.error && (
+                    <p>
+                      {getProviderErrorMessage(
+                        activePendingSlotUncertain.error,
+                        cooldownSeconds,
+                      )}
+                    </p>
+                  )}
+                  <div className={styles.formActions}>
+                    <button
+                      type="button"
+                      className={styles.primaryButton}
+                      disabled={
+                        busy || sessionBoundary.lockActions || cooldownSeconds > 0
+                      }
+                      onClick={() => void handleReconcileSlot()}
+                    >
+                      <RefreshCw aria-hidden="true" focusable="false" size={14} />
+                      {activeSlotEditor?.reconciling
+                        ? vi.provider.availability.slot.reconciling
+                        : vi.provider.availability.slot.reconcileAction}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.outlineButton}
+                      disabled={busy || sessionBoundary.lockActions}
+                      onClick={reopenPendingSlot}
+                    >
+                      {vi.provider.availability.slot.reviewRequest}
+                    </button>
+                  </div>
+                </section>
+              )}
+
               {!showWorkingDialog && !showSlotDialog && !showSlotsDialog && (
                 <AvailabilityFeedback feedback={activeFeedback} focus={false} />
               )}
@@ -2426,20 +3074,30 @@ export default function ProviderAvailabilityPage() {
           onCancelEdit={handleCancelEditWorkingHour}
           onSave={() => void handleSaveWorkingHour()}
           onRequestDeactivate={(workingHourId) =>
-            setWorkingDialog((current) =>
-              current && current.uncertain === null
+            setWorkingSession((current) =>
+              current.dialog &&
+              current.dialog.uncertain === null &&
+              current.pendingUncertain === null
                 ? {
                     ...current,
-                    confirmDeactivateId: workingHourId,
-                    error: null,
-                    reconcileNote: null,
+                    dialog: {
+                      ...current.dialog,
+                      confirmDeactivateId: workingHourId,
+                      error: null,
+                      reconcileNote: null,
+                    },
                   }
                 : current,
             )
           }
           onCancelDeactivate={() =>
-            setWorkingDialog((current) =>
-              current ? { ...current, confirmDeactivateId: null } : current,
+            setWorkingSession((current) =>
+              current.dialog
+                ? {
+                    ...current,
+                    dialog: { ...current.dialog, confirmDeactivateId: null },
+                  }
+                : current,
             )
           }
           onConfirmDeactivate={(workingHourId) =>

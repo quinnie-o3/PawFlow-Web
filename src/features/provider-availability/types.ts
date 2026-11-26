@@ -81,6 +81,16 @@ export type WorkingHourUncertainAction =
       workingHourId: string;
     }>;
 
+export type PendingWorkingHourUncertain = Readonly<{
+  identity: string;
+  mode: "create" | "edit";
+  editingId: string | null;
+  draft: WorkingHourDraft;
+  uncertain: WorkingHourUncertainAction;
+  error: ProviderApiErrorInfo | null;
+  reconcileNote: string | null;
+}>;
+
 export type WorkingHoursDialogState = Readonly<{
   identity: string;
   mode: "create" | "edit";
@@ -95,6 +105,12 @@ export type WorkingHoursDialogState = Readonly<{
   uncertain: WorkingHourUncertainAction | null;
   reconcileNote: string | null;
   inlineFeedback: AvailabilityFeedback | null;
+}>;
+
+export type WorkingHoursDialogSessionState = Readonly<{
+  dialogOpen: boolean;
+  dialog: WorkingHoursDialogState | null;
+  pendingUncertain: PendingWorkingHourUncertain | null;
 }>;
 
 export type SlotDraft = Readonly<{
@@ -154,6 +170,18 @@ export type SlotUncertainAction =
       slotId: string;
     }>;
 
+export type PendingSlotUncertain = Readonly<{
+  identity: string;
+  mode: "create" | "edit";
+  slotId: string | null;
+  draft: SlotDraft;
+  autoEndTime: boolean;
+  confirmAction: SlotStatusAction | null;
+  uncertain: SlotUncertainAction;
+  error: ProviderApiErrorInfo | null;
+  reconcileNote: string | null;
+}>;
+
 export type SlotEditorState = Readonly<{
   identity: string;
   mode: "create" | "edit";
@@ -170,6 +198,12 @@ export type SlotEditorState = Readonly<{
   uncertain: SlotUncertainAction | null;
   reconcileNote: string | null;
   statusFeedback: string | null;
+}>;
+
+export type SlotDialogSessionState = Readonly<{
+  dialogOpen: boolean;
+  editor: SlotEditorState | null;
+  pendingUncertain: PendingSlotUncertain | null;
 }>;
 
 export type ReconcileCreateResult<T> =

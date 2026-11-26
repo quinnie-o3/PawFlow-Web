@@ -25,6 +25,7 @@ import {
   decodeProviderServices,
   decodeWorkingHour,
   decodeWorkingHours,
+  normalizeServicePriceInput,
   normalizeTimeToHhMm,
   ProviderWorkspaceApiError,
   type BffRequester,
@@ -1690,6 +1691,124 @@ describe("createProviderWorkspaceApi operations, error taxonomy, cache invalidat
     await assert.rejects(
       () => api.getProviderProfile({ signal: controller.signal }),
       (err: unknown) => err instanceof Error && err.name === "AbortError",
+    );
+  });
+
+  it("validates and forwards canonical string prices with BigInt precision including 9999999999.95 and 9999999999.99", async () => {
+    assert.equal(normalizeServicePriceInput("0"), "0.00");
+    assert.equal(normalizeServicePriceInput(" 150000.5 "), "150000.50");
+    assert.equal(normalizeServicePriceInput("00090000"), "90000.00");
+    assert.equal(normalizeServicePriceInput("9999999999.95"), "9999999999.95");
+    assert.equal(normalizeServicePriceInput("9999999999.99"), "9999999999.99");
+
+    for (const invalid of [
+      "",
+      " ",
+      "-1",
+      "-0.01",
+      "10000000000",
+      "10000000000.00",
+      "12.345",
+      "1e5",
+      150000,
+      null,
+      undefined,
+    ]) {
+      assert.equal(
+        normalizeServicePriceInput(invalid),
+        null,
+        `expected rejection for ${String(invalid)}`,
+      );
+    }
+
+    const sent: Array<{ path: string; method?: string; body?: unknown }> = [];
+    const api = createProviderWorkspaceApi({
+      cache: null,
+      bffRequestImpl: async (path, options, decode) => {
+        sent.push({ path, method: options?.method, body: options?.body });
+        const payload = options?.body as { price?: string };
+        const raw = {
+          ...SAMPLE_SERVICE_MUTATION,
+          price: payload.price ?? SAMPLE_SERVICE_MUTATION.price,
+        };
+        return {
+          status: options?.method === "POST" ? 201 : 200,
+          body: decode ? decode(raw) : raw,
+          headers: new Headers(),
+        };
+      },
+    });
+
+    const created = await api.createService({
+      categoryId: "2",
+      name: "VIP Grooming",
+      price: "9999999999.95",
+      durationMinutes: 60,
+      description: null,
+    });
+    assert.equal(created.price, "9999999999.95");
+    assert.equal(typeof (sent[0].body as { price: unknown }).price, "string");
+    assert.equal((sent[0].body as { price: string }).price, "9999999999.95");
+
+    const updated = await api.updateService("5", {
+      price: "9999999999.99",
+    });
+    assert.equal(updated.price, "9999999999.99");
+    assert.equal((sent[1].body as { price: string }).price, "9999999999.99");
+
+    for (const badPrice of ["10000000000.00", "-1", "12.345"]) {
+      await assert.rejects(
+        () =>
+          api.createService({
+            categoryId: "2",
+            name: "Bad Price",
+            price: badPrice,
+            durationMinutes: 30,
+          }),
+        (err: unknown) =>
+          err instanceof ProviderWorkspaceApiError &&
+          err.code === "INVALID_INPUT" &&
+          err.outcome === "definite-failure",
+      );
+      await assert.rejects(
+        () => api.updateService("5", { price: badPrice }),
+        (err: unknown) =>
+          err instanceof ProviderWorkspaceApiError &&
+          err.code === "INVALID_INPUT" &&
+          err.outcome === "definite-failure",
+      );
+    }
+    assert.equal(sent.length, 2);
+
+    // Verify handleBff forwards canonical decimal string price untouched to upstream.
+    let forwardedBody: string | undefined;
+    await withStubbedBffEnv(
+      async (_input, init) => {
+        forwardedBody = typeof init?.body === "string" ? init.body : undefined;
+        return Response.json(
+          { ...SAMPLE_SERVICE_MUTATION, price: "9999999999.95" },
+          { status: 201 },
+        );
+      },
+      async () => {
+        const res = await handleBff(
+          makeBffRequest("services", {
+            method: "POST",
+            body: {
+              categoryId: "2",
+              name: "VIP Grooming",
+              price: "9999999999.95",
+              durationMinutes: 60,
+              description: null,
+            },
+          }),
+          "services",
+          { store: stubStore() },
+        );
+        assert.equal(res.status, 201);
+        assert.equal((await res.json()).price, "9999999999.95");
+        assert.equal(JSON.parse(forwardedBody!).price, "9999999999.95");
+      },
     );
   });
 });

@@ -13,7 +13,10 @@ import {
   buildWorkingHourMutationPlan,
   canReopenSlot,
   captureVietnamClock,
+  closeSlotDialogSession,
+  closeWorkingHoursDialogSession,
   DISPLAY_WEEKDAYS,
+  enterSlotUncertainSession,
   findAffectedBookedSlotsForWorkingHourChange,
   findExactInactiveWorkingHour,
   findOverlappingWorkingHour,
@@ -25,14 +28,25 @@ import {
   hasSlotDraftChanges,
   hasSlotStarted,
   hasWorkingHourDraftChanges,
+  INITIAL_SLOT_DIALOG_SESSION,
+  INITIAL_WORKING_HOURS_SESSION,
   isSlotBookableUnderSchedule,
   localDate,
+  openCreateSlotDialogSession,
+  openEditSlotDialogSession,
+  openWorkingHoursDialogSession,
   reconcileSlotCancel,
   reconcileSlotCreate,
   reconcileSlotUpdate,
   reconcileWorkingHourCreate,
   reconcileWorkingHourDeactivate,
   reconcileWorkingHourUpdate,
+  recoverAbortedSlotMutation,
+  recoverAbortedSlotReconcile,
+  recoverAbortedWorkingHoursMutation,
+  recoverAbortedWorkingHoursReconcile,
+  reopenPendingSlotSession,
+  reopenPendingWorkingHoursSession,
   resolveSlotService,
   slotCoversServiceDuration,
   slotFitsWorkingHours,
@@ -734,4 +748,213 @@ test("summarizeAvailability computes bookable next-7-days slots, held bookings, 
     activeDaysCount: 2,
     activeShiftsCount: 3,
   });
+});
+
+const UNKNOWN_AVAILABILITY_ERROR = {
+  code: "NETWORK_ERROR",
+  category: "uncertain",
+  outcome: "unknown",
+  status: null,
+  retryAfterSeconds: null,
+  shouldReconcile: true,
+} as const;
+
+test("R1 & R2 working hours: 503 same-identity abort recovers into uncertain, close/reopen preserves guard, 401/switch purges", () => {
+  const identityA = "gen-1:30:PROVIDER_OWNER";
+  const identityB = "gen-2:31:PROVIDER_OWNER";
+  const draft = { dayOfWeek: 1 as const, startTime: "08:30", endTime: "12:00" };
+  const uncertainAction = {
+    kind: "create" as const,
+    expected: {
+      dayOfWeek: 1 as const,
+      startTime: "08:30",
+      endTime: "12:00",
+      isActive: true as const,
+    },
+    preSubmitIds: WORKING_HOURS.map((h) => h.id),
+  };
+
+  const opened = openWorkingHoursDialogSession(
+    INITIAL_WORKING_HOURS_SESSION,
+    identityA,
+  );
+  const saving = {
+    ...opened,
+    dialog: opened.dialog ? { ...opened.dialog, draft, saving: true } : null,
+  };
+
+  // Same-identity 503 abort releases busy and preserves draft/preSubmitIds in pendingUncertain.
+  const recovered = recoverAbortedWorkingHoursMutation(saving, {
+    attemptIdentity: identityA,
+    liveIdentity: identityA,
+    mode: "create",
+    editingId: null,
+    draft,
+    uncertain: uncertainAction,
+    error: UNKNOWN_AVAILABILITY_ERROR,
+  });
+  assert.equal(recovered.dialog?.saving, false);
+  assert.equal(recovered.dialog?.mutatingRowId, null);
+  assert.equal(recovered.dialog?.reconciling, false);
+  assert.notEqual(recovered.pendingUncertain, null);
+
+  // Close hides dialog only; reopen via button or banner restores pendingUncertain.
+  const closed = closeWorkingHoursDialogSession(recovered);
+  assert.equal(closed.dialogOpen, false);
+  assert.notEqual(closed.pendingUncertain, null);
+
+  const reopened = openWorkingHoursDialogSession(closed, identityA);
+  assert.equal(reopened.dialogOpen, true);
+  assert.equal(reopened.dialog?.uncertain?.kind, "create");
+  assert.deepEqual(reopened.dialog?.draft, draft);
+
+  const reopenedBanner = reopenPendingWorkingHoursSession(closed, identityA);
+  assert.equal(reopenedBanner.dialogOpen, true);
+  assert.equal(reopenedBanner.dialog?.uncertain?.kind, "create");
+
+  // Reconcile abort releases reconciling=false without dropping pendingUncertain.
+  const reconciling = {
+    ...reopened,
+    dialog: reopened.dialog ? { ...reopened.dialog, reconciling: true } : null,
+  };
+  const afterReconcileAbort = recoverAbortedWorkingHoursReconcile(
+    reconciling,
+    identityA,
+    identityA,
+  );
+  assert.equal(afterReconcileAbort.dialog?.reconciling, false);
+  assert.notEqual(afterReconcileAbort.pendingUncertain, null);
+
+  // 401/logout or identity switch purges 100%.
+  assert.deepEqual(
+    recoverAbortedWorkingHoursMutation(saving, {
+      attemptIdentity: identityA,
+      liveIdentity: null,
+      mode: "create",
+      editingId: null,
+      draft,
+      uncertain: uncertainAction,
+      error: UNKNOWN_AVAILABILITY_ERROR,
+    }),
+    INITIAL_WORKING_HOURS_SESSION,
+  );
+  assert.deepEqual(
+    recoverAbortedWorkingHoursReconcile(reconciling, identityA, identityB),
+    INITIAL_WORKING_HOURS_SESSION,
+  );
+});
+
+test("R1 & R2 availability slots: 503 same-identity abort recovers into uncertain, close/reopen preserves guard, 401/switch purges", () => {
+  const identityA = "gen-1:30:PROVIDER_OWNER";
+  const identityB = "gen-2:31:PROVIDER_OWNER";
+  const draft = {
+    serviceId: "102",
+    slotDate: "2026-10-16",
+    startTime: "10:00",
+    endTime: "11:00",
+    capacity: "3",
+  };
+  const uncertainAction = {
+    kind: "create" as const,
+    expected: {
+      serviceId: "102",
+      slotDate: "2026-10-16",
+      startTime: "10:00",
+      endTime: "11:00",
+      capacity: 3,
+    },
+    preSubmitIds: SLOTS.map((s) => s.id),
+  };
+
+  const opened = openCreateSlotDialogSession(
+    INITIAL_SLOT_DIALOG_SESSION,
+    identityA,
+    "2026-10-16",
+    "102",
+  );
+  const saving = {
+    ...opened,
+    editor: opened.editor ? { ...opened.editor, draft, saving: true } : null,
+  };
+
+  const recovered = recoverAbortedSlotMutation(saving, {
+    attemptIdentity: identityA,
+    liveIdentity: identityA,
+    mode: "create",
+    slotId: null,
+    draft,
+    autoEndTime: false,
+    confirmAction: null,
+    uncertain: uncertainAction,
+    error: UNKNOWN_AVAILABILITY_ERROR,
+  });
+  assert.equal(recovered.editor?.saving, false);
+  assert.equal(recovered.editor?.updatingStatus, false);
+  assert.equal(recovered.editor?.reconciling, false);
+  assert.notEqual(recovered.pendingUncertain, null);
+
+  // Close preserves pendingUncertain; create/edit/banner reopen all restore it.
+  const closed = closeSlotDialogSession(recovered);
+  assert.equal(closed.dialogOpen, false);
+  assert.notEqual(closed.pendingUncertain, null);
+
+  const viaCreate = openCreateSlotDialogSession(
+    closed,
+    identityA,
+    "2026-10-17",
+    "101",
+  );
+  assert.equal(viaCreate.dialogOpen, true);
+  assert.equal(viaCreate.editor?.uncertain?.kind, "create");
+  assert.deepEqual(viaCreate.editor?.draft, draft);
+
+  const viaEdit = openEditSlotDialogSession(closed, identityA, SLOTS[0]);
+  assert.equal(viaEdit.dialogOpen, true);
+  assert.equal(viaEdit.editor?.uncertain?.kind, "create");
+
+  const viaBanner = reopenPendingSlotSession(closed, identityA);
+  assert.equal(viaBanner.dialogOpen, true);
+  assert.equal(viaBanner.editor?.uncertain?.kind, "create");
+
+  // Reconcile abort on same identity keeps pendingUncertain & clears reconciling.
+  const reconciling = {
+    ...enterSlotUncertainSession(opened, {
+      attemptIdentity: identityA,
+      mode: "create",
+      slotId: null,
+      draft,
+      autoEndTime: false,
+      confirmAction: null,
+      uncertain: uncertainAction,
+      error: UNKNOWN_AVAILABILITY_ERROR,
+    }),
+    editor: viaCreate.editor ? { ...viaCreate.editor, reconciling: true } : null,
+  };
+  const afterReconcileAbort = recoverAbortedSlotReconcile(
+    reconciling,
+    identityA,
+    identityA,
+  );
+  assert.equal(afterReconcileAbort.editor?.reconciling, false);
+  assert.notEqual(afterReconcileAbort.pendingUncertain, null);
+
+  // 401/logout or identity switch purges 100%.
+  assert.deepEqual(
+    recoverAbortedSlotMutation(saving, {
+      attemptIdentity: identityA,
+      liveIdentity: null,
+      mode: "create",
+      slotId: null,
+      draft,
+      autoEndTime: false,
+      confirmAction: null,
+      uncertain: uncertainAction,
+      error: UNKNOWN_AVAILABILITY_ERROR,
+    }),
+    INITIAL_SLOT_DIALOG_SESSION,
+  );
+  assert.deepEqual(
+    recoverAbortedSlotReconcile(reconciling, identityA, identityB),
+    INITIAL_SLOT_DIALOG_SESSION,
+  );
 });

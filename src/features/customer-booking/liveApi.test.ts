@@ -40,6 +40,18 @@ import {
   isValidIdempotencyKey,
   normalizeBookingNote,
 } from "./liveApi";
+import {
+  beginCancelReconcile,
+  beginCancelSubmit,
+  openCancelFlow,
+  updateCancelReason,
+} from "./liveCancel";
+import {
+  closeCancelDialogSession,
+  createInitialCancelDialogSession,
+  recoverAbortedCancelState,
+  shouldRestoreUnknownCancelOnOpen,
+} from "./liveSubmission";
 
 const APP_ORIGIN = "https://app.example";
 const UPSTREAM_API = "https://api.example/api";
@@ -1209,4 +1221,110 @@ test("classifyBookingError distinguishes read vs mutation for network/invalid-re
   assert.equal(cancelTimeFromCode.code, "CANCEL_TIME");
   assert.equal(cancelTimeFromCode.category, "conflict");
   assert.equal(cancelTimeFromCode.shouldRefreshBookings, true);
+});
+
+test("R1 & R2 customer cancel: 503 same-identity abort recovers to unknown, close/reopen preserves guard, 401/switch purges", () => {
+  const actorA = {
+    id: "20",
+    role: "CUSTOMER" as const,
+    generation: GENERATION,
+  };
+  const identityA = `${GENERATION}:20:CUSTOMER`;
+  const identityB = "22222222-2222-4222-8222-222222222222:21:CUSTOMER";
+  const booking = decodeCustomerBooking(rawBookingFixture());
+  const bookingId = booking.id;
+  const now = Date.parse("2026-11-04T09:00:00+07:00");
+
+  const initialSession = createInitialCancelDialogSession();
+  assert.equal(initialSession.dialogOpen, false);
+  assert.equal(initialSession.cancelState.phase, "idle");
+
+  // 1) Customer dispatches cancel, then SessionProvider hides subtree on same-identity 503 abort.
+  const opened = openCancelFlow(initialSession.cancelState, actorA, booking, now);
+  assert.equal(opened.ok, true);
+  if (!opened.ok) return;
+  const withReason = updateCancelReason(opened.state, "Bận lịch đột xuất");
+  const submitting = beginCancelSubmit(withReason, actorA, booking, 1, now + 100);
+  assert.equal(submitting.ok, true);
+  if (!submitting.ok) return;
+  assert.equal(submitting.state.phase, "submitting");
+
+  const recovered = recoverAbortedCancelState(
+    submitting.state,
+    identityA,
+    now + 200,
+  );
+  assert.equal(recovered.phase, "unknown");
+  if (recovered.phase !== "unknown") return;
+  assert.equal(recovered.bookingId, bookingId);
+  assert.equal(recovered.identity, identityA);
+  assert.equal(recovered.reason, "Bận lịch đột xuất");
+  assert.equal(recovered.error.outcome, "unknown");
+
+  // 2) R2: closing dialog hides UI only, preserving unknown state & reason; reopen restores guard.
+  const closedUnknown = closeCancelDialogSession({
+    dialogOpen: true,
+    cancelState: recovered,
+  });
+  assert.equal(closedUnknown.dialogOpen, false);
+  assert.equal(closedUnknown.cancelState.phase, "unknown");
+  if (closedUnknown.cancelState.phase === "unknown") {
+    assert.equal(closedUnknown.cancelState.reason, "Bận lịch đột xuất");
+  }
+  assert.equal(
+    shouldRestoreUnknownCancelOnOpen(
+      closedUnknown.cancelState,
+      identityA,
+      bookingId,
+    ),
+    true,
+  );
+  assert.equal(
+    shouldRestoreUnknownCancelOnOpen(
+      closedUnknown.cancelState,
+      identityA,
+      "9999",
+    ),
+    false,
+  );
+  assert.equal(
+    shouldRestoreUnknownCancelOnOpen(
+      closedUnknown.cancelState,
+      identityB,
+      bookingId,
+    ),
+    false,
+  );
+
+  // Closing while actively submitting/reconciling is refused.
+  const refusedWhileSubmitting = closeCancelDialogSession({
+    dialogOpen: true,
+    cancelState: submitting.state,
+  });
+  assert.equal(refusedWhileSubmitting.dialogOpen, true);
+  assert.equal(refusedWhileSubmitting.cancelState.phase, "submitting");
+
+  // 3) Reconcile GET aborted on same-identity 503 returns cleanly to unknown (no stuck reconciling).
+  const reconciling = beginCancelReconcile(recovered, actorA, 2, now + 300);
+  assert.equal(reconciling.ok, true);
+  if (!reconciling.ok) return;
+  const recoveredReconcile = recoverAbortedCancelState(
+    reconciling.state,
+    identityA,
+    now + 400,
+  );
+  assert.equal(recoveredReconcile.phase, "unknown");
+  if (recoveredReconcile.phase === "unknown") {
+    assert.equal(recoveredReconcile.reason, "Bận lịch đột xuất");
+  }
+
+  // 4) 401/logout (null identity) or account switch purges 100% of cancel state immediately.
+  assert.deepEqual(
+    recoverAbortedCancelState(submitting.state, null, now + 500),
+    { phase: "idle" },
+  );
+  assert.deepEqual(
+    recoverAbortedCancelState(reconciling.state, identityB, now + 500),
+    { phase: "idle" },
+  );
 });

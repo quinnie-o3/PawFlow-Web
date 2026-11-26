@@ -18,15 +18,25 @@ import type {
   AvailabilitySummaryMetrics,
   ExpectedSlotState,
   ExpectedWorkingHourState,
+  PendingSlotUncertain,
+  PendingWorkingHourUncertain,
+  ProviderApiErrorInfo,
   ReconcileCreateResult,
   ReconcileUpdateResult,
   ResolvedSlotService,
+  SlotDialogSessionState,
   SlotDraft,
+  SlotEditorState,
+  SlotStatusAction,
+  SlotUncertainAction,
   SlotValidationErrors,
   VietnamSchedulingClock,
   WeeklyDaySchedule,
   WorkingHourDraft,
+  WorkingHourUncertainAction,
   WorkingHourValidationErrors,
+  WorkingHoursDialogSessionState,
+  WorkingHoursDialogState,
 } from "./types";
 
 export const availabilityTimeZone = "Asia/Ho_Chi_Minh";
@@ -1470,5 +1480,419 @@ export function summarizeAvailability(
     heldBookingsNext7Days,
     activeDaysCount,
     activeShiftsCount: activeShifts.length,
+  };
+}
+
+export const INITIAL_WORKING_HOURS_SESSION: WorkingHoursDialogSessionState = {
+  dialogOpen: false,
+  dialog: null,
+  pendingUncertain: null,
+};
+
+export const INITIAL_SLOT_DIALOG_SESSION: SlotDialogSessionState = {
+  dialogOpen: false,
+  editor: null,
+  pendingUncertain: null,
+};
+
+export function buildWorkingHoursDialogFromPending(
+  pending: PendingWorkingHourUncertain,
+): WorkingHoursDialogState {
+  return {
+    identity: pending.identity,
+    mode: pending.mode,
+    editingId: pending.editingId,
+    draft: pending.draft,
+    errors: {},
+    saving: false,
+    mutatingRowId: null,
+    confirmDeactivateId: null,
+    reconciling: false,
+    error: pending.error,
+    uncertain: pending.uncertain,
+    reconcileNote: pending.reconcileNote,
+    inlineFeedback: null,
+  };
+}
+
+export function enterWorkingHoursUncertainSession(
+  state: WorkingHoursDialogSessionState,
+  params: Readonly<{
+    attemptIdentity: string;
+    mode: "create" | "edit";
+    editingId: string | null;
+    draft: WorkingHourDraft;
+    uncertain: WorkingHourUncertainAction;
+    error: ProviderApiErrorInfo;
+  }>,
+): WorkingHoursDialogSessionState {
+  const pending: PendingWorkingHourUncertain = {
+    identity: params.attemptIdentity,
+    mode: params.mode,
+    editingId: params.editingId,
+    draft: params.draft,
+    uncertain: params.uncertain,
+    error: params.error,
+    reconcileNote: null,
+  };
+  const base =
+    state.dialog && state.dialog.identity === params.attemptIdentity
+      ? state.dialog
+      : buildWorkingHoursDialogFromPending(pending);
+  return {
+    dialogOpen: state.dialogOpen,
+    pendingUncertain: pending,
+    dialog: {
+      ...base,
+      mode: params.mode,
+      editingId: params.editingId,
+      draft: params.draft,
+      saving: false,
+      mutatingRowId: null,
+      confirmDeactivateId: null,
+      reconciling: false,
+      error: params.error,
+      uncertain: params.uncertain,
+      reconcileNote: null,
+    },
+  };
+}
+
+export function recoverAbortedWorkingHoursMutation(
+  state: WorkingHoursDialogSessionState,
+  params: Readonly<{
+    attemptIdentity: string;
+    liveIdentity: string | null;
+    mode: "create" | "edit";
+    editingId: string | null;
+    draft: WorkingHourDraft;
+    uncertain: WorkingHourUncertainAction;
+    error: ProviderApiErrorInfo;
+  }>,
+): WorkingHoursDialogSessionState {
+  if (params.liveIdentity !== params.attemptIdentity) {
+    return INITIAL_WORKING_HOURS_SESSION;
+  }
+  return enterWorkingHoursUncertainSession(state, params);
+}
+
+export function recoverAbortedWorkingHoursReconcile(
+  state: WorkingHoursDialogSessionState,
+  attemptIdentity: string,
+  liveIdentity: string | null,
+): WorkingHoursDialogSessionState {
+  if (liveIdentity !== attemptIdentity) {
+    return INITIAL_WORKING_HOURS_SESSION;
+  }
+  return {
+    ...state,
+    dialog:
+      state.dialog && state.dialog.identity === attemptIdentity
+        ? { ...state.dialog, reconciling: false }
+        : state.dialog,
+  };
+}
+
+export function closeWorkingHoursDialogSession(
+  state: WorkingHoursDialogSessionState,
+): WorkingHoursDialogSessionState {
+  if (
+    state.dialog &&
+    (state.dialog.saving ||
+      state.dialog.mutatingRowId !== null ||
+      state.dialog.reconciling)
+  ) {
+    return state;
+  }
+  if (state.pendingUncertain !== null) {
+    return {
+      dialogOpen: false,
+      dialog: state.dialog ?? buildWorkingHoursDialogFromPending(state.pendingUncertain),
+      pendingUncertain: state.pendingUncertain,
+    };
+  }
+  return INITIAL_WORKING_HOURS_SESSION;
+}
+
+export function openWorkingHoursDialogSession(
+  state: WorkingHoursDialogSessionState,
+  identity: string,
+): WorkingHoursDialogSessionState {
+  if (
+    state.pendingUncertain !== null &&
+    state.pendingUncertain.identity === identity
+  ) {
+    return {
+      dialogOpen: true,
+      dialog: buildWorkingHoursDialogFromPending(state.pendingUncertain),
+      pendingUncertain: state.pendingUncertain,
+    };
+  }
+  return {
+    dialogOpen: true,
+    pendingUncertain: null,
+    dialog: {
+      identity,
+      mode: "create",
+      editingId: null,
+      draft: workingHourToDraft(null, 1),
+      errors: {},
+      saving: false,
+      mutatingRowId: null,
+      confirmDeactivateId: null,
+      reconciling: false,
+      error: null,
+      uncertain: null,
+      reconcileNote: null,
+      inlineFeedback: null,
+    },
+  };
+}
+
+export function reopenPendingWorkingHoursSession(
+  state: WorkingHoursDialogSessionState,
+  identity: string,
+): WorkingHoursDialogSessionState {
+  if (
+    state.pendingUncertain === null ||
+    state.pendingUncertain.identity !== identity
+  ) {
+    return state;
+  }
+  const existing =
+    state.dialog && state.dialog.identity === identity ? state.dialog : null;
+  return {
+    dialogOpen: true,
+    pendingUncertain: state.pendingUncertain,
+    dialog: existing ?? buildWorkingHoursDialogFromPending(state.pendingUncertain),
+  };
+}
+
+export function buildSlotEditorFromPending(
+  pending: PendingSlotUncertain,
+): SlotEditorState {
+  const isStatus =
+    pending.uncertain.kind === "status" || pending.uncertain.kind === "cancel";
+  return {
+    identity: pending.identity,
+    mode: pending.mode,
+    slotId: pending.slotId,
+    draft: pending.draft,
+    autoEndTime: pending.autoEndTime,
+    errors: {},
+    saving: false,
+    updatingStatus: false,
+    reconciling: false,
+    confirmAction: pending.confirmAction,
+    saveError: isStatus ? null : pending.error,
+    statusError: isStatus ? pending.error : null,
+    uncertain: pending.uncertain,
+    reconcileNote: pending.reconcileNote,
+    statusFeedback: null,
+  };
+}
+
+export function enterSlotUncertainSession(
+  state: SlotDialogSessionState,
+  params: Readonly<{
+    attemptIdentity: string;
+    mode: "create" | "edit";
+    slotId: string | null;
+    draft: SlotDraft;
+    autoEndTime: boolean;
+    confirmAction: SlotStatusAction | null;
+    uncertain: SlotUncertainAction;
+    error: ProviderApiErrorInfo;
+  }>,
+): SlotDialogSessionState {
+  const pending: PendingSlotUncertain = {
+    identity: params.attemptIdentity,
+    mode: params.mode,
+    slotId: params.slotId,
+    draft: params.draft,
+    autoEndTime: params.autoEndTime,
+    confirmAction: params.confirmAction,
+    uncertain: params.uncertain,
+    error: params.error,
+    reconcileNote: null,
+  };
+  const base =
+    state.editor && state.editor.identity === params.attemptIdentity
+      ? state.editor
+      : buildSlotEditorFromPending(pending);
+  const isStatus =
+    params.uncertain.kind === "status" || params.uncertain.kind === "cancel";
+  return {
+    dialogOpen: state.dialogOpen,
+    pendingUncertain: pending,
+    editor: {
+      ...base,
+      mode: params.mode,
+      slotId: params.slotId,
+      draft: params.draft,
+      autoEndTime: params.autoEndTime,
+      saving: false,
+      updatingStatus: false,
+      reconciling: false,
+      confirmAction: params.confirmAction,
+      saveError: isStatus ? null : params.error,
+      statusError: isStatus ? params.error : null,
+      uncertain: params.uncertain,
+      reconcileNote: null,
+    },
+  };
+}
+
+export function recoverAbortedSlotMutation(
+  state: SlotDialogSessionState,
+  params: Readonly<{
+    attemptIdentity: string;
+    liveIdentity: string | null;
+    mode: "create" | "edit";
+    slotId: string | null;
+    draft: SlotDraft;
+    autoEndTime: boolean;
+    confirmAction: SlotStatusAction | null;
+    uncertain: SlotUncertainAction;
+    error: ProviderApiErrorInfo;
+  }>,
+): SlotDialogSessionState {
+  if (params.liveIdentity !== params.attemptIdentity) {
+    return INITIAL_SLOT_DIALOG_SESSION;
+  }
+  return enterSlotUncertainSession(state, params);
+}
+
+export function recoverAbortedSlotReconcile(
+  state: SlotDialogSessionState,
+  attemptIdentity: string,
+  liveIdentity: string | null,
+): SlotDialogSessionState {
+  if (liveIdentity !== attemptIdentity) {
+    return INITIAL_SLOT_DIALOG_SESSION;
+  }
+  return {
+    ...state,
+    editor:
+      state.editor && state.editor.identity === attemptIdentity
+        ? { ...state.editor, reconciling: false }
+        : state.editor,
+  };
+}
+
+export function closeSlotDialogSession(
+  state: SlotDialogSessionState,
+): SlotDialogSessionState {
+  if (
+    state.editor &&
+    (state.editor.saving ||
+      state.editor.updatingStatus ||
+      state.editor.reconciling)
+  ) {
+    return state;
+  }
+  if (state.pendingUncertain !== null) {
+    return {
+      dialogOpen: false,
+      editor: state.editor ?? buildSlotEditorFromPending(state.pendingUncertain),
+      pendingUncertain: state.pendingUncertain,
+    };
+  }
+  return INITIAL_SLOT_DIALOG_SESSION;
+}
+
+export function openCreateSlotDialogSession(
+  state: SlotDialogSessionState,
+  identity: string,
+  defaultDate: string,
+  defaultServiceId: string,
+): SlotDialogSessionState {
+  if (
+    state.pendingUncertain !== null &&
+    state.pendingUncertain.identity === identity
+  ) {
+    return {
+      dialogOpen: true,
+      editor: buildSlotEditorFromPending(state.pendingUncertain),
+      pendingUncertain: state.pendingUncertain,
+    };
+  }
+  return {
+    dialogOpen: true,
+    pendingUncertain: null,
+    editor: {
+      identity,
+      mode: "create",
+      slotId: null,
+      draft: slotToDraft(null, defaultDate, defaultServiceId),
+      autoEndTime: true,
+      errors: {},
+      saving: false,
+      updatingStatus: false,
+      reconciling: false,
+      confirmAction: null,
+      saveError: null,
+      statusError: null,
+      uncertain: null,
+      reconcileNote: null,
+      statusFeedback: null,
+    },
+  };
+}
+
+export function openEditSlotDialogSession(
+  state: SlotDialogSessionState,
+  identity: string,
+  target: ProviderAvailabilitySlot,
+): SlotDialogSessionState {
+  if (
+    state.pendingUncertain !== null &&
+    state.pendingUncertain.identity === identity
+  ) {
+    return {
+      dialogOpen: true,
+      editor: buildSlotEditorFromPending(state.pendingUncertain),
+      pendingUncertain: state.pendingUncertain,
+    };
+  }
+  return {
+    dialogOpen: true,
+    pendingUncertain: null,
+    editor: {
+      identity,
+      mode: "edit",
+      slotId: target.id,
+      draft: slotToDraft(target),
+      autoEndTime: false,
+      errors: {},
+      saving: false,
+      updatingStatus: false,
+      reconciling: false,
+      confirmAction: null,
+      saveError: null,
+      statusError: null,
+      uncertain: null,
+      reconcileNote: null,
+      statusFeedback: null,
+    },
+  };
+}
+
+export function reopenPendingSlotSession(
+  state: SlotDialogSessionState,
+  identity: string,
+): SlotDialogSessionState {
+  if (
+    state.pendingUncertain === null ||
+    state.pendingUncertain.identity !== identity
+  ) {
+    return state;
+  }
+  const existing =
+    state.editor && state.editor.identity === identity ? state.editor : null;
+  return {
+    dialogOpen: true,
+    pendingUncertain: state.pendingUncertain,
+    editor: existing ?? buildSlotEditorFromPending(state.pendingUncertain),
   };
 }

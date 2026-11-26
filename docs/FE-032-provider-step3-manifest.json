@@ -3,10 +3,10 @@
   "webDevSha": "789400b65f9656b51e935f87c8bafae1de3c24de",
   "apiSha": "d0f48b03f75e6c13132d40b6c2e597480a23a439",
   "branch": "provider-dashboard-live",
-  "status": "uncommitted-step3",
+  "status": "pr26-audit-remediation-commit3",
   "scope": "all tracked and candidate untracked files except docs/ and Markdown; .agent/, .geminiignore and generated/ignored files excluded",
   "algorithm": "SHA256 of sorted path + NUL + file SHA256 + newline",
-  "runtimeTestFingerprint": "ecd21a1ef2edd27a85beeeef8c18d39519b9c39b99553f959899122ca0873e8b",
+  "runtimeTestFingerprint": "9fd9c8179d9a86d5d3cc379ed3daa38c63d15ea2fcbfb185428b02e0e2338884",
   "fileCount": 479,
   "changedFiles": [
     "docs/FE-032-provider-step2.md",
@@ -14,7 +14,9 @@
     "docs/FE-032-provider-step3.md",
     "locale/vi.json",
     "scripts/test-provider.mjs",
+    "src/features/customer-booking/components/LiveBookingsPage.tsx",
     "src/features/customer-booking/liveApi.test.ts",
+    "src/features/customer-booking/liveSubmission.ts",
     "src/features/provider-availability/availability.module.css",
     "src/features/provider-availability/availabilityLogic.test.ts",
     "src/features/provider-availability/availabilityLogic.ts",
@@ -160,7 +162,7 @@
     },
     {
       "path": "locale/vi.json",
-      "sha256": "8746062dc82886d66c4ef98add36fe13c3f866048803f6a03d104b55bfbb611f"
+      "sha256": "ba799f84f0067d45652cd98d93e2f894681aef9c143119aed9139ba017243295"
     },
     {
       "path": "next.config.ts",
@@ -1124,11 +1126,11 @@
     },
     {
       "path": "src/features/customer-booking/components/LiveBookingsPage.tsx",
-      "sha256": "c84ac8155ab2b51a4be3035c8fa4e0dea668d494b709779247963597a39597bf"
+      "sha256": "f2e9aeca1d7f72736bce9fd4b8eb4482d3c679cf8425d75d08154a5437725aa7"
     },
     {
       "path": "src/features/customer-booking/liveApi.test.ts",
-      "sha256": "c734a180656e104cc6ecea6a0beed5e28955762875a5aa0f7be564ec856c48ef"
+      "sha256": "6b0998233a9037a90d484d4a3f99299509affcc80ffc23548cfc2636376f17db"
     },
     {
       "path": "src/features/customer-booking/liveApi.ts",
@@ -1148,7 +1150,7 @@
     },
     {
       "path": "src/features/customer-booking/liveSubmission.ts",
-      "sha256": "bdcbde31474b3e90fabfb51c2bc4e1a629504ad3228bf876a36fc5ed8f7178a3"
+      "sha256": "0fd2657b779453baaf1815963dca18ee86c391c9d8035c277d07edd6149ad8ca"
     },
     {
       "path": "src/features/customer-booking/mockWorkspace.test.ts",
@@ -1456,11 +1458,11 @@
     },
     {
       "path": "src/features/provider-availability/availabilityLogic.test.ts",
-      "sha256": "c118d035ab07c6acae5d483367f45cf23763ad965e351c45b6e10a38dcfb6ecd"
+      "sha256": "9b4ef4e27e930bd691f0a1d62c8a323503dc4665458d0863800ac4d03a5bc12b"
     },
     {
       "path": "src/features/provider-availability/availabilityLogic.ts",
-      "sha256": "56d371a4834ce500969cb3c7e8ae3aed1d48cd7721092be42fba3171aeb2b8e7"
+      "sha256": "659e9d48451429164806f1d86253be74facaba556d35448be4e36044ad8bfccd"
     },
     {
       "path": "src/features/provider-availability/components/AvailabilityFeedback.tsx",
@@ -1476,7 +1478,7 @@
     },
     {
       "path": "src/features/provider-availability/components/ProviderAvailabilityPage.tsx",
-      "sha256": "1b73b553b0d8fa153849fbc27191b88b12ab500c654315810532aecbc2a45e3d"
+      "sha256": "9b88b93b008fead023db396c5ac55076542e9027eb8fc65104906362f4b87705"
     },
     {
       "path": "src/features/provider-availability/components/SlotDialog.tsx",
@@ -1500,7 +1502,7 @@
     },
     {
       "path": "src/features/provider-availability/types.ts",
-      "sha256": "8ea3b961048b631f40e561752a006951f5d728553468a68abb64bd4c5f0502db"
+      "sha256": "6100dce1d79aefbc8811f1bd30d8284d712143325ba15535dd6698256e6d599f"
     },
     {
       "path": "src/features/provider-availability/useProviderAvailability.ts",
@@ -1508,11 +1510,11 @@
     },
     {
       "path": "src/features/provider-bookings/bookingLogic.test.ts",
-      "sha256": "e41ea85c34416bee7444e198c696507355071d8f4cd858a7dbb318268b307634"
+      "sha256": "67b41471807690f3b46af64931f2385879647eb368e7290d78fddab8f725dc46"
     },
     {
       "path": "src/features/provider-bookings/bookingLogic.ts",
-      "sha256": "968f58912f9b655ae44e4c7b651426167347812161256c30c621390eb31b154e"
+      "sha256": "79a37f22a3b6e09bd3780686b10f7cff02a6123159f7893211362a89f28d6ffa"
     },
     {
       "path": "src/features/provider-bookings/bookings.module.css",
@@ -1536,7 +1538,7 @@
     },
     {
       "path": "src/features/provider-bookings/useProviderBookings.ts",
-      "sha256": "3ac88ca427434e2456c5bf884fec0646034803a240f2a8cf85e8855f1eb1d53a"
+      "sha256": "a395c6d87108a0e4fd47c743190d07f52c3ef1c143679e57bb7f7b4eed3718a8"
     },
     {
       "path": "src/features/provider-customers/components/CustomerBookingHistory.tsx",
@@ -1736,7 +1738,7 @@
     },
     {
       "path": "src/features/provider-profile/components/ProviderProfilePage.tsx",
-      "sha256": "9bc8d0bb820600d59358fcc3dc534dc9123158214a6c85f85f013f1f3e1beffe"
+      "sha256": "fe1cf391983380c285e699c1c03b4b5701b131c39a80a50d5fa8f2b783faf1e1"
     },
     {
       "path": "src/features/provider-profile/profile.module.css",
@@ -1744,11 +1746,11 @@
     },
     {
       "path": "src/features/provider-profile/profileLogic.test.ts",
-      "sha256": "79ef90136b718f663e2718bf6fbfb24328584ebb84de1b44c8499fdeef6b7d2c"
+      "sha256": "6b9e3d8939b8188e6e7d4ddd2ea0de1e72f7c9d3253ab26cc41b87ebc2c3c94a"
     },
     {
       "path": "src/features/provider-profile/profileLogic.ts",
-      "sha256": "b52be2ee8b5b85a8f1bdf6f7d32d0b4c0a6a6e882a1ad0fcd9aa7912aa2ea077"
+      "sha256": "6d416c4af2f797b192eb1631a8bcdeb636236c9338a15118ce52ca89cc085abd"
     },
     {
       "path": "src/features/provider-profile/profileValidation.ts",
@@ -1756,11 +1758,11 @@
     },
     {
       "path": "src/features/provider-profile/types.ts",
-      "sha256": "46937027efff15ec90819eb52e031c1831f0fcb1549abd27935dbbd8c19aec41"
+      "sha256": "2734608f6c4b189fc4179a12072de01d20138512e56fe648d128786b89fbd7e8"
     },
     {
       "path": "src/features/provider-services/components/ProviderServicesPage.tsx",
-      "sha256": "cf4bb9495aff97affc01bd5f096e59cddd5b06557fcdbfc79cf8f8542e2b48df"
+      "sha256": "548fa4aa6b6512f3c62c3a395cc2c27e38a0c348aa747f9b77d0097e95847b74"
     },
     {
       "path": "src/features/provider-services/components/ServiceCard.tsx",
@@ -1772,7 +1774,7 @@
     },
     {
       "path": "src/features/provider-services/components/ServiceDialog.tsx",
-      "sha256": "48bbe4b86610472a6d86f6dca606416a2b2126d6985eb02a35a332cc0612b913"
+      "sha256": "49a8e37ae0107216add024ef4c4a7a8109bc1aeba9d1f2ac336203420f9ad16d"
     },
     {
       "path": "src/features/provider-services/components/ServiceStatusBadge.tsx",
@@ -1800,19 +1802,19 @@
     },
     {
       "path": "src/features/provider-services/serviceLogic.test.ts",
-      "sha256": "0ae060d1e84b2476b9c06813d0b087c724df8c28e6f90a1dc92d14ff10d8305a"
+      "sha256": "49675bb378d3e53a73aa61b3d2a3f91ed25dc375c4ed0466e91301a572383617"
     },
     {
       "path": "src/features/provider-services/serviceLogic.ts",
-      "sha256": "cf00821b14e3725eb30d4d0b53f015aa66628e672bb9a9a314afb62987fc1c96"
+      "sha256": "29bf20fcaa0594e8fa26fa434f0450b60a6ba0329584a07e86969bf6900ba675"
     },
     {
       "path": "src/features/provider-services/services.module.css",
-      "sha256": "81981ec473e0c099c3e7565cade035b5c1405f60ab28f749227926d89b34c6a4"
+      "sha256": "a76b0e1e749f0a5db4a0261fadf9e31661682f9f9fe046ec53f40f26387b1f7f"
     },
     {
       "path": "src/features/provider-services/types.ts",
-      "sha256": "17becb524cd3af0a263ec90d66f05935f9c87e8dcc3872d24de49129a897df17"
+      "sha256": "9d5c798506829f9571f67fc84c1d44c19804b2bee0b7c7201fbcd12ee14a8bd2"
     },
     {
       "path": "src/features/provider-services/useProviderServices.ts",
@@ -1840,11 +1842,11 @@
     },
     {
       "path": "src/features/provider-workspace/liveApi.test.ts",
-      "sha256": "52dc15a83bb06c3f2f0b2ceddc250ef42ba523da75524dd99fea4610d5835c77"
+      "sha256": "590b68db036896d131d530ab25163853d4eaaba0320c862cea97aa8f1a74cfa6"
     },
     {
       "path": "src/features/provider-workspace/liveApi.ts",
-      "sha256": "9995bf43f0ab7e8a49d44ab5a3d5a0fc79b8c33b3831f378d3feb7271df0ad12"
+      "sha256": "493eadc9cc2bbb96ff8fa3de09d01d554340e5af67c5f416f14d0fede99cbeef"
     },
     {
       "path": "src/features/provider-workspace/useProviderProfile.ts",
@@ -2053,11 +2055,11 @@
   ],
   "checks": {
     "providerUnitContract": {
-      "passed": 91,
+      "passed": 100,
       "failed": 0
     },
     "bookingUnitContract": {
-      "passed": 54,
+      "passed": 55,
       "failed": 0
     },
     "accountSessionRegression": {
@@ -2074,12 +2076,16 @@
     "diffCheck": "passed (fresh)",
     "realApiPgGroups": {
       "passed": 10,
-      "failed": 0
+      "failed": 0,
+      "verifiedAtCommit": "d3eac6e551b97029544234a5a46a00c497e9f94e",
+      "reRunInCommit3": false
     },
     "productionBrowser3ViewportGroups": {
       "passed": 10,
       "failed": 0,
-      "pageErrors": 0
+      "pageErrors": 0,
+      "verifiedAtCommit": "d3eac6e551b97029544234a5a46a00c497e9f94e",
+      "reRunInCommit3": false
     }
   },
   "qaEvidence": {
@@ -2103,6 +2109,45 @@
     ],
     "screenshotsCaptured": 22,
     "simulatorsAndFaults": "Local HTTP Turnstile Siteverify simulator (enforced secret/hostname/action/one-use), browser Turnstile widget stub, controlled loopback HTTPS fault proxy (drop-after-upstream/drop-before-upstream/return-503), and synthetic PostgreSQL DSS dataset",
-    "documentationExcluded": true
+    "documentationExcluded": true,
+    "pr26AuditRemediation": {
+      "previousStep3Commit": "d3eac6e551b97029544234a5a46a00c497e9f94e",
+      "previousRuntimeTestFingerprint": "ecd21a1ef2edd27a85beeeef8c18d39519b9c39b99553f959899122ca0873e8b",
+      "resolvedFindings": [
+        "R1",
+        "R2",
+        "R3",
+        "Y1"
+      ],
+      "documentedBackendLimitation": "Y2: PawFlow-API/src/dashboard/dashboard.service.ts:311 (getHalfOpenPeriod uses 00:00:00.000Z UTC boundary; backend locked and untouched)",
+      "commit3ModifiedFiles": [
+        "docs/FE-032-provider-step2.md",
+        "docs/FE-032-provider-step3-manifest.json",
+        "docs/FE-032-provider-step3.md",
+        "locale/vi.json",
+        "src/features/customer-booking/components/LiveBookingsPage.tsx",
+        "src/features/customer-booking/liveApi.test.ts",
+        "src/features/customer-booking/liveSubmission.ts",
+        "src/features/provider-availability/availabilityLogic.test.ts",
+        "src/features/provider-availability/availabilityLogic.ts",
+        "src/features/provider-availability/components/ProviderAvailabilityPage.tsx",
+        "src/features/provider-availability/types.ts",
+        "src/features/provider-bookings/bookingLogic.test.ts",
+        "src/features/provider-bookings/bookingLogic.ts",
+        "src/features/provider-bookings/useProviderBookings.ts",
+        "src/features/provider-profile/components/ProviderProfilePage.tsx",
+        "src/features/provider-profile/profileLogic.test.ts",
+        "src/features/provider-profile/profileLogic.ts",
+        "src/features/provider-profile/types.ts",
+        "src/features/provider-services/components/ProviderServicesPage.tsx",
+        "src/features/provider-services/components/ServiceDialog.tsx",
+        "src/features/provider-services/serviceLogic.test.ts",
+        "src/features/provider-services/serviceLogic.ts",
+        "src/features/provider-services/services.module.css",
+        "src/features/provider-services/types.ts",
+        "src/features/provider-workspace/liveApi.test.ts",
+        "src/features/provider-workspace/liveApi.ts"
+      ]
+    }
   }
 }

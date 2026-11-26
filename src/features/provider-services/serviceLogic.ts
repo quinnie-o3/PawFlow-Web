@@ -4,18 +4,24 @@ import { validId } from "../public-catalog/query";
 import {
   normalizeOptionalText,
   type CreateServiceInput,
+  type ProviderApiErrorInfo,
   type ProviderApprovalStatus,
   type ProviderService,
   type ProviderServiceCategoryRef,
+  type ProviderServiceStatus,
   type ServiceCategoryOption,
   type UpdateServiceInput,
 } from "../provider-workspace/liveApi";
 import type {
   ExpectedCreateServicePayload,
   ExpectedUpdateServicePatch,
+  PendingServiceUncertain,
   ServiceCategoryFilterOption,
+  ServiceDialogSessionState,
   ServiceDraft,
+  ServiceEditorState,
   ServiceFilters,
+  ServiceUncertainState,
   ServiceValidationErrors,
 } from "./types";
 
@@ -23,7 +29,7 @@ export const SERVICE_NAME_MIN = 1;
 export const SERVICE_NAME_MAX = 200;
 export const SERVICE_DURATION_MIN = 1;
 export const SERVICE_DURATION_MAX = 2147483647;
-export const SERVICE_MAX_PRICE = 9999999999.99;
+export const SERVICE_MAX_PRICE = "9999999999.99";
 const SERVICE_MAX_PRICE_CENTS = BigInt("999999999999");
 const BIGINT_ZERO = BigInt(0);
 const BIGINT_HUNDRED = BigInt(100);
@@ -35,15 +41,15 @@ const PRICE_DISPLAY_PATTERN = /^(\d+)(?:\.(\d{1,2}))?$/;
 const VI_INTEGER_FORMATTER = new Intl.NumberFormat("vi-VN");
 
 export type ParsedPrice = Readonly<{
-  numeric: number;
-  /** Exact NUMERIC(12,2) representation, e.g. "150000.00". */
+  /** Exact NUMERIC(12,2) representation, e.g. "150000.00" or "9999999999.95". */
   canonical: string;
+  /** Exact non-negative integer cents in BigInt (0 .. 999999999999). */
+  cents: bigint;
 }>;
 
 /**
- * Parses price text with exact BigInt cents bounds (0 .. 9999999999.99, max 2 decimals)
- * and matches liveApi.ts's IEEE-754 cent-precision check so edge prices fail cleanly
- * at field validation rather than throwing INVALID_INPUT during API dispatch.
+ * Parses price text strictly with regex + exact BigInt cents bounds
+ * (0.00 .. 9999999999.99, max 2 decimals) without any IEEE-754 float coercion.
  */
 export function parsePriceInput(raw: string): ParsedPrice | null {
   const trimmed = raw.trim();
@@ -59,20 +65,10 @@ export function parsePriceInput(raw: string): ParsedPrice | null {
   const cents = BigInt(normalizedInt) * BIGINT_HUNDRED + BigInt(paddedFrac);
   if (cents < BIGINT_ZERO || cents > SERVICE_MAX_PRICE_CENTS) return null;
 
-  const canonical = `${normalizedInt}.${paddedFrac}`;
-  const numeric = Number(canonical);
-  if (
-    !Number.isFinite(numeric) ||
-    numeric < 0 ||
-    numeric > SERVICE_MAX_PRICE
-  ) {
-    return null;
-  }
-  if (Math.abs(Math.round(numeric * 100) - numeric * 100) >= 1e-6) {
-    return null;
-  }
-
-  return { numeric, canonical };
+  return {
+    canonical: `${normalizedInt}.${paddedFrac}`,
+    cents,
+  };
 }
 
 export function parseDurationMinutesInput(raw: string): number | null {
@@ -261,7 +257,7 @@ export function buildCreateServicePayload(
     input: {
       categoryId,
       name,
-      price: parsedPrice.numeric,
+      price: parsedPrice.canonical,
       durationMinutes,
       description,
     },
@@ -285,7 +281,7 @@ export function buildUpdateServicePatch(
   const input: {
     categoryId?: string;
     name?: string;
-    price?: number;
+    price?: string;
     durationMinutes?: number;
     description?: string | null;
   } = {};
@@ -311,7 +307,7 @@ export function buildUpdateServicePatch(
 
   const parsedPrice = parsePriceInput(draft.price);
   if (parsedPrice !== null && parsedPrice.canonical !== existing.price) {
-    input.price = parsedPrice.numeric;
+    input.price = parsedPrice.canonical;
     expected.canonicalPrice = parsedPrice.canonical;
   }
 
@@ -391,8 +387,14 @@ export type ReconcileCreateResult =
       outcome: "forbidden-lifecycle";
       approvalStatus: "REJECTED" | "SUSPENDED";
     }>
-  | Readonly<{ outcome: "not-created" }>;
+  | Readonly<{ outcome: "still-unknown" }>;
 
+/**
+ * Reconciles an uncertain POST /services against authoritative GET /services/mine.
+ * Because BFF timeout (8s) does not prove the backend transaction stopped and
+ * POST /services has no uniqueness constraint, absence on a GET check remains
+ * "still-unknown" (never "not-created") so duplicate POST stays locked until confirmed.
+ */
 export function reconcileServiceCreate(
   expected: ExpectedCreateServicePayload,
   preSubmitIds: readonly string[],
@@ -416,7 +418,7 @@ export function reconcileServiceCreate(
   if (approvalStatus === "REJECTED" || approvalStatus === "SUSPENDED") {
     return { outcome: "forbidden-lifecycle", approvalStatus };
   }
-  return { outcome: "not-created" };
+  return { outcome: "still-unknown" };
 }
 
 export type ReconcileUpdateResult =
@@ -535,4 +537,272 @@ export function applyLocalServiceMutation(
   };
   if (!previous) return [hydrated, ...services];
   return services.map((item) => (item.id === hydrated.id ? hydrated : item));
+}
+
+export const INITIAL_SERVICE_DIALOG_SESSION: ServiceDialogSessionState = {
+  dialogOpen: false,
+  editor: null,
+  pendingUncertain: null,
+};
+
+export function buildServiceEditorFromPending(
+  pending: PendingServiceUncertain,
+): ServiceEditorState {
+  const isStatus = pending.uncertain.kind === "status";
+  return {
+    identity: pending.identity,
+    mode: pending.mode,
+    serviceId: pending.serviceId,
+    draft: pending.draft,
+    errors: {},
+    saving: false,
+    updatingStatus: false,
+    reconciling: false,
+    confirmStatus: pending.confirmStatus,
+    saveError: isStatus ? null : pending.error,
+    statusError: isStatus ? pending.error : null,
+    uncertain: pending.uncertain,
+    reconcileNote: pending.reconcileNote,
+    statusFeedback: null,
+  };
+}
+
+export function enterServiceUncertainSession(
+  state: ServiceDialogSessionState,
+  params: Readonly<{
+    attemptIdentity: string;
+    mode: "create" | "edit";
+    serviceId: string | null;
+    draft: ServiceDraft;
+    confirmStatus: ProviderServiceStatus | null;
+    uncertain: ServiceUncertainState;
+    error: ProviderApiErrorInfo;
+  }>,
+): ServiceDialogSessionState {
+  const pending: PendingServiceUncertain = {
+    identity: params.attemptIdentity,
+    mode: params.mode,
+    serviceId: params.serviceId,
+    draft: params.draft,
+    confirmStatus: params.confirmStatus,
+    uncertain: params.uncertain,
+    error: params.error,
+    reconcileNote: null,
+  };
+  const baseEditor =
+    state.editor && state.editor.identity === params.attemptIdentity
+      ? state.editor
+      : buildServiceEditorFromPending(pending);
+  const isStatus = params.uncertain.kind === "status";
+  return {
+    dialogOpen: state.dialogOpen,
+    pendingUncertain: pending,
+    editor: {
+      ...baseEditor,
+      mode: params.mode,
+      serviceId: params.serviceId,
+      draft: params.draft,
+      saving: false,
+      updatingStatus: false,
+      reconciling: false,
+      confirmStatus: params.confirmStatus,
+      saveError: isStatus ? null : params.error,
+      statusError: isStatus ? params.error : null,
+      uncertain: params.uncertain,
+      reconcileNote: null,
+    },
+  };
+}
+
+/**
+ * R1 recovery: if an in-flight service mutation is aborted by <Activity mode="hidden">
+ * during a same-identity 503 revalidation, release busy flags and move directly to
+ * uncertain (preserving draft/preSubmitIds/targetId) so blind re-POST stays blocked.
+ * On 401/logout/identity switch, purge 100% of private state immediately.
+ */
+export function recoverAbortedServiceMutation(
+  state: ServiceDialogSessionState,
+  params: Readonly<{
+    attemptIdentity: string;
+    liveIdentity: string | null;
+    mode: "create" | "edit";
+    serviceId: string | null;
+    draft: ServiceDraft;
+    confirmStatus: ProviderServiceStatus | null;
+    uncertain: ServiceUncertainState;
+    error: ProviderApiErrorInfo;
+  }>,
+): ServiceDialogSessionState {
+  if (params.liveIdentity !== params.attemptIdentity) {
+    return INITIAL_SERVICE_DIALOG_SESSION;
+  }
+  return enterServiceUncertainSession(state, params);
+}
+
+export function recoverAbortedServiceReconcile(
+  state: ServiceDialogSessionState,
+  attemptIdentity: string,
+  liveIdentity: string | null,
+): ServiceDialogSessionState {
+  if (liveIdentity !== attemptIdentity) {
+    return INITIAL_SERVICE_DIALOG_SESSION;
+  }
+  return {
+    ...state,
+    editor:
+      state.editor && state.editor.identity === attemptIdentity
+        ? { ...state.editor, reconciling: false }
+        : state.editor,
+  };
+}
+
+/**
+ * R2 guard: closing the dialog hides UI only when pendingUncertain is active;
+ * never discards pendingUncertain so reopening or clicking "Thêm dịch vụ" restores it.
+ */
+export function closeServiceDialogSession(
+  state: ServiceDialogSessionState,
+): ServiceDialogSessionState {
+  if (
+    state.editor &&
+    (state.editor.saving ||
+      state.editor.updatingStatus ||
+      state.editor.reconciling)
+  ) {
+    return state;
+  }
+  if (state.pendingUncertain !== null) {
+    return {
+      dialogOpen: false,
+      editor: state.editor ?? buildServiceEditorFromPending(state.pendingUncertain),
+      pendingUncertain: state.pendingUncertain,
+    };
+  }
+  return INITIAL_SERVICE_DIALOG_SESSION;
+}
+
+export function openCreateServiceDialogSession(
+  state: ServiceDialogSessionState,
+  identity: string,
+): ServiceDialogSessionState {
+  if (
+    state.pendingUncertain !== null &&
+    state.pendingUncertain.identity === identity
+  ) {
+    return {
+      dialogOpen: true,
+      editor: buildServiceEditorFromPending(state.pendingUncertain),
+      pendingUncertain: state.pendingUncertain,
+    };
+  }
+  return {
+    dialogOpen: true,
+    pendingUncertain: null,
+    editor: {
+      identity,
+      mode: "create",
+      serviceId: null,
+      draft: serviceToDraft(),
+      errors: {},
+      saving: false,
+      updatingStatus: false,
+      reconciling: false,
+      confirmStatus: null,
+      saveError: null,
+      statusError: null,
+      uncertain: null,
+      reconcileNote: null,
+      statusFeedback: null,
+    },
+  };
+}
+
+export function openEditServiceDialogSession(
+  state: ServiceDialogSessionState,
+  identity: string,
+  target: ProviderService,
+): ServiceDialogSessionState {
+  if (
+    state.pendingUncertain !== null &&
+    state.pendingUncertain.identity === identity
+  ) {
+    return {
+      dialogOpen: true,
+      editor: buildServiceEditorFromPending(state.pendingUncertain),
+      pendingUncertain: state.pendingUncertain,
+    };
+  }
+  return {
+    dialogOpen: true,
+    pendingUncertain: null,
+    editor: {
+      identity,
+      mode: "edit",
+      serviceId: target.id,
+      draft: serviceToDraft(target),
+      errors: {},
+      saving: false,
+      updatingStatus: false,
+      reconciling: false,
+      confirmStatus: null,
+      saveError: null,
+      statusError: null,
+      uncertain: null,
+      reconcileNote: null,
+      statusFeedback: null,
+    },
+  };
+}
+
+export function reopenPendingServiceUncertainSession(
+  state: ServiceDialogSessionState,
+  identity: string,
+): ServiceDialogSessionState {
+  if (
+    state.pendingUncertain === null ||
+    state.pendingUncertain.identity !== identity
+  ) {
+    return state;
+  }
+  const existing =
+    state.editor && state.editor.identity === identity ? state.editor : null;
+  return {
+    dialogOpen: true,
+    pendingUncertain: state.pendingUncertain,
+    editor: existing ?? buildServiceEditorFromPending(state.pendingUncertain),
+  };
+}
+
+export function keepServiceCreateStillUnknown(
+  state: ServiceDialogSessionState,
+  attemptIdentity: string,
+  note: string,
+): ServiceDialogSessionState {
+  const nextPending =
+    state.pendingUncertain &&
+    state.pendingUncertain.identity === attemptIdentity
+      ? {
+          ...state.pendingUncertain,
+          error: null,
+          reconcileNote: note,
+        }
+      : state.pendingUncertain;
+  const baseEditor =
+    state.editor && state.editor.identity === attemptIdentity
+      ? state.editor
+      : nextPending
+        ? buildServiceEditorFromPending(nextPending)
+        : null;
+  return {
+    dialogOpen: state.dialogOpen,
+    pendingUncertain: nextPending,
+    editor: baseEditor
+      ? {
+          ...baseEditor,
+          reconciling: false,
+          saveError: null,
+          reconcileNote: note,
+        }
+      : null,
+  };
 }

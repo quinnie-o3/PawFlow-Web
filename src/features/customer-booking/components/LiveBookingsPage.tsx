@@ -30,8 +30,12 @@ import {
 } from "../liveApi";
 import {
   activeCustomerActor,
+  actorIdentityKey,
+  closeCancelDialogSession,
+  recoverAbortedCancelState,
   sessionBoundaryAction,
   sessionIdentityKey,
+  shouldRestoreUnknownCancelOnOpen,
   type LiveSessionSnapshot,
   type SessionBoundaryDecision,
 } from "../liveSubmission";
@@ -39,7 +43,6 @@ import {
   beginCancelReconcile,
   beginCancelSubmit,
   cancelCooldownRemainingMs,
-  closeCancelFlow,
   createInitialCancelState,
   evaluateCancelEligibility,
   filterLiveBookings,
@@ -474,6 +477,7 @@ export function LiveBookingDetailPage({ bookingId }: { bookingId: string }) {
   const [cancelState, setCancelState] = useState<LiveCancelState>(() =>
     createInitialCancelState(),
   );
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [pageNotice, setPageNotice] = useState<string | null>(null);
   const [dialogNotice, setDialogNotice] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -504,6 +508,7 @@ export function LiveBookingDetailPage({ bookingId }: { bookingId: string }) {
           : { status: "not-found", data: null, error: null },
       );
       setCancelState(createInitialCancelState());
+      setCancelDialogOpen(false);
       setPageNotice(null);
       setDialogNotice(null);
     } else if (boundary.closeDialog) {
@@ -665,9 +670,18 @@ export function LiveBookingDetailPage({ bookingId }: { bookingId: string }) {
 
   const dialogOpen =
     boundary.mode === "customer" &&
+    cancelDialogOpen &&
     detail !== null &&
     isCancelDialogOpen(cancelState);
   const cancelInFlight = isCancelInFlight(cancelState);
+  const pendingUnknownCancel =
+    boundary.mode === "customer" &&
+    detail !== null &&
+    cancelState.phase === "unknown" &&
+    cancelState.identity === boundary.identity &&
+    cancelState.bookingId === detail.id
+      ? cancelState
+      : null;
 
   useEffect(() => {
     if (dialogOpen && cancelState.phase === "confirming") {
@@ -684,24 +698,36 @@ export function LiveBookingDetailPage({ bookingId }: { bookingId: string }) {
 
   function handleOpenCancel() {
     if (!actor || !detail) return;
+    if (
+      shouldRestoreUnknownCancelOnOpen(
+        cancelRef.current,
+        actorIdentityKey(actor),
+        detail.id,
+      )
+    ) {
+      setDialogNotice(null);
+      setCancelDialogOpen(true);
+      return;
+    }
     const timestamp = Date.now();
     setNow(timestamp);
     setDialogNotice(null);
     const opened = openCancelFlow(cancelRef.current, actor, detail, timestamp);
     if (opened.ok) {
       commitCancel(opened.state);
+      setCancelDialogOpen(true);
     }
   }
 
   function handleCloseCancel() {
     if (isCancelInFlight(cancelRef.current)) return;
-    const wasUnknown = cancelRef.current.phase === "unknown";
     setDialogNotice(null);
-    commitCancel(closeCancelFlow(cancelRef.current));
-    if (wasUnknown) {
-      privateCache.invalidate(queryKeys.bookings.all());
-      void loadDetail({ preserveData: true });
-    }
+    const closed = closeCancelDialogSession({
+      dialogOpen: cancelDialogOpen,
+      cancelState: cancelRef.current,
+    });
+    commitCancel(closed.cancelState);
+    setCancelDialogOpen(closed.dialogOpen);
   }
 
   async function refreshAfterConflict(
@@ -730,10 +756,12 @@ export function LiveBookingDetailPage({ bookingId }: { bookingId: string }) {
       );
       if (synced.resolution === "already-cancelled") {
         commitCancel(synced.state);
+        setCancelDialogOpen(false);
         setDialogNotice(null);
         setPageNotice(t.cancelConfirmedAfterSync);
       } else if (synced.resolution === "no-longer-cancellable") {
         commitCancel(synced.state);
+        setCancelDialogOpen(false);
         setDialogNotice(null);
         setPageNotice(
           synced.reasonCode === "CANCEL_TIME"
@@ -756,6 +784,7 @@ export function LiveBookingDetailPage({ bookingId }: { bookingId: string }) {
       const classified = classifyBookingError(refreshError, "get-booking");
       if (classified.code === "BOOKING_NOT_FOUND") {
         commitCancel(createInitialCancelState());
+        setCancelDialogOpen(false);
         setDialogNotice(null);
         setDetailState({ status: "not-found", data: null, error: null });
       }
@@ -801,10 +830,16 @@ export function LiveBookingDetailPage({ bookingId }: { bookingId: string }) {
       const updated = await cancelMyBooking(targetBookingId, begun.input, {
         signal: controller.signal,
       });
-      if (
-        controller.signal.aborted ||
-        sessionIdentityKey(snapshot()) !== expectedIdentity
-      ) {
+      const liveIdentity = sessionIdentityKey(snapshot());
+      if (liveIdentity !== expectedIdentity) {
+        return;
+      }
+      if (controller.signal.aborted) {
+        const failedAt = Date.now();
+        setNow(failedAt);
+        commitCancel(
+          recoverAbortedCancelState(cancelRef.current, liveIdentity, failedAt),
+        );
         return;
       }
       const settled = settleCancelSubmit(
@@ -814,6 +849,7 @@ export function LiveBookingDetailPage({ bookingId }: { bookingId: string }) {
         { kind: "success", booking: updated },
       );
       commitCancel(settled);
+      setCancelDialogOpen(false);
       setDialogNotice(null);
       setPageNotice(t.cancelSucceeded);
       setDetailState((current) =>
@@ -827,11 +863,22 @@ export function LiveBookingDetailPage({ bookingId }: { bookingId: string }) {
       );
       void loadDetail({ preserveData: true });
     } catch (error) {
-      if (
-        isRequestCancelled(error) ||
-        controller.signal.aborted ||
-        sessionIdentityKey(snapshot()) !== expectedIdentity
-      ) {
+      if (isRequestCancelled(error) || controller.signal.aborted) {
+        const liveIdentity = sessionIdentityKey(snapshot());
+        const failedAt = Date.now();
+        setNow(failedAt);
+        const recovered = recoverAbortedCancelState(
+          cancelRef.current,
+          liveIdentity,
+          failedAt,
+        );
+        commitCancel(recovered);
+        if (recovered.phase === "idle") {
+          setCancelDialogOpen(false);
+        }
+        return;
+      }
+      if (sessionIdentityKey(snapshot()) !== expectedIdentity) {
         return;
       }
       const apiErr = toLiveCancelError(
@@ -850,6 +897,7 @@ export function LiveBookingDetailPage({ bookingId }: { bookingId: string }) {
       if (apiErr.code === "BOOKING_NOT_FOUND") {
         privateCache.invalidate(queryKeys.bookings.all());
         commitCancel(createInitialCancelState());
+        setCancelDialogOpen(false);
         setDialogNotice(null);
         setDetailState({ status: "not-found", data: null, error: null });
         return;
@@ -897,10 +945,16 @@ export function LiveBookingDetailPage({ bookingId }: { bookingId: string }) {
       const refreshed = await getMyBookingDetail(begun.bookingId, {
         signal: controller.signal,
       });
-      if (
-        controller.signal.aborted ||
-        sessionIdentityKey(snapshot()) !== expectedIdentity
-      ) {
+      const liveIdentity = sessionIdentityKey(snapshot());
+      if (liveIdentity !== expectedIdentity) {
+        return;
+      }
+      if (controller.signal.aborted) {
+        const failedAt = Date.now();
+        setNow(failedAt);
+        commitCancel(
+          recoverAbortedCancelState(cancelRef.current, liveIdentity, failedAt),
+        );
         return;
       }
       const settledAt = Date.now();
@@ -917,11 +971,14 @@ export function LiveBookingDetailPage({ bookingId }: { bookingId: string }) {
       if (result.resolution === "ignored") return;
       commitCancel(result.state);
       if (result.resolution === "cancelled") {
+        setCancelDialogOpen(false);
         setDialogNotice(null);
         setPageNotice(t.cancelConfirmedAfterSync);
       } else if (result.resolution === "still-cancellable") {
+        setCancelDialogOpen(true);
         setDialogNotice(t.cancelReconcileStillOpen);
       } else if (result.resolution === "no-longer-cancellable") {
+        setCancelDialogOpen(false);
         setDialogNotice(null);
         setPageNotice(
           result.reasonCode === "CANCEL_TIME"
@@ -932,11 +989,22 @@ export function LiveBookingDetailPage({ bookingId }: { bookingId: string }) {
         );
       }
     } catch (error) {
-      if (
-        isRequestCancelled(error) ||
-        controller.signal.aborted ||
-        sessionIdentityKey(snapshot()) !== expectedIdentity
-      ) {
+      if (isRequestCancelled(error) || controller.signal.aborted) {
+        const liveIdentity = sessionIdentityKey(snapshot());
+        const failedAt = Date.now();
+        setNow(failedAt);
+        const recovered = recoverAbortedCancelState(
+          cancelRef.current,
+          liveIdentity,
+          failedAt,
+        );
+        commitCancel(recovered);
+        if (recovered.phase === "idle") {
+          setCancelDialogOpen(false);
+        }
+        return;
+      }
+      if (sessionIdentityKey(snapshot()) !== expectedIdentity) {
         return;
       }
       const err = toLiveCancelError(classifyBookingError(error, "get-booking"));
@@ -956,6 +1024,7 @@ export function LiveBookingDetailPage({ bookingId }: { bookingId: string }) {
         err.code === "BOOKING_NOT_FOUND"
       ) {
         privateCache.invalidate(queryKeys.bookings.all());
+        setCancelDialogOpen(false);
         setDialogNotice(null);
         setDetailState({ status: "not-found", data: null, error: null });
       }
@@ -1006,6 +1075,45 @@ export function LiveBookingDetailPage({ bookingId }: { bookingId: string }) {
             <p className={styles.notice} role="status">
               {pageNotice}
             </p>
+          )}
+
+          {!dialogOpen && pendingUnknownCancel && (
+            <div className={styles.notice} role="alert">
+              <p>
+                <strong>{t.cancelUnknownTitle}</strong>
+              </p>
+              <p>{t.cancelUnknownDescription}</p>
+              {pendingUnknownCancel.reconcileError && (
+                <p className={styles.error}>
+                  {t.errors[pendingUnknownCancel.reconcileError.code]}
+                </p>
+              )}
+              {cooldownSeconds > 0 && (
+                <p role="status">
+                  {formatMessage(t.cooldownWait, { seconds: cooldownSeconds })}
+                </p>
+              )}
+              <div className={styles.actions}>
+                <button
+                  type="button"
+                  className={styles.primary}
+                  disabled={cancelInFlight || cooldownSeconds > 0}
+                  onClick={() => void handleReconcileCancel()}
+                >
+                  {cancelInFlight
+                    ? t.cancelReconciling
+                    : t.cancelReconcileAction}
+                </button>
+                <button
+                  type="button"
+                  className={styles.secondary}
+                  disabled={cancelInFlight}
+                  onClick={() => setCancelDialogOpen(true)}
+                >
+                  {t.cancelReviewRequest}
+                </button>
+              </div>
+            </div>
           )}
 
           <dl className={styles.facts}>
@@ -1166,7 +1274,7 @@ export function LiveBookingDetailPage({ bookingId }: { bookingId: string }) {
                   disabled={cancelInFlight}
                   onClick={handleCloseCancel}
                 >
-                  {t.cancelCloseAndRefresh}
+                  {vi.booking.close}
                 </button>
               </div>
             </div>

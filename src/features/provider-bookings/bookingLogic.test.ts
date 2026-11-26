@@ -3,17 +3,23 @@ import { strict as assert } from "node:assert";
 import type { ProviderBooking, ProviderBookingStatus } from "../provider-workspace/liveApi";
 import { getProviderLifecyclePermissions } from "../provider-workspace/lifecycle";
 import {
+  EMPTY_BOOKING_DRAFT,
+  EMPTY_PENDING_UNKNOWN_BOOKINGS,
   buildReasonPayload,
+  clearPendingUnknownBooking,
   evaluateBookingTimeNotice,
   filterProviderBookings,
   formatBookingSlotRange,
   formatBookingTimestamp,
   formatVndAmount,
   getAvailableBookingActions,
+  getPendingUnknownBooking,
   isBookingConflictOrNotFoundCode,
   parseDecimalAmountToCents,
   parseStatusFilterParam,
   reconcileUnknownMutation,
+  recoverAbortedBookingDraft,
+  storePendingUnknownBooking,
   summarizeProviderBookings,
   validateBookingDateFilter,
 } from "./bookingLogic";
@@ -242,4 +248,99 @@ test("BigInt VND amount formatting, conflict code checks, and Vietnam timezone f
   assert.equal(isBookingConflictOrNotFoundCode("NO_SHOW_TIME"), true);
   assert.equal(isBookingConflictOrNotFoundCode("BOOKING_NOT_FOUND"), true);
   assert.equal(isBookingConflictOrNotFoundCode("PROVIDER_CONFIRM_FORBIDDEN"), false);
+});
+
+test("R1 & R2 provider bookings: 503 same-identity abort moves draft to unknown, persists across close/reopen, and purges on 401/switch", () => {
+  const identityA = "gen-1:30:PROVIDER_OWNER";
+  const identityB = "gen-2:31:PROVIDER_OWNER";
+  const fallbackError = {
+    code: "NETWORK_ERROR",
+    category: "uncertain",
+    outcome: "unknown",
+    status: null,
+    retryAfterSeconds: null,
+    shouldReconcile: true,
+  } as const;
+
+  const submittingDraft = {
+    identity: identityA,
+    bookingId: "90071992547409951",
+    action: "reject" as const,
+    reason: "Hết nhân sự ca chiều",
+    openedAtMs: 1_700_000_000_000,
+    phase: "submitting" as const,
+    error: null,
+    reconcileError: null,
+  };
+
+  // Same-identity 503 abort releases submitting -> unknown preserving bookingId, action & reason.
+  const recovered = recoverAbortedBookingDraft(
+    submittingDraft,
+    identityA,
+    identityA,
+    fallbackError,
+  );
+  assert.equal(recovered.phase, "unknown");
+  assert.equal(recovered.bookingId, "90071992547409951");
+  assert.equal(recovered.action, "reject");
+  assert.equal(recovered.reason, "Hết nhân sự ca chiều");
+  assert.deepEqual(recovered.error, fallbackError);
+
+  // R2: store pending unknown booking across dialog close & reopen.
+  const stored = storePendingUnknownBooking(
+    EMPTY_PENDING_UNKNOWN_BOOKINGS,
+    recovered,
+  );
+  assert.deepEqual(
+    getPendingUnknownBooking(stored, identityA, "90071992547409951"),
+    recovered,
+  );
+  assert.equal(
+    getPendingUnknownBooking(stored, identityA, "90071992547409999"),
+    null,
+  );
+  assert.equal(
+    getPendingUnknownBooking(stored, identityB, "90071992547409951"),
+    null,
+  );
+
+  // Reconcile GET aborted on same-identity 503 returns cleanly to unknown (never stuck reconciling).
+  const reconcilingDraft = {
+    ...recovered,
+    phase: "reconciling" as const,
+  };
+  const recoveredReconcile = recoverAbortedBookingDraft(
+    reconcilingDraft,
+    identityA,
+    identityA,
+    fallbackError,
+  );
+  assert.equal(recoveredReconcile.phase, "unknown");
+  assert.equal(recoveredReconcile.reason, "Hết nhân sự ca chiều");
+
+  // Clear after reconciliation removes only target bookingId.
+  const cleared = clearPendingUnknownBooking(
+    stored,
+    identityA,
+    "90071992547409951",
+  );
+  assert.equal(
+    getPendingUnknownBooking(cleared, identityA, "90071992547409951"),
+    null,
+  );
+
+  // 401/logout or account switch purges 100% back to EMPTY_BOOKING_DRAFT.
+  assert.deepEqual(
+    recoverAbortedBookingDraft(submittingDraft, identityA, null, fallbackError),
+    EMPTY_BOOKING_DRAFT,
+  );
+  assert.deepEqual(
+    recoverAbortedBookingDraft(
+      reconcilingDraft,
+      identityA,
+      identityB,
+      fallbackError,
+    ),
+    EMPTY_BOOKING_DRAFT,
+  );
 });
