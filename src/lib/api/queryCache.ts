@@ -10,10 +10,15 @@ export const queryKeys = {
     unread: () => ["v1", "notifications", "unread"] as const,
     detail: (id: string) => ["v1", "notifications", "detail", id] as const,
   },
+  bookings: {
+    all: () => ["v1", "bookings"] as const,
+    mine: () => ["v1", "bookings", "mine", "list"] as const,
+    detail: (id: string) => ["v1", "bookings", "mine", "detail", id] as const,
+  },
   // Pass canonical wire query strings, never draft input or credentials.
   search: (resource: "providers" | "services" | "availability", canonicalQuery: string) => ["v1", "search", resource, canonicalQuery] as const,
 };
-export const queryFreshness = { identity: 0, notifications: 0, availability: 0, publicSearch: 30_000 } as const;
+export const queryFreshness = { identity: 0, notifications: 0, availability: 0, bookings: 0, publicSearch: 30_000 } as const;
 
 /** Per app/session instance, never a server singleton. No automatic fetch or persistence. */
 export class QueryCache {

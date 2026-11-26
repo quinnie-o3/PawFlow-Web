@@ -9,8 +9,96 @@ import {
   SessionEnded,
   SessionBusy,
   type Session,
+  type SessionStore,
   type Tokens,
 } from "./store";
+
+const MAX_BIGINT_ID = BigInt("9223372036854775807");
+const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
+
+function validBigIntId(value: string): boolean {
+  return /^[1-9]\d{0,18}$/.test(value) && BigInt(value) <= MAX_BIGINT_ID;
+}
+
+function isBookingPath(path: string): boolean {
+  if (path === "bookings" || path === "bookings/mine") return true;
+  const detail = /^bookings\/mine\/([1-9]\d{0,18})(?:\/cancel)?$/.exec(path);
+  return detail !== null && validBigIntId(detail[1]);
+}
+
+// Exact public PawFlow-API booking exception messages mapped to stable machine
+// codes so BFF error responses stay sanitized without losing conflict semantics.
+const BOOKING_ERROR_CODES: Readonly<
+  Record<string, Readonly<Record<string, string>>>
+> = {
+  "400": {
+    "The selected availability slot is in the past": "SLOT_STARTED",
+    "The selected availability slot has already started": "SLOT_STARTED",
+    "The selected service is not active": "SERVICE_UNAVAILABLE",
+    "The selected service category is not active": "SERVICE_UNAVAILABLE",
+    "The selected provider is not approved for booking": "PROVIDER_UNAVAILABLE",
+    'Idempotency-Key must be 16-128 characters long and contain only letters, digits, "-" or "_" (for example a UUID)':
+      "INVALID_IDEMPOTENCY_KEY",
+  },
+  "404": {
+    "Availability slot not found": "SLOT_UNAVAILABLE",
+    "Active pet belonging to the customer was not found": "PET_UNAVAILABLE",
+    "Service for this availability slot was not found": "SERVICE_UNAVAILABLE",
+    "Provider not found": "PROVIDER_UNAVAILABLE",
+    "Booking not found": "BOOKING_NOT_FOUND",
+  },
+  "409": {
+    "Availability slot is full": "SLOT_FULL",
+    "Availability slot is not open for booking": "SLOT_CLOSED",
+    "The selected availability slot is outside the provider's working hours":
+      "SLOT_OUTSIDE_WORKING_HOURS",
+    "The selected availability slot is shorter than the service duration":
+      "SLOT_TOO_SHORT",
+    "A booking request with this Idempotency-Key is still being processed; retry the same request":
+      "IDEMPOTENCY_IN_PROGRESS",
+    "This Idempotency-Key was already used for a different booking request":
+      "IDEMPOTENCY_CONFLICT",
+    "Only pending confirmation or confirmed bookings can be cancelled":
+      "CANCEL_STATUS",
+    "Bookings can only be cancelled before the appointment starts":
+      "CANCEL_TIME",
+    "Availability slot has no reserved capacity to release":
+      "NO_RESERVED_CAPACITY",
+  },
+};
+
+function bookingErrorCode(path: string, error: ApiError): string | null {
+  if (
+    !isBookingPath(path) ||
+    error.kind !== "http" ||
+    error.status === null ||
+    !error.serverMessage
+  )
+    return null;
+  const byStatus = BOOKING_ERROR_CODES[String(error.status)];
+  if (!byStatus) return null;
+  return Object.hasOwn(byStatus, error.serverMessage)
+    ? byStatus[error.serverMessage]
+    : null;
+}
+
+export type BffHandlerDeps = {
+  store?: Pick<
+    SessionStore,
+    | "read"
+    | "create"
+    | "access"
+    | "open"
+    | "assertCurrent"
+    | "revoke"
+    | "end"
+    | "beginLogin"
+    | "activate"
+    | "failLogin"
+    | "revokeUser"
+    | "revokeBackend"
+  >;
+};
 
 const noStore = {
   "Cache-Control": "private, no-store, max-age=0",
@@ -144,7 +232,6 @@ function authTokens(body: unknown) {
   };
 }
 function publicResponse(path: string, body: unknown): unknown {
-  if (body === null) return null;
   const pick = (value: unknown, keys: string[]) => {
     if (!value || typeof value !== "object" || Array.isArray(value))
       throw new ApiError("invalid-response");
@@ -153,6 +240,44 @@ function publicResponse(path: string, body: unknown): unknown {
       keys.filter((k) => Object.hasOwn(source, k)).map((k) => [k, source[k]]),
     );
   };
+  const projectBooking = (value: unknown, includeLogs: boolean) => {
+    const base = pick(value, [
+      "id",
+      "status",
+      "bookedPrice",
+      "customerNote",
+      "createdAt",
+      "updatedAt",
+    ]);
+    const source = value as Record<string, unknown>;
+    const petSource = pick(source.pet, ["id", "name", "breed", "petType"]);
+    const pet = {
+      ...petSource,
+      petType: pick(petSource.petType, ["id", "name"]),
+    };
+    const service = pick(source.service, ["id", "name", "durationMinutes"]);
+    const slot = pick(source.slot, ["id", "slotDate", "startTime", "endTime"]);
+    const provider = pick(source.provider, ["id", "businessName", "address"]);
+    if (!includeLogs) return { ...base, service, slot, pet, provider };
+    if (!Array.isArray(source.statusLogs))
+      throw new ApiError("invalid-response");
+    const statusLogs = source.statusLogs.map((log) =>
+      pick(log, ["id", "oldStatus", "newStatus", "reason", "createdAt"]),
+    );
+    return { ...base, service, slot, pet, provider, statusLogs };
+  };
+  if (
+    path === "bookings" ||
+    /^bookings\/mine\/[1-9]\d{0,18}\/cancel$/.test(path)
+  )
+    return projectBooking(body, false);
+  if (path === "bookings/mine") {
+    if (!Array.isArray(body)) throw new ApiError("invalid-response");
+    return body.map((item) => projectBooking(item, false));
+  }
+  if (/^bookings\/mine\/[1-9]\d{0,18}$/.test(path))
+    return projectBooking(body, true);
+  if (body === null) return null;
   if (path === "users/me")
     return pick(body, [
       "id",
@@ -201,14 +326,16 @@ function publicResponse(path: string, body: unknown): unknown {
   }
   return pick(body, ["message", "expiresAt"]);
 }
-const errorResponse = (error: unknown) => {
+const errorResponse = (error: unknown, path = "") => {
   const status =
     error instanceof SessionEnded
       ? 401
       : error instanceof SessionBusy
         ? 409
         : error instanceof ApiError
-          ? (error.status ?? 503)
+          ? error.kind === "invalid-response"
+            ? 503
+            : (error.status ?? 503)
           : 503;
   const code =
     error instanceof SessionEnded
@@ -216,7 +343,7 @@ const errorResponse = (error: unknown) => {
       : error instanceof SessionBusy
         ? "SESSION_BUSY"
         : error instanceof ApiError
-          ? error.code
+          ? (error.code ?? bookingErrorCode(path, error))
           : null;
   const retry = error instanceof ApiError ? error.retryAfterSeconds : null;
   return Response.json(
@@ -240,6 +367,7 @@ const errorResponse = (error: unknown) => {
 export async function handleBff(
   request: Request,
   path: string,
+  deps?: BffHandlerDeps,
 ): Promise<Response> {
   try {
     const backend = (
@@ -247,7 +375,12 @@ export async function handleBff(
       method: "GET" | "POST" | "PATCH" | "DELETE" = "GET",
       body?: unknown,
       token?: string,
-    ) => upstream(path, method, body, token, clientHeaders(request));
+      extraHeaders: Record<string, string> = {},
+    ) =>
+      upstream(path, method, body, token, {
+        ...clientHeaders(request),
+        ...extraHeaders,
+      });
     const method = request.method as "GET" | "POST" | "PATCH" | "DELETE";
     if (method !== "GET" && !trustedOrigin(request))
       return Response.json(
@@ -261,7 +394,7 @@ export async function handleBff(
       .map((s) => s.trim())
       .find((s) => s.startsWith(cookieName() + "="))
       ?.slice(cookieName().length + 1);
-    const store = sessionStore();
+    const store = deps?.store ?? sessionStore();
     let row =
       raw && /^[\w-]{43}$/.test(raw)
         ? await store.read(sessionHash(raw))
@@ -438,6 +571,7 @@ export async function handleBff(
     const token = store.open(row).accessToken;
     let endpoint = "",
       fields: string[] = [];
+    const extraHeaders: Record<string, string> = {};
     if (path === "users/me" && ["GET", "PATCH"].includes(method)) {
       endpoint = "/users/me";
       fields = ["fullName", "phone"];
@@ -457,6 +591,36 @@ export async function handleBff(
         "weight",
         "healthNote",
       ];
+    }
+    if (path === "bookings" && method === "POST") {
+      endpoint = "/bookings";
+      fields = ["petId", "slotId", "customerNote"];
+      const idempotencyKey = request.headers.get("idempotency-key");
+      if (idempotencyKey !== null) {
+        if (!IDEMPOTENCY_KEY_PATTERN.test(idempotencyKey))
+          throw new ApiError("http", 400, "INVALID_IDEMPOTENCY_KEY");
+        extraHeaders["Idempotency-Key"] = idempotencyKey;
+      }
+    }
+    if (path === "bookings/mine" && method === "GET")
+      endpoint = "/bookings/mine";
+    const bookingDetail = /^bookings\/mine\/([1-9]\d{0,18})$/.exec(path);
+    if (
+      bookingDetail &&
+      validBigIntId(bookingDetail[1]) &&
+      method === "GET"
+    )
+      endpoint = "/" + path;
+    const bookingCancel = /^bookings\/mine\/([1-9]\d{0,18})\/cancel$/.exec(
+      path,
+    );
+    if (
+      bookingCancel &&
+      validBigIntId(bookingCancel[1]) &&
+      method === "POST"
+    ) {
+      endpoint = "/" + path;
+      fields = ["reason"];
     }
     if (path === "auth/sessions" && method === "GET") endpoint = "/" + path;
     if (
@@ -483,7 +647,7 @@ export async function handleBff(
     if (!endpoint) return reply({ message: "Not found" }, 404);
     if (body) allowedFields(body, fields);
     try {
-      const result = await backend(endpoint, method, body, token);
+      const result = await backend(endpoint, method, body, token, extraHeaders);
       await store.assertCurrent(row);
       if (path === "auth/change-password" || path === "auth/logout-all") {
         await store.revokeUser(row.user_id!);
@@ -501,13 +665,30 @@ export async function handleBff(
         );
       }
       // Only endpoints with known, non-secret response shapes reach this branch.
-      return reply(publicResponse(path, result.body), result.status);
+      const projected = publicResponse(path, result.body);
+      if (path === "bookings" && method === "POST") {
+        const rawReplayed =
+          result.headers.get("Idempotent-Replayed")?.trim() ?? null;
+        if (rawReplayed !== null) {
+          if (rawReplayed !== "true" && rawReplayed !== "false")
+            throw new ApiError("invalid-response");
+          return reply(
+            {
+              ...(projected as Record<string, unknown>),
+              idempotentReplayed: rawReplayed === "true",
+            },
+            result.status,
+            { "Idempotent-Replayed": rawReplayed },
+          );
+        }
+      }
+      return reply(projected, result.status);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401)
         await store.revoke(row.id_hash, row.generation);
       throw error;
     }
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(error, path);
   }
 }

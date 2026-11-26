@@ -10,25 +10,35 @@ import { usePublicCatalog } from "../../public-catalog/PublicCatalogProvider";
 import { usePublicResource } from "../../public-catalog/usePublicResource";
 import { Pagination, PublicError, SourceNotice } from "../../public-catalog/Feedback";
 import { publicDetailHref, publicReturnTo, validId } from "../../public-catalog/query";
-import type { Service } from "../../public-catalog/api";
+import type { Page, Service, Slot } from "../../public-catalog/api";
+import LiveBookingPanel from "../../customer-booking/components/LiveBookingPanel";
 import shell from "../../discovery-shell/shell.module.css";
 import styles from "../detail.module.css";
 
-function PublicAvailability({ service }: { service: Service }) {
-  const { api } = usePublicCatalog(), [page, setPage] = useState(1), t = vi.publicCatalog;
-  const loader = useCallback((signal: AbortSignal) => api.slots(service.provider.id, service.id, page, signal), [api, service, page]);
-  const resource = usePublicResource("availability", new URLSearchParams({ providerId: service.provider.id, serviceId: service.id, page: String(page), limit: "20" }).toString(), loader, 0);
-  const state = resource.state;
+function PublicAvailability({
+  service,
+  state,
+  onPage,
+  onRetry,
+}: {
+  service: Service;
+  state: ReturnType<typeof usePublicResource<Page<Slot>>>["state"];
+  onPage: (page: number) => void;
+  onRetry: () => void;
+}) {
+  const t = vi.publicCatalog;
   return <section id="availability" className={styles.availability} aria-labelledby="availability-title" aria-busy={state.status === "loading"}>
-    <h2 id="availability-title">{service.name} · {t.readOnlyAvailability}</h2><p>{t.availabilityNote}</p>
-    {state.status === "loading" && <p role="status">{vi.discovery.availability.loading}</p>}
-    {state.status === "error" && <PublicError {...state} onRetry={resource.retry} />}
-    {state.status === "ready" && <>{!state.data.items.length && <p role="status">{t.noSlots}</p>}<ul className={styles.slots}>{state.data.items.map(slot => <li key={slot.id} className={styles.slot}><strong>{formatDateOnly(slot.slotDate)}</strong><span>{slot.startTime.slice(0, 5)}–{slot.endTime.slice(0, 5)}</span><span>{slot.capacity - slot.bookedCount} {t.places}</span></li>)}</ul><Pagination meta={state.data.meta} onPage={setPage} /></>}
+    <h2 id="availability-title">{service.name} · {vi.booking.live.availabilityTitle}</h2><p>{t.availabilityNote}</p>
+    {state.status === "loading" && <p role="status">{vi.booking.live.availabilityLoading}</p>}
+    {state.status === "error" && <PublicError {...state} onRetry={onRetry} />}
+    {state.status === "ready" && <>{!state.data.items.length && <p role="status">{t.noSlots}</p>}<ul className={styles.slots}>{state.data.items.map(slot => <li key={slot.id} className={styles.slot}><strong>{formatDateOnly(slot.slotDate)}</strong><span>{slot.startTime.slice(0, 5)}–{slot.endTime.slice(0, 5)}</span><span>{slot.capacity - slot.bookedCount} {t.places}</span></li>)}</ul><Pagination meta={state.data.meta} onPage={onPage} /></>}
   </section>;
 }
 export default function PublicProviderDetail({ providerId }: { providerId: string }) {
   const params = useSearchParams(), requested = String(params.get("serviceId") ?? ""), returnTo = publicReturnTo(params.get("returnTo")), { api } = usePublicCatalog(), t = vi.publicCatalog;
   const [page, setPage] = useState(1);
+  const [slotPagination, setSlotPagination] = useState<{ serviceId: string; page: number }>({ serviceId: "", page: 1 });
+  const [availabilityRevision, setAvailabilityRevision] = useState(0);
   const valid = validId(providerId) && (!params.has("serviceId") || validId(requested)) && ["catalog", "serviceId", "returnTo"].every(key => params.getAll(key).length <= 1) && (!params.has("catalog") || params.get("catalog") === "live");
   const providerLoader = useCallback((signal: AbortSignal) => api.provider(providerId, signal), [api, providerId]);
   const provider = usePublicResource("provider", valid ? providerId : null, providerLoader);
@@ -36,7 +46,46 @@ export default function PublicProviderDetail({ providerId }: { providerId: strin
   const services = usePublicResource("services", valid && provider.state.status === "ready" ? new URLSearchParams({ providerId, sort: "newest", page: String(page), limit: "20" }).toString() : null, servicesLoader);
   const serviceLoader = useCallback((signal: AbortSignal) => api.service(providerId, requested, signal), [api, providerId, requested]);
   const service = usePublicResource("service", valid && requested && provider.state.status === "ready" ? `${providerId}/${requested}` : null, serviceLoader);
-  const selected = requested ? service.state.status === "ready" ? service.state.data : null : services.state.status === "ready" ? services.state.data.items[0] : null;
+  const selected = requested
+    ? service.state.status === "ready" && service.state.data.provider.id === providerId
+      ? service.state.data
+      : null
+    : services.state.status === "ready"
+      ? (services.state.data.items[0] ?? null)
+      : null;
+  const selectedProviderId = selected?.provider.id ?? null;
+  const selectedServiceId = selected?.id ?? null;
+  const slotPage = selectedServiceId && slotPagination.serviceId === selectedServiceId ? slotPagination.page : 1;
+  const setSlotPage = useCallback((nextPage: number) => {
+    if (!selectedServiceId) return;
+    setSlotPagination({ serviceId: selectedServiceId, page: nextPage });
+  }, [selectedServiceId]);
+  const availabilityWire =
+    valid &&
+    provider.state.status === "ready" &&
+    selectedProviderId === providerId &&
+    selectedServiceId
+      ? new URLSearchParams({
+          providerId: selectedProviderId,
+          serviceId: selectedServiceId,
+          page: String(slotPage),
+          limit: "20",
+        }).toString()
+      : null;
+  const availabilityLoader = useCallback(
+    (signal: AbortSignal) => {
+      if (!selectedProviderId || !selectedServiceId) {
+        return Promise.reject(new DOMException("Cancelled", "AbortError"));
+      }
+      return api.slots(selectedProviderId, selectedServiceId, slotPage, signal);
+    },
+    [api, selectedProviderId, selectedServiceId, slotPage],
+  );
+  const availability = usePublicResource("availability", availabilityWire, availabilityLoader, 0);
+  const refreshAvailability = () => {
+    setAvailabilityRevision(n => n + 1);
+    availability.retry();
+  };
   const activeServices = services.state.status === "ready" ? services.state.data.items : [];
   const shownServices = selected && !activeServices.some(s => s.id === selected.id) ? [selected, ...activeServices] : activeServices;
   const serviceRow = (s: Service) => <article className={`${styles.serviceRow} ${s.id === selected?.id ? styles.selectedService : ""}`} key={s.id} data-service-id={s.id}>
@@ -60,8 +109,15 @@ export default function PublicProviderDetail({ providerId }: { providerId: strin
           <div className={styles.serviceList}>{shownServices.map(serviceRow)}</div>
           {services.state.status === "ready" && <Pagination meta={services.state.data.meta} onPage={setPage} />}
         </section>
-        {selected && <PublicAvailability key={selected.id} service={selected} />}
-        <section id="booking" className={styles.bookingBoundary} aria-label={vi.discovery.detail.bookingRegion}><div><h2>{vi.discovery.detail.bookingTitle}</h2><p>{t.bookingBoundary}</p></div></section>
+        {selected && <PublicAvailability service={selected} state={availability.state} onPage={setSlotPage} onRetry={refreshAvailability} />}
+        <LiveBookingPanel
+          provider={provider.state.data}
+          selectedService={selected}
+          serviceLoading={services.state.status === "loading" || service.state.status === "loading"}
+          availabilityState={availability.state}
+          availabilityRevision={availabilityRevision}
+          onRefreshAvailability={refreshAvailability}
+        />
       </>}
     </div>
   </>;
